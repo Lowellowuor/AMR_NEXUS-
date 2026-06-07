@@ -1,273 +1,182 @@
-// src/pages/Reports.jsx
-import { useState, useEffect } from 'react';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import { DocumentArrowDownIcon, DocumentArrowUpIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect, useCallback } from 'react';
+import { saveAs } from 'file-saver';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import api from '../api/client';
+import ReportFilters from '../components/reports/ReportFilters';
+import ReportPreview from '../components/reports/ReportPreview';
+import ExportButtons from '../components/reports/ExportButtons';
+import ScheduleModal from '../components/reports/ScheduleModal';
 
 export default function Reports() {
-  const [dateRange, setDateRange] = useState('last30');
   const [reportType, setReportType] = useState('mdr_summary');
-  const [generating, setGenerating] = useState(false);
-  const [previewData, setPreviewData] = useState(null);
-  const [loadingPreview, setLoadingPreview] = useState(true);
+  const [dateRange, setDateRange] = useState('last30');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [reportData, setReportData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [exportingPDF, setExportingPDF] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
-  // Fetch preview data based on report type and date range
-  const fetchPreviewData = async () => {
-    setLoadingPreview(true);
+  const getDateParams = useCallback(() => {
+    const now = new Date();
+    let start = null, end = now;
+    if (dateRange === 'last7') start = new Date(now.setDate(now.getDate() - 7));
+    else if (dateRange === 'last30') start = new Date(now.setDate(now.getDate() - 30));
+    else if (dateRange === 'last90') start = new Date(now.setDate(now.getDate() - 90));
+    else if (dateRange === 'custom' && startDate && endDate) {
+      start = new Date(startDate);
+      end = new Date(endDate);
+    }
+    return { start, end };
+  }, [dateRange, startDate, endDate]);
+
+  const fetchReport = useCallback(async () => {
+    setLoading(true);
     try {
+      const { start, end } = getDateParams();
+      const query = new URLSearchParams();
+      if (start) query.append('start_date', start.toISOString().split('T')[0]);
+      if (end) query.append('end_date', end.toISOString().split('T')[0]);
+      const qs = query.toString();
+
       let data = {};
       switch (reportType) {
         case 'mdr_summary':
-          const summary = await api.getSummary();
-          data = {
-            total_records: summary.total_records,
-            mdr_rate: summary.mdr_rate,
-            anomaly_count: summary.anomaly_count,
-            active_counties: summary.active_counties,
-          };
+          data = await api.getSummary(qs);
           break;
         case 'anomaly_report':
-          const predictions = await api.getPredictions(500, 0);
+          const predictions = await api.getPredictions(1000, 0, qs);
           const anomalies = predictions.filter(p => p.anomaly_detected);
           data = {
             total_predictions: predictions.length,
             anomaly_count: anomalies.length,
             anomaly_rate: anomalies.length / predictions.length * 100 || 0,
-            recent_anomalies: anomalies.slice(0, 5),
+            recent_anomalies: anomalies.slice(0, 10),
           };
           break;
         case 'sector_comparison':
-          const sectors = await api.getBySector();
-          data = { sectors };
+          data = { sectors: await api.getBySector(qs) };
           break;
         case 'county_ranking':
-          const counties = await api.getTopCounties(10);
-          data = { counties };
+          data = { counties: await api.getTopCounties(10, qs) };
+          break;
+        case 'pathogen_wise':
+          data = { pathogens: await api.getByPathogen(20, qs) };
+          break;
+        case 'trend':
+          data = { trend: await api.getMDRTrend(12, qs) };
           break;
         default:
-          const defaultSummary = await api.getSummary();
-          data = defaultSummary;
+          data = await api.getSummary(qs);
       }
-      setPreviewData(data);
+      setReportData(data);
     } catch (err) {
-      console.error('Preview fetch error:', err);
-      setPreviewData({ error: 'Could not load preview data. Is the backend running?' });
+      console.error(err);
+      setReportData({ error: 'Failed to load report. Check backend connectivity.' });
     } finally {
-      setLoadingPreview(false);
+      setLoading(false);
     }
-  };
+  }, [reportType, getDateParams]);
 
   useEffect(() => {
-    fetchPreviewData();
-  }, [reportType, dateRange]); // dateRange could be used for filtering if backend supports it
+    fetchReport();
+  }, [fetchReport]);
 
-  const handleGenerate = async () => {
-    setGenerating(true);
-    // Currently just refreshes the preview (you could later implement a PDF export or detailed download)
-    await fetchPreviewData();
-    setGenerating(false);
-    alert('Preview refreshed with latest data. For full report, consider exporting CSV or using analytics page.');
+  const exportExcel = () => {
+    if (!reportData) return alert('No data to export');
+    let sheetData = [];
+    if (reportType === 'mdr_summary') sheetData = [['Metric', 'Value'], ['Total Records', reportData.total_records || 0], ['MDR Rate (%)', reportData.mdr_rate || 0], ['Anomalies', reportData.anomaly_count || 0], ['Active Counties', reportData.active_counties || 0]];
+    else if (reportType === 'sector_comparison' && reportData.sectors) sheetData = [['Sector', 'MDR (%)'], ...reportData.sectors.map(s => [s.name, s.value])];
+    else if (reportType === 'county_ranking' && reportData.counties) sheetData = [['County', 'MDR (%)'], ...reportData.counties.map(c => [c.county, c.rate])];
+    else if (reportType === 'pathogen_wise' && reportData.pathogens) sheetData = [['Pathogen', 'Resistance (%)'], ...reportData.pathogens.map(p => [p.name, p.resistance])];
+    else if (reportType === 'trend' && reportData.trend) sheetData = [['Month', 'MDR Rate (%)'], ...reportData.trend.map(t => [t.month, t.rate])];
+    else return alert('Unsupported report type for Excel export');
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Report');
+    XLSX.writeFile(wb, `amr_report_${reportType}_${new Date().toISOString().slice(0,19)}.xlsx`);
   };
 
-  const handleExportCSV = async () => {
+  const exportCSV = () => {
+    if (!reportData) return alert('No data to export');
+    let csvRows = [];
+    if (reportType === 'mdr_summary') csvRows = [['Metric','Value'],[`Total Records,${reportData.total_records || 0}`],[`MDR Rate (%),${reportData.mdr_rate || 0}`],[`Anomalies,${reportData.anomaly_count || 0}`],[`Active Counties,${reportData.active_counties || 0}`]];
+    else if (reportType === 'sector_comparison' && reportData.sectors) csvRows = [['Sector','MDR (%)'], ...reportData.sectors.map(s => [s.name, s.value])];
+    else if (reportType === 'county_ranking' && reportData.counties) csvRows = [['County','MDR (%)'], ...reportData.counties.map(c => [c.county, c.rate])];
+    else if (reportType === 'pathogen_wise' && reportData.pathogens) csvRows = [['Pathogen','Resistance (%)'], ...reportData.pathogens.map(p => [p.name, p.resistance])];
+    else if (reportType === 'trend' && reportData.trend) csvRows = [['Month','MDR Rate (%)'], ...reportData.trend.map(t => [t.month, t.rate])];
+    else return alert('CSV export not supported for this report type');
+    const csvContent = csvRows.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    saveAs(blob, `amr_report_${reportType}_${new Date().toISOString().slice(0,19)}.csv`);
+  };
+
+  const exportPDF = async () => {
+    setExportingPDF(true);
+    const element = document.getElementById('report-preview-content');
+    if (!element) return;
     try {
-      const response = await fetch('http://localhost:8000/export/predictions');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `predictions_${new Date().toISOString().slice(0,19)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`amr_report_${reportType}_${new Date().toISOString().slice(0,19)}.pdf`);
     } catch (err) {
-      alert('Export failed. Is the backend running?');
+      console.error(err);
+      alert('PDF generation failed');
     }
+    setExportingPDF(false);
   };
 
-  // Helper to render preview based on reportType
-  const renderPreview = () => {
-    if (loadingPreview) {
-      return <div className="text-center py-8 text-gray-500">Loading preview...</div>;
-    }
-    if (previewData?.error) {
-      return <div className="text-center py-8 text-red-500">{previewData.error}</div>;
-    }
-
-    switch (reportType) {
-      case 'mdr_summary':
-        return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-500">Total Records</p>
-                <p className="text-2xl font-bold text-gray-900">{previewData?.total_records || 0}</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-500">MDR Rate</p>
-                <p className="text-2xl font-bold text-red-600">{previewData?.mdr_rate || 0}%</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-500">Anomalies</p>
-                <p className="text-2xl font-bold text-yellow-600">{previewData?.anomaly_count || 0}</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-500">Active Counties</p>
-                <p className="text-2xl font-bold text-primary-600">{previewData?.active_counties || 0}</p>
-              </div>
-            </div>
-          </div>
-        );
-      case 'anomaly_report':
-        return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-500">Total Predictions</p>
-                <p className="text-2xl font-bold text-gray-900">{previewData?.total_predictions || 0}</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-500">Anomaly Rate</p>
-                <p className="text-2xl font-bold text-yellow-600">{previewData?.anomaly_rate?.toFixed(1) || 0}%</p>
-              </div>
-            </div>
-            {previewData?.recent_anomalies?.length > 0 && (
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Recent Anomalies:</p>
-                <ul className="space-y-2">
-                  {previewData.recent_anomalies.map((a, idx) => (
-                    <li key={idx} className="text-sm text-gray-600 border-l-4 border-yellow-500 pl-3">
-                      {a.pathogen_code?.toUpperCase()} in {a.county} – {new Date(a.timestamp).toLocaleDateString()}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        );
-      case 'sector_comparison':
-        return (
-          <div className="space-y-3">
-            {previewData?.sectors?.length > 0 ? (
-              previewData.sectors.map((s, idx) => (
-                <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="font-medium text-gray-700">{s.name}</span>
-                  <span className="text-lg font-bold text-primary-600">{s.value}% MDR</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center">No sector data available.</p>
-            )}
-          </div>
-        );
-      case 'county_ranking':
-        return (
-          <div className="space-y-3">
-            {previewData?.counties?.length > 0 ? (
-              previewData.counties.map((c, idx) => (
-                <div key={c.county} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-bold text-gray-400 w-6">{idx + 1}</span>
-                    <span className="font-medium text-gray-700">{c.county}</span>
-                  </div>
-                  <span className="text-lg font-bold text-primary-600">{c.rate}% MDR</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center">No county ranking data available.</p>
-            )}
-          </div>
-        );
-      default:
-        return <p className="text-gray-500 text-center">Select a report type to see preview.</p>;
+  const scheduleReport = async (email, schedule) => {
+    setScheduling(true);
+    try {
+      await api.emailReport({ email, format: 'pdf', type: reportType, schedule });
+      alert(`Report scheduled ${schedule}ly to ${email}.`);
+      setShowScheduleModal(false);
+    } catch (err) {
+      alert('Failed to schedule. Ensure backend endpoint exists.');
+    } finally {
+      setScheduling(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Reports & Export</h1>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Report configuration */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 overflow-hidden">
-            <div className="p-5 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-800">Report Settings</h2>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
-                <select
-                  value={reportType}
-                  onChange={(e) => setReportType(e.target.value)}
-                  className="w-full rounded-full border border-gray-200 bg-gray-50/50 px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500/20"
-                >
-                  <option value="mdr_summary">MDR Summary</option>
-                  <option value="anomaly_report">Anomaly Report</option>
-                  <option value="sector_comparison">Sector Comparison</option>
-                  <option value="county_ranking">County Ranking</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
-                <select
-                  value={dateRange}
-                  onChange={(e) => setDateRange(e.target.value)}
-                  className="w-full rounded-full border border-gray-200 bg-gray-50/50 px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500/20"
-                >
-                  <option value="last7">Last 7 days</option>
-                  <option value="last30">Last 30 days</option>
-                  <option value="last90">Last 90 days</option>
-                  <option value="custom">Custom range (coming soon)</option>
-                </select>
-              </div>
-              <Button onClick={handleGenerate} loading={generating} className="w-full">
-                {generating ? 'Refreshing...' : 'Generate Report'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 overflow-hidden">
-            <div className="p-5 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-800">Export Options</h2>
-            </div>
-            <div className="p-5 space-y-3">
-              <button
-                onClick={handleExportCSV}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-white/60 transition-all"
-              >
-                <DocumentArrowDownIcon className="h-5 w-5" />
-                Export Predictions (CSV)
-              </button>
-              <button
-                onClick={() => alert('PDF export coming soon. Use CSV export for now.')}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-white/60 transition-all"
-              >
-                <DocumentArrowUpIcon className="h-5 w-5" />
-                Export Analytics (PDF – planned)
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Report preview */}
-        <div className="lg:col-span-2">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 overflow-hidden">
-            <div className="p-5 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-800">Preview</h2>
-            </div>
-            <div className="p-5">
-              {renderPreview()}
-              <p className="text-xs text-gray-400 mt-4">
-                * Data fetched directly from backend. Use "Generate Report" to refresh.
-                For full dataset, use the CSV export.
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Reports & Intelligence</h1>
+        <ExportButtons onExcel={exportExcel} onPDF={exportPDF} onCSV={exportCSV} />
       </div>
+
+      <ReportFilters
+        reportType={reportType}
+        setReportType={setReportType}
+        dateRange={dateRange}
+        setDateRange={setDateRange}
+        startDate={startDate}
+        setStartDate={setStartDate}
+        endDate={endDate}
+        setEndDate={setEndDate}
+        onRefresh={fetchReport}
+      />
+
+      <div id="report-preview-content">
+        <ReportPreview reportType={reportType} data={reportData} loading={loading} />
+      </div>
+
+      <div className="flex justify-end">
+        <button onClick={() => setShowScheduleModal(true)} className="flex items-center gap-2 px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-full text-sm font-medium">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>
+          Schedule Email Report
+        </button>
+      </div>
+
+      <ScheduleModal isOpen={showScheduleModal} onClose={() => setShowScheduleModal(false)} onSchedule={scheduleReport} scheduling={scheduling} />
     </div>
   );
 }

@@ -7,6 +7,8 @@ import {
   Cog6ToothIcon,
   BeakerIcon,
   DocumentChartBarIcon,
+  ArrowPathIcon,        
+  MagnifyingGlassIcon,   
 } from '@heroicons/react/24/outline';
 
 const navigation = [
@@ -16,6 +18,8 @@ const navigation = [
   { name: 'History', href: '/history', icon: ClockIcon },
   { name: 'Alerts', href: '/alerts', icon: BellIcon },
   { name: 'Reports', href: '/reports', icon: DocumentChartBarIcon },
+  { name: 'Compare', href: '/compare', icon: ArrowPathIcon },           
+  { name: 'Pathogen Explorer', href: '/pathogen-explorer', icon: MagnifyingGlassIcon }, 
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
 ];
 
@@ -45,7 +49,7 @@ export default function Sidebar({ mobile = false, onNavigate }) {
           to={item.href}
           className={linkClasses}
           onClick={handleClick}
-          end={item.href === '/'} // ensures Dashboard is only active on exact root
+          end={item.href === '/'}
         >
           {({ isActive }) => (
             <>
