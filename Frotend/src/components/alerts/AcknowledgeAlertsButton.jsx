@@ -13,7 +13,10 @@ export default function AcknowledgeAlertsButton({ alerts, onAcknowledgeAll }) {
   };
 
   return (
-    <button onClick={handleAcknowledgeAll} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-full text-sm font-medium hover:bg-green-700 transition">
+    <button
+      onClick={handleAcknowledgeAll}
+      className="px-4 py-2 border border-gray-300 rounded-full text-sm font-medium flex items-center gap-2 hover:bg-white/60 transition"
+    >
       <CheckCircleIcon className="h-4 w-4" /> Acknowledge All
     </button>
   );

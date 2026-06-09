@@ -1,11 +1,16 @@
+import { DocumentTextIcon } from '@heroicons/react/24/outline';
 import { useOfflineDrafts } from '../../hooks/useOfflineDrafts';
 
 export default function DraftsManager({ onLoadDraft, onSubmitDraft }) {
   const { drafts, removeDraft, syncDraft } = useOfflineDrafts();
   if (drafts.length === 0) return null;
+  
   return (
     <div className="mb-4 p-3 bg-yellow-50 rounded-xl">
-      <p className="text-sm font-medium mb-2">📝 You have {drafts.length} offline draft(s)</p>
+      <div className="flex items-center gap-2 text-sm font-medium mb-2">
+        <DocumentTextIcon className="h-5 w-5" />
+        <span>You have {drafts.length} offline draft(s)</span>
+      </div>
       <div className="space-y-2">
         {drafts.map(d => (
           <div key={d.id} className="flex justify-between items-center text-sm bg-white p-2 rounded">
