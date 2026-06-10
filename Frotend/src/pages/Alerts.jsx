@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import api from '../api/client';
 import AlertCard from '../components/alerts/AlertCard';
 import AlertFilters from '../components/alerts/AlertFilters';
@@ -39,7 +39,7 @@ export default function Alerts() {
       if (summary.mdr_rate > 30) {
         newAlerts.push({
           id: 'high-mdr',
-          message: `?? High MDR rate alert: Overall resistance rate is ${summary.mdr_rate}% � above threshold (30%)`,
+          message: `?? High MDR rate alert: Overall resistance rate is ${summary.mdr_rate}% – above threshold (30%)`,
           timestamp: new Date().toISOString(),
           severity: 'high',
           type: 'trend',

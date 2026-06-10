@@ -1,13 +1,19 @@
-﻿# serve.py
-import socketio
+﻿import socketio
 import uvicorn
+from fastapi.middleware.cors import CORSMiddleware
 from src.api.app import app 
 
-# Create a Socket.IO server and attach it to the ASGI app
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins=['http://localhost:5173', 'http://localhost:5174'])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:5174"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 combined_app = socketio.ASGIApp(sio, app)
-
-
 app.sio = sio
 
 @sio.event
