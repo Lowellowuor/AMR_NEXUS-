@@ -1,8 +1,6 @@
-#  AMR-Nexus – Full-Stack AMR Surveillance Platform
+# AMR-Nexus - Full-Stack AMR Surveillance Platform
 
-### lowell owuor  README
-
-> **Production-grade • Offline-first • AI-powered • One Health**
+**Production-grade - Offline-first - AI-powered - One Health**
 
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688.svg)](https://fastapi.tiangolo.com)
@@ -13,375 +11,301 @@
 
 ---
 
-#  Project Overview
+## Project Overview
 
-AMR-Nexus is an enterprise-grade, end-to-end platform for antimicrobial resistance (AMR) surveillance and prediction.
+AMR-Nexus is a full-stack, AI-powered platform for antimicrobial resistance (AMR) surveillance and prediction.
 
-The system combines:
+It combines:
 
-*  React + Vite frontend
-*  FastAPI backend
-*  XGBoost MDR prediction
-*  Isolation Forest anomaly detection
-*  SHAP explainability
-*  Real-time alert streaming
-*  Offline-first PWA capabilities
+- XGBoost for MDR prediction
+- Isolation Forest for anomaly detection
+- SHAP for explainability
+- Real-time alerts via WebSocket and SMS
+- Offline-first PWA with IndexedDB drafts
+- Claude-powered stewardship guidance
+- Interactive county heatmap
+- Role-based dashboards (National / County)
 
 Designed for:
-
-* Epidemiologists
-* Laboratory technicians
-* Veterinary officers
-* Public health agencies
-* National surveillance teams
-
----
-
-#  Key Differentiators
-
-| Feature                | Description                               |
-| ---------------------- | ----------------------------------------- |
-|  ML Interpretability | SHAP values explain every prediction      |
-|  Offline-first       | IndexedDB drafts + service worker caching |
-|  Real-time Alerts    | WebSocket anomaly notifications           |
-|  Professional UX     | Dark mode, shortcuts, glassmorphism       |
-|  Production-ready    | Dockerised & CI/CD friendly               |
+- Epidemiologists
+- Laboratory technicians
+- Veterinary officers
+- Public health agencies
+- National AMR coordinators
 
 ---
 
-#  Architecture
+## Key Differentiators
 
-```text id="g0nrlf"
-┌────────────────────────────────────────────────────────────┐
-│                    Browser / PWA                          │
-│ React 19 │ Vite │ Zustand │ Recharts │ Socket.IO Client  │
-└───────────────────────┬────────────────────────────────────┘
-                        │
-                 HTTP / WebSocket
-                        │
-                        ▼
-┌────────────────────────────────────────────────────────────┐
-│                FastAPI Backend (Uvicorn)                  │
-│                                                            │
-│ • REST APIs                                                │
-│ • Socket.IO server                                         │
-│ • Background tasks                                         │
-│ • SQLAlchemy ORM                                           │
-└──────────────┬───────────────────────────────┬─────────────┘
-               │                               │
-               ▼                               ▼
-┌──────────────────────────┐   ┌──────────────────────────┐
-│      ML Models           │   │       PostgreSQL         │
-│ • XGBoost                │   │ • Predictions            │
-│ • Isolation Forest       │   │ • Alerts                 │
-│ • SHAP Explainer         │   │ • Comments               │
-└──────────────────────────┘   └──────────────────────────┘
+| Feature | Description |
+|---------|-------------|
+| ML Interpretability | SHAP values explain every prediction in plain language |
+| Offline-first | IndexedDB drafts + service worker caching; sync when online |
+| Real-time Alerts | WebSocket pushes anomalies + SMS notifications (Africa's Talking) |
+| Role-based Views | National vs County dashboards with filtered data |
+| Decision Support | Claude API generates role-specific stewardship recommendations |
+| Professional UX | Dark mode, keyboard shortcuts, glass-morphic design |
+| Production-ready | Dockerised, CI/CD friendly, scalable |
+
+---
+
+## Architecture
+
+```
++----------------------------------------------------------------+
+|                        Browser / PWA                            |
+|  React 19 | Vite | Zustand | Recharts | Socket.IO Client        |
++---------------------------+--------------------------------------+
+                            |
+                    HTTP / WebSocket
+                            |
+                            v
++----------------------------------------------------------------+
+|                  FastAPI Backend (Uvicorn)                      |
+|                                                                  |
+|  - REST APIs (25+ endpoints)                                    |
+|  - Socket.IO server (real-time alerts)                          |
+|  - Background tasks (email/SMS reports)                         |
+|  - SQLAlchemy ORM (PostgreSQL / SQLite)                         |
++---------------+--------------------------------+----------------+
+                |                                 |
+                v                                 v
++---------------------------+      +---------------------------+
+|         ML Models          |      |        PostgreSQL          |
+|  - XGBoost                 |      |  - Predictions              |
+|  - Isolation Forest        |      |  - Alerts                   |
+|  - SHAP Explainer          |      |  - Comments                 |
+|  - Prophet (forecast)      |      |  - Risk Scores              |
++---------------------------+      +---------------------------+
 ```
 
 ---
 
-#  Technology Stack
+## Technology Stack
 
 | Layer            | Technology                      |
-| ---------------- | ------------------------------- |
+| ---------------- | -------------------------------- |
 | Frontend         | React 19, Vite, Tailwind CSS    |
 | State Management | Zustand                         |
 | Forms            | React Hook Form + Zod           |
 | Charts           | Recharts                        |
 | Backend          | FastAPI, Uvicorn, SQLAlchemy    |
 | Authentication   | JWT-ready (python-jose)         |
-| Machine Learning | XGBoost, SHAP, Isolation Forest |
+| ML & Forecasting | XGBoost, SHAP, Isolation Forest, Prophet, LinearRegression |
 | Data Processing  | Pandas, NumPy                   |
 | Database         | PostgreSQL / SQLite             |
 | Real-Time        | Socket.IO                       |
-| PDF Generation   | reportlab                       |
+| SMS              | Africa's Talking                |
+| LLM Guidance     | Claude API (Anthropic)          |
+| PDF Generation   | reportlab, jsPDF (frontend)     |
 | Infrastructure   | Docker + Docker Compose         |
 
 ---
 
-#  Quick Start (Local Development)
+## Quick Start (Local Development)
 
-##  Prerequisites
-
-* Node.js 18+
-* Python 3.11+
-* PostgreSQL (optional)
+### Prerequisites
+- Node.js 18+
+- Python 3.11+
+- PostgreSQL (optional - SQLite works out of the box)
 
 ---
 
-# 1️⃣ Clone Repository
+### 1. Clone Repository
 
-```bash id="9n8v13"
+```bash
 git clone https://github.com/your-org/amr-nexus.git
-
 cd amr-nexus
 ```
 
----
+### 2. Backend Setup
 
-# 2️⃣ Backend Setup
-
-## Create Virtual Environment
-
-```bash id="d80tsn"
+```bash
 cd backend/amr_nexus_ml
-
 python -m venv venv
-```
-
-### Linux / macOS
-
-```bash id="kg4e0o"
-source venv/bin/activate
-```
-
-### Windows
-
-```bash id="cd6ydv"
-venv\Scripts\activate
-```
-
----
-
-## Install Dependencies
-
-```bash id="ryo8yq"
+source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
----
+Create `.env` file:
 
-## Configure Environment Variables
-
-Create `.env`
-
-```ini id="4kr5qz"
+```ini
 DATABASE_URL=sqlite:///./amr.db
-
 MODEL_DIR=./models
 ```
 
----
+Place trained ML models (`*.pkl`) in `models/`.
 
-## Load Trained Models
+Create database tables:
 
-Place these files in:
-
-```text id="uw4xg8"
-backend/amr_nexus_ml/models/
-```
-
-| File                  | Description             |
-| --------------------- | ----------------------- |
-| `mdr_xgb.pkl`         | XGBoost classifier      |
-| `anomaly_iso.pkl`     | Isolation Forest        |
-| `preprocessor.pkl`    | Feature preprocessor    |
-| `feature_names.pkl`   | Feature list            |
-| `numeric_indices.pkl` | Numeric feature indices |
-| `shap_explainer.pkl`  | SHAP explainer          |
-
----
-
-## Create Database Tables
-
-```bash id="0ujl4y"
+```bash
 python -c "from src.database import Base, engine; Base.metadata.create_all(bind=engine)"
 ```
 
----
+Start backend:
 
-## Start Backend
-
-```bash id="c57gl6"
+```bash
 python serve.py
 ```
 
-Backend URL:
+- API: http://localhost:8000
+- Swagger: http://localhost:8000/docs
 
-```text id="x6zwu7"
-http://localhost:8000
-```
+### 3. Frontend Setup
 
-Swagger Docs:
-
-```text id="78xkzc"
-http://localhost:8000/docs
-```
-
----
-
-# 3️⃣ Frontend Setup
-
-```bash id="a8mqwn"
-cd ../../frontend/Frotend
-
+```bash
+cd ../../Frotend   # adjust to your frontend folder
 npm install
 ```
 
----
+Create `.env`:
 
-## Configure Frontend Environment
-
-Create `.env`
-
-```ini id="u6bfec"
+```ini
 VITE_API_URL=http://localhost:8000
 ```
 
----
+Start frontend:
 
-## Start Frontend
-
-```bash id="thk2qj"
+```bash
 npm run dev
 ```
 
-Frontend URL:
+Frontend: http://localhost:5173
 
-```text id="6g1wxg"
-http://localhost:5173
-```
+### 4. (Optional) Offline PWA Testing
 
----
-
-# 4️⃣ Optional PWA Testing
-
-Build production version:
-
-```bash id="0lrq9u"
+```bash
 npm run build
-```
-
-Serve locally:
-
-```bash id="a5vq9y"
 npx serve dist -s
 ```
 
 ---
 
-#  Project Structure
+## Project Structure (Key Files)
 
-```text id="xk0v13"
+```
 amr-nexus/
 ├── backend/
 │   └── amr_nexus_ml/
 │       ├── src/
 │       │   ├── api/
-│       │   │   └── app.py
-│       │   ├── db_models.py
-│       │   ├── features/
-│       │   ├── utils/
-│       │   └── database.py
-│       │
-│       ├── models/
-│       ├── serve.py
+│       │   │   └── app.py               # all endpoints
+│       │   ├── db_models.py             # SQLAlchemy models
+│       │   ├── features/                # preprocessing
+│       │   ├── utils/                   # config, logger
+│       │   └── database.py              # DB session
+│       ├── models/                      # .pkl files
+│       ├── serve.py                     # ASGI + Socket.IO entry
 │       └── requirements.txt
-│
 ├── frontend/
 │   └── Frotend/
 │       ├── src/
-│       │   ├── api/
-│       │   ├── components/
-│       │   ├── pages/
-│       │   ├── hooks/
-│       │   ├── stores/
-│       │   ├── utils/
+│       │   ├── api/                     # client.js
+│       │   ├── components/              # UI components
+│       │   ├── pages/                   # route components
+│       │   ├── hooks/                   # custom hooks
+│       │   ├── stores/                  # Zustand stores
+│       │   ├── utils/                   # helpers
 │       │   └── main.jsx
-│       │
-│       ├── public/
+│       ├── public/                      # static assets, sw.js
 │       ├── tailwind.config.js
 │       └── package.json
-│
 └── docker-compose.yml
 ```
 
 ---
 
-#  Core API Endpoints
+## Core API Endpoints (selected)
 
-| Method | Endpoint                   | Description                  |
-| ------ | -------------------------- | ---------------------------- |
-| POST   | `/predict`                 | Run MDR prediction           |
-| GET    | `/predictions`             | Paginated prediction history |
-| DELETE | `/predictions/{record_id}` | Delete prediction            |
-| GET    | `/analytics/summary`       | Aggregated metrics           |
-| GET    | `/analytics/mdr_trend`     | MDR trend                    |
-| GET    | `/analytics/by_pathogen`   | Pathogen resistance          |
-| GET    | `/analytics/by_sector`     | Sector MDR rates             |
-| GET    | `/analytics/top_counties`  | High MDR counties            |
-| GET    | `/analytics/county_mdr`    | County MDR map               |
-| GET    | `/alerts`                  | Active alerts                |
-| GET    | `/alerts/count`            | Alert counts                 |
-| GET    | `/search?q=`               | Global search                |
-| GET    | `/ews/forecast`            | County MDR forecast          |
-
----
-
-#  Frontend Features
-
-| Route                | Features                           |
-| -------------------- | ---------------------------------- |
-| `/`                  | Dashboard + anomaly feed           |
-| `/predict`           | Offline drafts + SHAP explanations |
-| `/analytics`         | Interactive charts                 |
-| `/history`           | Bulk actions + comparison modal    |
-| `/alerts`            | Real-time alerts                   |
-| `/reports`           | CSV/PDF export                     |
-| `/settings`          | Notifications + backup             |
-| `/pathogen-explorer` | Pathogen drill-down                |
-| `/bulk-import`       | CSV/Excel upload                   |
-| `/compare-analytics` | Date range comparison              |
-| `/data-quality`      | Completeness metrics               |
+| Method | Endpoint | Description |
+|--------|----------|--------------|
+| POST   | /predict | MDR prediction + SHAP + store |
+| GET    | /predictions | Paginated history |
+| DELETE | /predictions/{record_id} | Delete a record |
+| GET    | /analytics/summary | Aggregated metrics |
+| GET    | /analytics/mdr_trend | Monthly trend |
+| GET    | /analytics/by_pathogen | Pathogen resistance |
+| GET    | /analytics/by_sector | MDR % by sector |
+| GET    | /analytics/top_counties | Highest MDR counties |
+| GET    | /analytics/county_mdr | Per-county rates (heatmap) |
+| GET    | /analytics/pathogen_trend | Pathogen-specific trend |
+| GET    | /analytics/risk_scores | Risk scores per county/pathogen |
+| GET    | /forecast/trend | Prophet forecast |
+| GET    | /alerts | Active alerts |
+| GET    | /alerts/count | Unacknowledged count |
+| GET    | /search?q= | Global search |
+| POST   | /guidance | Claude-generated guidance |
+| GET    | /ews/forecast | County-level MDR forecast |
+| GET    | /export/predictions | Full CSV export |
+| POST   | /reports/email | Schedule email report |
 
 ---
 
-#  Integration Testing
+## Frontend Features (page by page)
 
-## Health Check
+| Route | Features |
+|-------|----------|
+| / | Dashboard - metrics, trend, anomaly feed, county heatmap, system health |
+| /predict | Offline drafts, speech-to-text, barcode, SHAP explanation, stewardship recommendation |
+| /analytics | Interactive charts, date filters, forecast overlay, heatmap |
+| /history | Paginated table, bulk actions, column customisation, compare modal |
+| /alerts | Real-time anomalies, acknowledge, filter, export CSV |
+| /reports | Generate custom reports, CSV/PDF export, email scheduling |
+| /settings | Profile, notifications, API keys, backup/restore, offline sync |
+| /pathogen-explorer | Drill-down by pathogen: resistance per antibiotic, trend, heatmap |
+| /bulk-import | Upload Excel/CSV with predictions |
+| /compare-analytics | Side-by-side date range comparison |
+| /data-quality | Completeness metrics |
 
-```bash id="4zh7eu"
+---
+
+## Integration Testing
+
+Health check
+
+```bash
 curl http://localhost:8000/health
 ```
 
----
+Browser console test
 
-## Browser Console Test
-
-```javascript id="5v1kkm"
+```js
 fetch('http://localhost:8000/predictions')
   .then(r => r.json())
   .then(console.log)
 ```
 
----
+Submit a test prediction
 
-## Sample Prediction Request
-
-```bash id="2e70t5"
+```bash
 curl -X POST http://localhost:8000/predict \
--H "Content-Type: application/json" \
--d '{
-  "sector": "ANIMAL",
-  "sub_sector": "Poultry-Broiler",
-  "pathogen_code": "eco",
-  "specimen_type": "Cloacal swab",
-  "county": "Nairobi",
-  "antibiotic_class": "Fluoroquinolone",
-  "test_method": "Disk diffusion",
-  "sample_month": 6
-}'
+  -H "Content-Type: application/json" \
+  -d '{
+    "sector": "ANIMAL",
+    "sub_sector": "Poultry-Broiler",
+    "pathogen_code": "eco",
+    "specimen_type": "Cloacal swab",
+    "county": "Nairobi",
+    "antibiotic_class": "Fluoroquinolone",
+    "test_method": "Disk diffusion",
+    "sample_month": 6
+  }'
+```
+
+Test all endpoints (PowerShell)
+
+```powershell
+.\test-all.ps1   # see project root for the script
 ```
 
 ---
 
-#  Docker Deployment
+## Docker Deployment
 
-## docker-compose.yml
+`docker-compose.yml`
 
-```yaml id="vyl7zj"
+```yaml
 version: '3'
-
 services:
   db:
     image: postgres:15
@@ -391,7 +315,6 @@ services:
       POSTGRES_PASSWORD: secret
     volumes:
       - pgdata:/var/lib/postgresql/data
-
   backend:
     build: ./backend/amr_nexus_ml
     ports:
@@ -400,90 +323,87 @@ services:
       - db
     environment:
       DATABASE_URL: postgresql://amr_user:secret@db:5432/amr_db
-
   frontend:
     build: ./frontend/Frotend
     ports:
       - "80:80"
-
 volumes:
   pgdata:
 ```
 
----
+Build and run
 
-## Build & Run
-
-```bash id="fgbh9h"
+```bash
 docker-compose up -d
 ```
 
 ---
 
-#  Environment Variables
+## Environment Variables
 
-## Backend `.env`
+Backend `.env`
 
-```ini id="sgx43q"
+```ini
 DATABASE_URL=postgresql://user:pass@localhost/amr_db
-
 MODEL_DIR=./models
-
+AT_USERNAME=sandbox
+AT_API_KEY=your_africastalking_key
+AT_SENDER_ID=AMRNexus
+CLAUDE_API_KEY=your_claude_key
+ENABLE_SMS=true
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=reports@amrnexus.org
 SMTP_PASS=******
 ```
 
----
+Frontend `.env`
 
-## Frontend `.env`
-
-```ini id="hmt9ci"
+```ini
 VITE_API_URL=http://localhost:8000
 ```
 
 ---
 
-#  License
+## License
 
-```text id="1w7t2j"
-Proprietary – AMR-Nexus One Health Project
+```
+Proprietary - AMR-Nexus One Health Project
 
 All rights reserved.
-
 For internal research and public health use only.
 ```
 
 ---
 
-# Contributors
+## Contributors
 
-| Role               | Responsibility                   |
-| ------------------ | -------------------------------- |
-| Senior Developer   | Full-stack architecture & DevOps |
-| ML Engineer        | Model training & explainability  |
-| Frontend Developer | PWA + offline sync               |
-
----
-
+| Role | Responsibility |
+|------|------------------|
+| Senior Developer | Full-stack architecture, DevOps, integration |
+| ML Engineer | Model training, SHAP, Prophet, risk scoring |
+| Frontend Developer | UI/UX, PWA, offline sync, charts |
 
 ---
 
-#  Mission
+## Current Status (June 2026)
 
-AMR-Nexus is built to strengthen antimicrobial stewardship and One Health surveillance through:
-
-* Explainable AI
-* Early warning systems
-* Offline-first data collection
-* Real-time anomaly detection
-* Actionable public health intelligence
+- MVP ready for July 14, 2026 demonstration.
+- Synthetic data backbone with 500+ records, 5+ counties.
+- AI Early Warning Engine: trend analysis, anomaly detection, risk scores, heatmap, SHAP.
+- Decision-Support Layer: Claude-powered guidance, role-based views.
+- Real-time alerts (WebSocket + SMS sandbox).
+- Offline-capable PWA.
+- Full reporting and export.
 
 ---
 
-##  Last Updated
+## Contact
 
-```text id="9s7u8o"
-2026-06-09
-```
+For technical support or collaboration:
+
+- Email: your-email@amrnexus.org
+- Repository: internal Git URL
+
+Built for antimicrobial stewardship and One Health surveillance.
+Last updated: 2026-06-21
