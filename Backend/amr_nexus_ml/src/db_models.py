@@ -1,5 +1,4 @@
-# src/db_models.py
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Date, Numeric, Text, ForeignKey
+﻿from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Date, Numeric, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from src.database import Base
 import uuid
@@ -51,6 +50,7 @@ class AMRIsolateRecord(Base):
     shap_value = Column(Numeric(8,4))
     model_version = Column(String(20))
     mdr_probability = Column(Numeric(5,4))
+    shap_summary = Column(Text, nullable=True)          # NEW
 
 # ---------- New: Comments table ----------
 class Comment(Base):
@@ -60,3 +60,16 @@ class Comment(Base):
     user_name = Column(String(100), nullable=False, default="Anonymous")
     text = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+# ---------- New: Risk Scores table ----------
+class RiskScore(Base):
+    __tablename__ = "risk_scores"
+    id = Column(Integer, primary_key=True, index=True)
+    county = Column(String(100))
+    pathogen_code = Column(String(20))
+    antibiotic_class = Column(String(100))
+    risk_score = Column(Float)
+    anomaly_score = Column(Float)
+    mdr_rate = Column(Float)
+    sample_size = Column(Integer)
+    timestamp = Column(DateTime, default=datetime.utcnow)

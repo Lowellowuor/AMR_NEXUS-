@@ -17,16 +17,27 @@ from email.message import EmailMessage
 from reportlab.pdfgen import canvas
 import io as io_lib
 import random
+import os
+
+# Prophet for forecasting
+from prophet import Prophet
+
+# ML libraries
+from sklearn.linear_model import LinearRegression
+
+# SMS and LLM
+import africastalking
+import anthropic
 
 from src.utils.config import config
 from src.features.preprocessing import FeaturePreprocessor
 from src.utils.logger import logger
 from src.database import SessionLocal
-from src.db_models import AMRIsolateRecord, Comment
+from src.db_models import AMRIsolateRecord, Comment, RiskScore
 
 app = FastAPI(title="AMR-Nexus ML API")
 
-# ---------- CORS ----------
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -35,7 +46,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------- ML globals ----------
+# ML globals
 model = None
 anomaly_model = None
 preprocessor = None
@@ -61,6 +72,7 @@ class AMRRecordIn(BaseModel):
     antibiotic_class: str
     test_method: str
     sample_month: int
+    phone_number: Optional[str] = None  # for SMS alerts
 
 class PredictionResponse(BaseModel):
     mdr_flag: bool
@@ -69,6 +81,7 @@ class PredictionResponse(BaseModel):
     anomaly_score: float
     shap_top_feature: str
     shap_value: float
+    shap_summary: str
 
 class EmailReportRequest(BaseModel):
     email: str
@@ -78,7 +91,13 @@ class CommentCreate(BaseModel):
     text: str
     user_name: str = "Anonymous"
 
-# ---------- Database dependency ----------
+class GuidanceRequest(BaseModel):
+    pathogen_code: str
+    resistance_pattern: str
+    user_role: str
+    county: Optional[str] = None
+
+# ---------- DB dependency ----------
 def get_db():
     db = SessionLocal()
     try:
@@ -98,7 +117,7 @@ def load_models():
     shap_explainer = joblib.load(config.MODEL_DIR / "shap_explainer.pkl")
     logger.info("ML models loaded")
 
-# ---------- Health check ----------
+# ---------- Health ----------
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "AMR-Nexus ML API"}
@@ -107,9 +126,39 @@ def health():
 def api_health():
     return {"status": "ok", "service": "AMR-Nexus ML API"}
 
-# ---------- Prediction endpoint (with DB storage & anomaly alert) ----------
+# ---------- Helper: SHAP plain‑language summary ----------
+def generate_shap_summary(shap_values, feature_names, mdr_prob):
+    pairs = [(feature_names[i], shap_values[0][i]) for i in range(len(feature_names))]
+    pairs.sort(key=lambda x: abs(x[1]), reverse=True)
+    top = pairs[:3]
+    parts = []
+    for f, v in top:
+        direction = "increasing" if v > 0 else "decreasing"
+        if abs(v) > 0.1:
+            parts.append(f"{f.replace('_', ' ')} ({direction})")
+    if not parts:
+        parts = ["a combination of factors"]
+    summary = f"This prediction was primarily driven by {', '.join(parts)}. " \
+              f"The model predicts a {mdr_prob*100:.1f}% probability of multidrug resistance."
+    return summary
+
+# ---------- Helper: SMS ----------
+def send_sms_alert(phone: str, message: str):
+    try:
+        username = config.AT_USERNAME
+        api_key = config.AT_API_KEY
+        sender = config.AT_SENDER_ID
+        sms = africastalking.SMS(username=username, api_key=api_key)
+        response = sms.send(message, [phone], sender_id=sender)
+        logger.info(f"SMS sent to {phone}: {response}")
+        return response
+    except Exception as e:
+        logger.error(f"SMS failed: {e}")
+        return None
+
+# ---------- Prediction endpoint ----------
 @app.post("/predict", response_model=PredictionResponse)
-async def predict(record: AMRRecordIn, db: Session = Depends(get_db)):
+async def predict(record: AMRRecordIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     input_dict = record.dict()
     df = pd.DataFrame([input_dict])
     X = preprocessor.transform(df)
@@ -127,6 +176,7 @@ async def predict(record: AMRRecordIn, db: Session = Depends(get_db)):
     top_idx = np.argmax(shap_abs)
     top_feature = feature_names[top_idx]
     shap_val = float(shap_values[0][top_idx])
+    shap_summary = generate_shap_summary(shap_values, feature_names, mdr_prob)
 
     db_record = AMRIsolateRecord(
         record_id=uuid.uuid4(),
@@ -154,6 +204,7 @@ async def predict(record: AMRRecordIn, db: Session = Depends(get_db)):
         anomaly_score=anomaly_score,
         shap_top_feature=top_feature,
         shap_value=shap_val,
+        shap_summary=shap_summary,
         model_version="1.0"
     )
     db.add(db_record)
@@ -168,16 +219,22 @@ async def predict(record: AMRRecordIn, db: Session = Depends(get_db)):
             'timestamp': datetime.utcnow().isoformat()
         })
 
+        # Send SMS if phone provided and SMS enabled
+        if record.phone_number and getattr(config, 'ENABLE_SMS', False):
+            msg = f"AMR Alert: {record.pathogen_code.upper()} anomaly in {record.county}. MDR prob: {mdr_prob*100:.1f}%"
+            background_tasks.add_task(send_sms_alert, record.phone_number, msg)
+
     return PredictionResponse(
         mdr_flag=mdr_flag,
         mdr_probability=float(mdr_prob),
         anomaly_detected=anomaly_detected,
         anomaly_score=float(anomaly_score),
         shap_top_feature=top_feature,
-        shap_value=shap_val
+        shap_value=shap_val,
+        shap_summary=shap_summary
     )
 
-# ---------- Analytics endpoints (with optional date filtering) ----------
+# ---------- Analytics (with date filtering) ----------
 @app.get("/analytics/summary")
 def get_summary(start_date: Optional[date] = None, end_date: Optional[date] = None, db: Session = Depends(get_db)):
     query = db.query(AMRIsolateRecord)
@@ -198,12 +255,7 @@ def get_summary(start_date: Optional[date] = None, end_date: Optional[date] = No
 
 @app.get("/analytics/mdr_trend")
 def mdr_trend(months: int = 6, db: Session = Depends(get_db)):
-    if hasattr(AMRIsolateRecord, 'sample_collection_date'):
-        date_col = AMRIsolateRecord.sample_collection_date
-    else:
-        date_col = AMRIsolateRecord.created_at
-        logger.warning("sample_collection_date missing, using created_at for trend")
-
+    date_col = AMRIsolateRecord.created_at
     now = datetime.now()
     results = []
     for i in range(months):
@@ -264,12 +316,24 @@ def top_counties(limit: int = 5, db: Session = Depends(get_db)):
     return data[:limit]
 
 @app.get("/analytics/county_mdr")
-def get_county_mdr(db: Session = Depends(get_db)):
-    result = db.query(
+def get_county_mdr(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    pathogen_code: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(
         AMRIsolateRecord.county,
         func.count(AMRIsolateRecord.record_id).label('total'),
         func.sum(cast(AMRIsolateRecord.mdr_flag, Integer)).label('mdr_count')
-    ).group_by(AMRIsolateRecord.county).all()
+    )
+    if start_date:
+        query = query.filter(AMRIsolateRecord.created_at >= start_date)
+    if end_date:
+        query = query.filter(AMRIsolateRecord.created_at <= end_date)
+    if pathogen_code:
+        query = query.filter(AMRIsolateRecord.pathogen_code == pathogen_code)
+    result = query.group_by(AMRIsolateRecord.county).all()
     data = []
     for r in result:
         if r.county and r.total > 0:
@@ -304,11 +368,184 @@ def resistance_by_pathogen_class(pathogen_code: str, db: Session = Depends(get_d
         data.append({"antibiotic_class": r.antibiotic_class, "resistance": rate})
     return data
 
-# ---------- Recommendations ----------
+# ---------- Pathogen-specific trend ----------
+@app.get("/analytics/pathogen_trend")
+def pathogen_trend(
+    pathogen_code: str,
+    months: int = 12,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: Session = Depends(get_db)
+):
+    date_col = AMRIsolateRecord.created_at
+    query = db.query(
+        extract('year', date_col).label('year'),
+        extract('month', date_col).label('month'),
+        (func.sum(cast(AMRIsolateRecord.mdr_flag, Integer)) * 1.0 / func.count()).label('rate')
+    ).filter(AMRIsolateRecord.pathogen_code == pathogen_code)
+    if start_date:
+        query = query.filter(date_col >= start_date)
+    if end_date:
+        query = query.filter(date_col <= end_date)
+    results = query.group_by('year', 'month').order_by('year', 'month').limit(months).all()
+    data = []
+    for r in results:
+        month_date = datetime(int(r.year), int(r.month), 1)
+        data.append({"month": month_date.strftime("%b %Y"), "rate": round(r.rate, 1)})
+    return data
+
+# ---------- Risk scores ----------
+@app.get("/analytics/risk_scores")
+def get_risk_scores(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    pathogen_code: Optional[str] = None,
+    county: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(
+        AMRIsolateRecord.county,
+        AMRIsolateRecord.pathogen_code,
+        AMRIsolateRecord.antibiotic_class,
+        func.avg(AMRIsolateRecord.anomaly_score).label('avg_anomaly'),
+        func.count(AMRIsolateRecord.record_id).label('total'),
+        func.sum(cast(AMRIsolateRecord.mdr_flag, Integer)).label('mdr_count')
+    ).group_by(
+        AMRIsolateRecord.county,
+        AMRIsolateRecord.pathogen_code,
+        AMRIsolateRecord.antibiotic_class
+    )
+    if start_date:
+        query = query.filter(AMRIsolateRecord.created_at >= start_date)
+    if end_date:
+        query = query.filter(AMRIsolateRecord.created_at <= end_date)
+    if pathogen_code:
+        query = query.filter(AMRIsolateRecord.pathogen_code == pathogen_code)
+    if county:
+        query = query.filter(AMRIsolateRecord.county == county)
+    results = query.all()
+    risk_data = []
+    for r in results:
+        if r.total > 0:
+            mdr_rate = r.mdr_count / r.total
+            anomaly_w = r.avg_anomaly or 0
+            risk = (anomaly_w * 40 + mdr_rate * 40 + min(r.total / 100, 1) * 20)
+            risk = min(risk, 100)
+            risk_data.append({
+                "county": r.county,
+                "pathogen_code": r.pathogen_code,
+                "antibiotic_class": r.antibiotic_class,
+                "risk_score": round(risk, 1),
+                "anomaly_score": round(anomaly_w, 3),
+                "mdr_rate": round(mdr_rate * 100, 1),
+                "sample_size": r.total
+            })
+    risk_data.sort(key=lambda x: x['risk_score'], reverse=True)
+    return risk_data[:50]
+
+# ---------- Prophet forecast ----------
+@app.get("/forecast/trend")
+def forecast_trend(
+    pathogen_code: Optional[str] = None,
+    county: Optional[str] = None,
+    sector: Optional[str] = None,
+    antibiotic_class: Optional[str] = None,
+    months: int = 6,
+    db: Session = Depends(get_db)
+):
+    query = db.query(AMRIsolateRecord.created_at, AMRIsolateRecord.mdr_flag)
+    if pathogen_code:
+        query = query.filter(AMRIsolateRecord.pathogen_code == pathogen_code)
+    if county:
+        query = query.filter(AMRIsolateRecord.county == county)
+    if sector:
+        query = query.filter(AMRIsolateRecord.sector == sector)
+    if antibiotic_class:
+        query = query.filter(AMRIsolateRecord.antibiotic_class == antibiotic_class)
+    df = pd.read_sql(query.statement, db.bind)
+    if df.empty:
+        return {"error": "Insufficient data for forecast"}
+    df['date'] = pd.to_datetime(df['created_at']).dt.date
+    weekly = df.groupby('date').agg(total=('mdr_flag', 'count'), resistant=('mdr_flag', 'sum')).reset_index()
+    weekly['rate'] = weekly['resistant'] / weekly['total']
+    weekly = weekly[weekly['total'] >= 5]
+    if len(weekly) < 4:
+        return {"error": "Insufficient data points for forecast"}
+    prophet_df = weekly[['date', 'rate']].rename(columns={'date': 'ds', 'rate': 'y'})
+    model = Prophet(interval_width=0.8, seasonality_mode='multiplicative')
+    model.fit(prophet_df)
+    future = model.make_future_dataframe(periods=months*4, freq='W')
+    forecast = model.predict(future)
+    result = {
+        "historical": [{"ds": r['date'].isoformat(), "y": r['rate']} for _, r in weekly.iterrows()],
+        "forecast": [{"ds": r['ds'].isoformat(), "yhat": r['yhat'], "yhat_lower": r['yhat_lower'], "yhat_upper": r['yhat_upper']} for _, r in forecast.iterrows()]
+    }
+    return result
+
+# ---------- Claude guidance ----------
+@app.post("/guidance")
+def get_guidance(req: GuidanceRequest, db: Session = Depends(get_db)):
+    base = {
+        "ECO": {
+            "ESBL": {
+                "national": "Restrict 3rd gen cephalosporins; review local antibiogram.",
+                "county": "Consider carbapenems for severe infections; refer to local susceptibility."
+            },
+            "Carbapenem-resistant": {
+                "national": "Implement carbapenem stewardship; strengthen IPC.",
+                "county": "Consider ceftazidime-avibactam or colistin; consult ID specialist."
+            }
+        },
+        "KPN": {
+            "ESBL": {
+                "national": "Review ESBL trends; enhance lab surveillance.",
+                "county": "Use carbapenems empirically; monitor treatment response."
+            }
+        },
+        "SAU": {
+            "MRSA": {
+                "national": "Review MRSA policies; promote decolonisation.",
+                "county": "Consider vancomycin or linezolid; follow MRSA guidelines."
+            }
+        }
+    }
+    base_text = base.get(req.pathogen_code.upper(), {}).get(req.resistance_pattern, {}).get(req.user_role, "No specific recommendation available.")
+    try:
+        client = anthropic.Anthropic(api_key=config.CLAUDE_API_KEY)
+        prompt = f"""
+        You are an AMR stewardship expert in Kenya.
+        Pathogen: {req.pathogen_code.upper()}
+        Resistance: {req.resistance_pattern}
+        User role: {req.user_role} (national policymaker or county clinician)
+        County: {req.county or 'National'}
+        Base recommendation: {base_text}
+        Provide actionable guidance with sections: Key Actions, Treatment Recommendations, Policy Actions, Links to Kenya MOH/WHO/CLSI guidelines.
+        """
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20240620",
+            max_tokens=500,
+            temperature=0.7,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        guidance = response.content[0].text
+        source = "Claude API"
+    except Exception as e:
+        logger.error(f"Claude API error: {e}")
+        guidance = base_text
+        source = "Database fallback"
+    return {
+        "pathogen": req.pathogen_code,
+        "resistance": req.resistance_pattern,
+        "role": req.user_role,
+        "guidance": guidance,
+        "source": source
+    }
+
+# ---------- Stewardship recommendations (existing) ----------
 RECOMMENDATIONS = {
-    "ECO": {"Fluoroquinolone": {"alternative": "Ceftriaxone", "prob": 85, "note": "CLSI 2024 guidelines"}},
-    "KPN": {"Carbapenem": {"alternative": "Ceftazidime-avibactam", "prob": 72, "note": "Consider combination therapy"}},
-    "SAU": {"Penicillin": {"alternative": "Cefoxitin", "prob": 90, "note": "Check for MRSA first"}}
+    "ECO": {"Fluoroquinolone": {"alternative": "Ceftriaxone", "prob": 85, "note": "CLSI 2024"}},
+    "KPN": {"Carbapenem": {"alternative": "Ceftazidime-avibactam", "prob": 72, "note": "Combination therapy"}},
+    "SAU": {"Penicillin": {"alternative": "Cefoxitin", "prob": 90, "note": "Check MRSA"}}
 }
 @app.get("/recommendations/{pathogen_code}/{antibiotic_class}")
 def get_recommendations(pathogen_code: str, antibiotic_class: str):
@@ -319,11 +556,9 @@ def get_recommendations(pathogen_code: str, antibiotic_class: str):
         "note": data.get("note", "")
     }
 
-# ---------- EWS Forecast ----------
+# ---------- EWS Forecast (existing) ----------
 @app.get("/ews/forecast")
 def forecast_mdr(db: Session = Depends(get_db)):
-    from sklearn.linear_model import LinearRegression
-    import numpy as np
     counties = db.query(AMRIsolateRecord.county).distinct().all()
     result = []
     for (county,) in counties:
@@ -345,7 +580,7 @@ def forecast_mdr(db: Session = Depends(get_db)):
         result.append({"county": county, "predicted_mdr_rate": round(predicted, 1)})
     return result
 
-# ---------- Automated report email ----------
+# ---------- Email report ----------
 def generate_and_send_pdf(email: str):
     buffer = io_lib.BytesIO()
     c = canvas.Canvas(buffer)
@@ -353,14 +588,12 @@ def generate_and_send_pdf(email: str):
     c.drawString(100, 780, f"Generated on {datetime.now().strftime('%Y-%m-%d')}")
     c.save()
     buffer.seek(0)
-
     msg = EmailMessage()
     msg['Subject'] = 'AMR Nexus Weekly Report'
     msg['From'] = 'reports@amrnexus.org'
     msg['To'] = email
     msg.set_content('Please find attached your AMR report.')
     msg.add_attachment(buffer.read(), maintype='application', subtype='pdf', filename='report.pdf')
-
     with smtplib.SMTP('smtp.gmail.com', 587) as s:
         s.starttls()
         s.login('your_email@gmail.com', 'your_password')
@@ -388,7 +621,7 @@ def get_comments(record_id: str, db: Session = Depends(get_db)):
     comments = db.query(Comment).filter(Comment.record_id == uuid.UUID(record_id)).order_by(Comment.created_at.desc()).all()
     return [{"id": c.id, "user_name": c.user_name, "text": c.text, "created_at": c.created_at.isoformat()} for c in comments]
 
-# ---------- Prediction history ----------
+# ---------- History ----------
 @app.get("/predictions")
 def get_predictions(limit: int = 50, skip: int = 0, db: Session = Depends(get_db)):
     records = db.query(AMRIsolateRecord).order_by(AMRIsolateRecord.created_at.desc()).offset(skip).limit(limit).all()
@@ -400,7 +633,8 @@ def get_predictions(limit: int = 50, skip: int = 0, db: Session = Depends(get_db
             "mdr_flag": r.mdr_flag,
             "mdr_probability": float(r.mdr_probability) if r.mdr_probability is not None else 0.0,
             "anomaly_detected": r.anomaly_flag,
-            "timestamp": r.created_at.isoformat()
+            "timestamp": r.created_at.isoformat(),
+            "shap_summary": r.shap_summary
         }
         for r in records
     ]
@@ -417,13 +651,14 @@ def export_predictions(db: Session = Depends(get_db)):
     output.seek(0)
     return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=predictions.csv"})
 
-# ---------- Header Endpoints (search, alerts, me) ----------
+# ---------- Header endpoints ----------
 @app.get("/me")
 def get_current_user():
     return {
         "name": "John Doe",
         "email": "john.doe@amrnexus.org",
         "role": "epidemiologist",
+        "county": "Nairobi",
         "avatar": None
     }
 
@@ -432,53 +667,29 @@ def global_search(q: str = "", limit: int = 10, db: Session = Depends(get_db)):
     if not q or len(q) < 2:
         return {"results": []}
     term = f"%{q}%"
-    predictions = db.query(
-        AMRIsolateRecord.pathogen_code,
-        AMRIsolateRecord.county,
-        AMRIsolateRecord.antibiotic_class
-    ).filter(
-        or_(
-            AMRIsolateRecord.pathogen_code.ilike(term),
-            AMRIsolateRecord.county.ilike(term),
-            AMRIsolateRecord.antibiotic_class.ilike(term)
-        )
-    ).limit(limit).all()
-    pathogens = db.query(AMRIsolateRecord.pathogen_code).filter(
-        AMRIsolateRecord.pathogen_code.ilike(term)
-    ).distinct().limit(limit).all()
-    counties = db.query(AMRIsolateRecord.county).filter(
-        AMRIsolateRecord.county.ilike(term)
-    ).distinct().limit(limit).all()
+    predictions = db.query(AMRIsolateRecord.pathogen_code, AMRIsolateRecord.county, AMRIsolateRecord.antibiotic_class)\
+        .filter(or_(AMRIsolateRecord.pathogen_code.ilike(term), AMRIsolateRecord.county.ilike(term), AMRIsolateRecord.antibiotic_class.ilike(term)))\
+        .limit(limit).all()
+    pathogens = db.query(AMRIsolateRecord.pathogen_code).filter(AMRIsolateRecord.pathogen_code.ilike(term)).distinct().limit(limit).all()
+    counties = db.query(AMRIsolateRecord.county).filter(AMRIsolateRecord.county.ilike(term)).distinct().limit(limit).all()
     results = []
     for p in predictions:
         if p.pathogen_code:
-            results.append({
-                "type": "Prediction",
-                "name": f"{p.pathogen_code.upper()} in {p.county} ({p.antibiotic_class})",
-                "url": f"/history?search={p.pathogen_code}"
-            })
+            results.append({"type": "Prediction", "name": f"{p.pathogen_code.upper()} in {p.county} ({p.antibiotic_class})", "url": f"/history?search={p.pathogen_code}"})
     for p in pathogens:
         if p.pathogen_code:
-            results.append({
-                "type": "Pathogen",
-                "name": p.pathogen_code.upper(),
-                "url": f"/pathogen-explorer?pathogen={p.pathogen_code}"
-            })
+            results.append({"type": "Pathogen", "name": p.pathogen_code.upper(), "url": f"/pathogen-explorer?pathogen={p.pathogen_code}"})
     for c in counties:
         if c.county:
-            results.append({
-                "type": "County",
-                "name": c.county,
-                "url": f"/analytics?county={c.county}"
-            })
+            results.append({"type": "County", "name": c.county, "url": f"/analytics?county={c.county}"})
     seen = set()
-    unique_results = []
+    unique = []
     for res in results:
         key = f"{res['type']}|{res['name']}"
         if key not in seen:
             seen.add(key)
-            unique_results.append(res)
-    return {"results": unique_results[:limit]}
+            unique.append(res)
+    return {"results": unique[:limit]}
 
 @app.get("/alerts")
 def get_alerts(db: Session = Depends(get_db)):
@@ -496,7 +707,10 @@ def get_alerts(db: Session = Depends(get_db)):
             "severity": "medium",
             "type": "anomaly",
             "acknowledged": False,
-            "details": f"Score: {a.anomaly_score:.3f}"
+            "details": f"Score: {a.anomaly_score:.3f}",
+            "pathogen_code": a.pathogen_code,
+            "resistance_pattern": "ESBL",  # Placeholder; in real implementation, derive from SIR results
+            "county": a.county
         })
     total = db.query(func.count(AMRIsolateRecord.record_id)).scalar()
     if total > 0:
@@ -510,7 +724,10 @@ def get_alerts(db: Session = Depends(get_db)):
                 "severity": "high",
                 "type": "trend",
                 "acknowledged": False,
-                "details": "Review antibiotic stewardship programmes."
+                "details": "Review antibiotic stewardship programmes.",
+                "pathogen_code": None,
+                "resistance_pattern": "High MDR",
+                "county": "National"
             })
     alerts.sort(key=lambda x: x["timestamp"], reverse=True)
     return alerts
@@ -531,58 +748,3 @@ def alerts_count(db: Session = Depends(get_db)):
         if mdr_rate > 30:
             count += 1
     return {"count": count}
-# ---------- Pathogen-specific trend ----------
-@app.get("/analytics/pathogen_trend")
-def pathogen_trend(
-    pathogen_code: str,
-    months: int = 12,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    db: Session = Depends(get_db)
-):
-    date_col = AMRIsolateRecord.created_at
-    query = db.query(
-        extract('year', date_col).label('year'),
-        extract('month', date_col).label('month'),
-        (func.sum(cast(AMRIsolateRecord.mdr_flag, Integer)) * 1.0 / func.count()).label('rate')
-    ).filter(AMRIsolateRecord.pathogen_code == pathogen_code)
-    
-    if start_date:
-        query = query.filter(date_col >= start_date)
-    if end_date:
-        query = query.filter(date_col <= end_date)
-    
-    results = query.group_by('year', 'month').order_by('year', 'month').limit(months).all()
-    data = []
-    for r in results:
-        month_date = datetime(int(r.year), int(r.month), 1)
-        data.append({"month": month_date.strftime("%b %Y"), "rate": round(r.rate, 1)})
-    return data
-
-# ---------- Update county_mdr to accept pathogen_code ----------
-@app.get("/analytics/county_mdr")
-def get_county_mdr(
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    pathogen_code: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
-    query = db.query(
-        AMRIsolateRecord.county,
-        func.count(AMRIsolateRecord.record_id).label('total'),
-        func.sum(cast(AMRIsolateRecord.mdr_flag, Integer)).label('mdr_count')
-    )
-    if start_date:
-        query = query.filter(AMRIsolateRecord.created_at >= start_date)
-    if end_date:
-        query = query.filter(AMRIsolateRecord.created_at <= end_date)
-    if pathogen_code:
-        query = query.filter(AMRIsolateRecord.pathogen_code == pathogen_code)
-    
-    result = query.group_by(AMRIsolateRecord.county).all()
-    data = []
-    for r in result:
-        if r.county and r.total > 0:
-            rate = round(r.mdr_count / r.total * 100, 1)
-            data.append({"county": r.county, "mdr_rate": rate})
-    return data

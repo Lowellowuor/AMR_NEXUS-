@@ -40,6 +40,8 @@ export const api = {
   getForecast: (params = '') => fetch(`${API_BASE}/ews/forecast?${params}`).then(handleResponse),
   getRecommendations: (pathogen, antibioticClass) => fetch(`${API_BASE}/recommendations/${pathogen}/${antibioticClass}`).then(handleResponse),
   getMe: () => fetch(`${API_BASE}/me`).then(handleResponse),
+  getAlerts: (params = '') => fetch(`${API_BASE}/alerts?${params}`).then(handleResponse),
+  getAlertsCount: () => fetch(`${API_BASE}/alerts/count`).then(handleResponse),
 };
 
 export default api;
