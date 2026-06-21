@@ -12,7 +12,10 @@ export default function SHAPExplanation({ shapTopFeature, shapValue, probability
       <div className="flex items-start gap-3">
         <InformationCircleIcon className="h-5 w-5 text-primary-500 mt-0.5 flex-shrink-0" />
         <div className="flex-1">
-          <h4 className="text-sm font-semibold text-gray-800 mb-2">🔍 SHAP Explanation – Why this prediction?</h4>
+          <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <InformationCircleIcon className="h-4 w-4 text-primary-500" />
+            SHAP Explanation – Why this prediction?
+          </h4>
           <p className="text-sm text-gray-600">
             The most influential feature is <span className="font-bold text-primary-600">{shapTopFeature.replace(/_/g, ' ')}</span>.
           </p>
