@@ -87,7 +87,41 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
     return () => clearInterval(interval);
   }, [watch, addDraft]);
 
-  // Helper to render react-select with label
+  // React‑select styles with high contrast
+  const selectStyles = {
+    control: (base, state) => ({
+      ...base,
+      borderRadius: '9999px',
+      borderColor: state.isFocused ? '#2563eb' : '#d1d5db',
+      borderWidth: '2px',
+      boxShadow: state.isFocused ? '0 0 0 3px rgba(37, 99, 235, 0.2)' : 'none',
+      '&:hover': { borderColor: '#9ca3af' },
+      minHeight: '42px',
+      backgroundColor: '#ffffff',
+    }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '12px',
+      marginTop: '4px',
+      zIndex: 20,
+      backgroundColor: '#ffffff',
+      border: '1px solid #e5e7eb',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+    }),
+    option: (base, { isFocused, isSelected }) => ({
+      ...base,
+      backgroundColor: isSelected ? '#2563eb' : isFocused ? '#eff6ff' : '#ffffff',
+      color: isSelected ? '#ffffff' : '#1f2937',
+      padding: '8px 16px',
+      cursor: 'pointer',
+    }),
+    menuPortal: (base) => ({ ...base, zIndex: 20 }),
+    placeholder: (base) => ({ ...base, color: '#9ca3af' }),
+    singleValue: (base) => ({ ...base, color: '#1f2937', fontWeight: 500 }),
+    input: (base) => ({ ...base, color: '#1f2937' }),
+  };
+
+  // Helper to render react-select
   const renderSelect = (name, options, placeholder, isClearable = true) => (
     <Select
       options={options}
@@ -95,18 +129,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
       onChange={(opt) => setValue(name, opt?.value || '')}
       placeholder={placeholder}
       isClearable={isClearable}
-      styles={{
-        control: (base) => ({
-          ...base,
-          borderRadius: '9999px',
-          borderColor: '#d1d5db',
-          boxShadow: 'none',
-          '&:hover': { borderColor: '#9ca3af' },
-          minHeight: '38px',
-        }),
-        menu: (base) => ({ ...base, borderRadius: '12px', zIndex: 20 }),
-        menuPortal: (base) => ({ ...base, zIndex: 20 }),
-      }}
+      styles={selectStyles}
       menuPortalTarget={document.body}
     />
   );
@@ -121,51 +144,51 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Sector */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Sector *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Sector *</label>
               {renderSelect('sector', sectorOptions, 'Select sector')}
             </div>
             {/* Sub-sector */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Sub-sector *</label>
-              <input {...register('sub_sector')} className="mt-1 block w-full rounded-full border-gray-200 bg-gray-50/50 px-4 py-2 text-sm" placeholder="e.g., Poultry-Broiler" />
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Sub-sector *</label>
+              <input {...register('sub_sector')} className="mt-1 block w-full rounded-full border-2 border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20" placeholder="e.g., Poultry-Broiler" />
               {errors.sub_sector && <p className="text-red-500 text-xs mt-1">{errors.sub_sector.message}</p>}
             </div>
             {/* Pathogen */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Pathogen *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Pathogen *</label>
               {renderSelect('pathogen_code', pathogenOptions, 'Search pathogen...')}
             </div>
             {/* Specimen Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Specimen Type *</label>
-              <input {...register('specimen_type')} className="mt-1 block w-full rounded-full border-gray-200 bg-gray-50/50 px-4 py-2 text-sm" />
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Specimen Type *</label>
+              <input {...register('specimen_type')} className="mt-1 block w-full rounded-full border-2 border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20" />
             </div>
             {/* County */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">County *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">County *</label>
               {renderSelect('county', countyOptions, 'Search county...')}
             </div>
             {/* Antibiotic Class */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Antibiotic Class *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Antibiotic Class *</label>
               {renderSelect('antibiotic_class', antibioticOptions, 'Select antibiotic')}
             </div>
             {/* Test Method */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Test Method *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Test Method *</label>
               {renderSelect('test_method', testMethodOptions, 'Select method')}
             </div>
             {/* Sample Month */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Sample Month *</label>
-              <input type="number" {...register('sample_month', { valueAsNumber: true })} className="mt-1 block w-full rounded-full border-gray-200 bg-gray-50/50 px-4 py-2 text-sm" min="1" max="12" />
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Sample Month *</label>
+              <input type="number" {...register('sample_month', { valueAsNumber: true })} className="mt-1 block w-full rounded-full border-2 border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20" min="1" max="12" />
             </div>
             {/* Isolate ID */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Isolate ID</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Isolate ID</label>
               <div className="flex gap-2">
-                <input {...register('isolate_id')} className="mt-1 block w-full rounded-full border-gray-200 bg-gray-50/50 px-4 py-2 text-sm" placeholder="Scan or enter ID" />
-                <button type="button" onClick={startScan} className="mt-1 inline-flex items-center gap-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-xs text-gray-700 transition-colors">
+                <input {...register('isolate_id')} className="mt-1 block w-full rounded-full border-2 border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20" placeholder="Scan or enter ID" />
+                <button type="button" onClick={startScan} className="mt-1 inline-flex items-center gap-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-full text-sm font-medium text-gray-800 transition-colors">
                   <QrCodeIcon className="h-4 w-4" /> Scan
                 </button>
               </div>
@@ -173,7 +196,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
           </div>
 
           {/* Advanced toggle */}
-          <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm text-primary-600 hover:text-primary-700">
+          <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-medium text-primary-600 hover:text-primary-700">
             {showAdvanced ? '− Hide advanced' : '+ Show advanced'}
           </button>
 
@@ -181,16 +204,19 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
               <label className="flex items-center gap-2"><input type="checkbox" {...register('prior_antibiotic_exposure')} className="rounded border-gray-300" /><span className="text-sm">Prior antibiotic exposure (30d)</span></label>
               <label className="flex items-center gap-2"><input type="checkbox" {...register('hospitalised')} className="rounded border-gray-300" /><span className="text-sm">Hospitalised</span></label>
-              <div><label className="block text-sm">Age group</label><input {...register('age_group')} className="mt-1 block w-full rounded-full border-gray-200 bg-gray-50/50 px-4 py-2 text-sm" /></div>
               <div>
-                <label className="block text-sm">Gender</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Age group</label>
+                <input {...register('age_group')} className="mt-1 block w-full rounded-full border-2 border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Gender</label>
                 {renderSelect('gender', genderOptions, 'Select gender', true)}
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm">Facility</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Facility</label>
                 <div className="flex gap-2">
-                  <input {...register('facility')} className="mt-1 block w-full rounded-full border-gray-200 bg-gray-50/50 px-4 py-2 text-sm" placeholder="Enter facility name" />
-                  <button type="button" onClick={startListening} disabled={isListening} className="mt-1 inline-flex items-center gap-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-xs text-gray-700 transition-colors disabled:opacity-50">
+                  <input {...register('facility')} className="mt-1 block w-full rounded-full border-2 border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20" placeholder="Enter facility name" />
+                  <button type="button" onClick={startListening} disabled={isListening} className="mt-1 inline-flex items-center gap-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-full text-sm font-medium text-gray-800 transition-colors disabled:opacity-50">
                     <MicrophoneIcon className={`h-4 w-4 ${isListening ? 'text-red-500 animate-pulse' : ''}`} />
                     {isListening ? 'Listening...' : 'Speak'}
                   </button>
@@ -205,10 +231,10 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full md:w-auto px-8 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-full shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            className="w-full md:w-auto px-10 py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-lg rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-gray-500 focus:ring-offset-2"
           >
             {isLoading ? (
-              <span className="flex items-center justify-center gap-2">
+              <span className="flex items-center justify-center gap-3">
                 <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />

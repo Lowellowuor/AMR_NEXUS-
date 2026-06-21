@@ -43,7 +43,6 @@ export default function BatchPredictUploader({ onBatchComplete }) {
     const mapping = {};
     const usedColumns = new Set();
     FIELDS.forEach(field => {
-      // Find a header that matches this field (case-insensitive, ignoring special chars)
       const match = headers.find(h =>
         !usedColumns.has(h) &&
         (h.toLowerCase() === field.key.toLowerCase() ||
@@ -157,7 +156,7 @@ export default function BatchPredictUploader({ onBatchComplete }) {
       <div className="space-y-4">
         {/* File input */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-primary-50 text-primary-700 rounded-full hover:bg-primary-100 transition">
+          <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-full transition font-medium">
             <CloudArrowUpIcon className="h-5 w-5" />
             Choose File
             <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} className="hidden" />
@@ -314,7 +313,7 @@ export default function BatchPredictUploader({ onBatchComplete }) {
           <button
             onClick={handleBatchSubmit}
             disabled={rows.length === 0 || processing}
-            className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-full text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            className="px-6 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-full text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
           >
             {processing
               ? `Submitting... ${progress.processed}/${progress.total}`
@@ -323,7 +322,7 @@ export default function BatchPredictUploader({ onBatchComplete }) {
           {results.length > 0 && (
             <button
               onClick={clearFile}
-              className="text-sm text-gray-400 hover:text-gray-600 transition"
+              className="text-sm text-gray-600 hover:text-gray-800 transition"
             >
               Clear all
             </button>
