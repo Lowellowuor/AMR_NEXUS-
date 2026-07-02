@@ -1,6 +1,14 @@
+// src/components/alerts/AlertCard.jsx
 import { CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
-export default function AlertCard({ alert, onAcknowledge, onDismiss }) {
+export default function AlertCard({
+  alert,
+  onAcknowledge,
+  onDismiss,
+  onToggleGuidance,
+  isExpanded,
+  guidance,
+}) {
   const severityColors = {
     high: 'border-l-red-500 bg-red-50/50',
     medium: 'border-l-yellow-500 bg-yellow-50/50',
@@ -14,7 +22,9 @@ export default function AlertCard({ alert, onAcknowledge, onDismiss }) {
   const isAcknowledged = alert.acknowledged || false;
 
   return (
-    <div className={`bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border-l-4 overflow-hidden transition-all ${severityColors[alert.severity] || severityColors.medium} ${isAcknowledged ? 'opacity-60' : ''}`}>
+    <div
+      className={`bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border-l-4 overflow-hidden transition-all ${severityColors[alert.severity] || severityColors.medium} ${isAcknowledged ? 'opacity-60' : ''}`}
+    >
       <div className="p-5">
         <div className="flex justify-between items-start">
           <div className="flex-1">
@@ -23,18 +33,48 @@ export default function AlertCard({ alert, onAcknowledge, onDismiss }) {
                 {alert.severity === 'high' ? 'Critical' : alert.severity === 'medium' ? 'Warning' : 'Info'}
               </span>
               <span className="text-xs text-gray-400">{new Date(alert.timestamp).toLocaleString()}</span>
-              {isAcknowledged && <span className="text-xs text-green-600 flex items-center gap-1"><CheckCircleIcon className="h-3 w-3" /> Acknowledged</span>}
+              {isAcknowledged && (
+                <span className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircleIcon className="h-3 w-3" /> Acknowledged
+                </span>
+              )}
             </div>
             <p className="text-gray-800 font-medium">{alert.message}</p>
             {alert.details && <p className="text-sm text-gray-500 mt-1">{alert.details}</p>}
+            {alert.shap_summary && (
+              <p className="text-xs text-gray-600 mt-2 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                <span className="font-semibold">SHAP:</span> {alert.shap_summary}
+              </p>
+            )}
+            <button
+              onClick={onToggleGuidance}
+              className="mt-2 text-xs text-primary-600 hover:text-primary-700 font-medium"
+            >
+              {isExpanded ? 'Hide guidance' : 'Show guidance'}
+            </button>
+            {isExpanded && guidance && (
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-gray-700 whitespace-pre-wrap">
+                {guidance}
+              </div>
+            )}
+            {isExpanded && !guidance && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm text-gray-500">Loading guidance...</div>
+            )}
           </div>
           <div className="flex gap-2 ml-4">
             {!isAcknowledged && (
-              <button onClick={() => onAcknowledge(alert.id)} className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full hover:bg-primary-200">
+              <button
+                onClick={() => onAcknowledge(alert.id)}
+                className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full hover:bg-primary-200"
+              >
                 Acknowledge
               </button>
             )}
-            <button onClick={() => onDismiss(alert.id)} className="text-gray-400 hover:text-gray-600" title="Dismiss">
+            <button
+              onClick={() => onDismiss(alert.id)}
+              className="text-gray-400 hover:text-gray-600"
+              title="Dismiss"
+            >
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>

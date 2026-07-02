@@ -1,4 +1,4 @@
-﻿from loguru import logger
+from loguru import logger
 import sys
 from src.utils.config import config
 

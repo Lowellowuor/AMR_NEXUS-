@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Date, Numeric, Text, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Date, Numeric, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from src.database import Base
 import uuid
@@ -50,7 +50,7 @@ class AMRIsolateRecord(Base):
     shap_value = Column(Numeric(8,4))
     model_version = Column(String(20))
     mdr_probability = Column(Numeric(5,4))
-    shap_summary = Column(Text, nullable=True)          # NEW
+    shap_summary = Column(Text, nullable=True)          
 
 # ---------- New: Comments table ----------
 class Comment(Base):

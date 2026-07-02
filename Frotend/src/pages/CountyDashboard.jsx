@@ -1,5 +1,7 @@
-﻿import { useEffect, useState } from 'react';
+﻿// src/pages/CountyDashboard.jsx
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import toast, { Toaster } from 'react-hot-toast';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
@@ -15,6 +17,8 @@ export default function CountyDashboard() {
   const [recentAlerts, setRecentAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedAlertId, setExpandedAlertId] = useState(null);
+  const [guidanceMap, setGuidanceMap] = useState({});
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -41,11 +45,45 @@ export default function CountyDashboard() {
       });
   }, [user.county]);
 
+  const fetchGuidance = async (alert) => {
+    if (guidanceMap[alert.id]) return;
+    try {
+      const response = await fetch('http://localhost:8000/guidance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pathogen_code: alert.pathogen_code,
+          resistance_pattern: alert.resistance_pattern || 'ESBL',
+          user_role: user?.role || 'county',
+          county: user?.county || 'Nairobi',
+        }),
+      });
+      const data = await response.json();
+      setGuidanceMap(prev => ({ ...prev, [alert.id]: data.guidance }));
+    } catch (err) {
+      console.error('Guidance fetch error:', err);
+      toast.error('Could not load guidance');
+    }
+  };
+
+  const toggleGuidance = (alert) => {
+    const id = alert.id;
+    if (expandedAlertId === id) {
+      setExpandedAlertId(null);
+    } else {
+      setExpandedAlertId(id);
+      if (!guidanceMap[id]) {
+        fetchGuidance(alert);
+      }
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" /></div>;
   if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
 
   return (
     <div className="space-y-8">
+      <Toaster position="top-right" />
       {/* Header */}
       <div className="flex flex-wrap justify-between items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -79,7 +117,6 @@ export default function CountyDashboard() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Trend Chart */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md p-5 border border-white/50">
           <h3 className="text-md font-semibold text-gray-800 mb-2 flex items-center gap-2">
             <ArrowTrendingUpIcon className="h-5 w-5 text-primary-600" />
@@ -96,7 +133,6 @@ export default function CountyDashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Pathogen Resistance Chart */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md p-5 border border-white/50">
           <h3 className="text-md font-semibold text-gray-800 mb-2 flex items-center gap-2">
             <ChartBarIcon className="h-5 w-5 text-primary-600" />
@@ -114,7 +150,7 @@ export default function CountyDashboard() {
         </div>
       </div>
 
-      {/* County Heatmap (filtered to this county) */}
+      {/* County Heatmap */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 p-5">
         <h3 className="text-md font-semibold text-gray-800 mb-2 flex items-center gap-2">
           <MapPinIcon className="h-5 w-5 text-primary-600" />
@@ -123,18 +159,34 @@ export default function CountyDashboard() {
         <CountyHeatmap county={user.county} />
       </div>
 
-      {/* Recent Alerts */}
+      {/* Recent Alerts with SHAP and Guidance */}
       {recentAlerts.length > 0 && (
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 p-5">
           <h3 className="text-md font-semibold text-gray-800 mb-3 flex items-center gap-2">
             <BellIcon className="h-5 w-5 text-yellow-500" />
             Recent Alerts in Your County
           </h3>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {recentAlerts.map((alert) => (
               <div key={alert.id} className="border-l-4 border-yellow-500 pl-3 py-2">
                 <p className="text-sm font-medium">{alert.message}</p>
                 <p className="text-xs text-gray-500">{new Date(alert.timestamp).toLocaleString()}</p>
+                {alert.shap_summary && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    <span className="font-semibold">SHAP:</span> {alert.shap_summary}
+                  </p>
+                )}
+                <button
+                  onClick={() => toggleGuidance(alert)}
+                  className="mt-2 text-xs text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  {expandedAlertId === alert.id ? 'Hide guidance' : 'Show guidance'}
+                </button>
+                {expandedAlertId === alert.id && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-gray-700 whitespace-pre-wrap">
+                    {guidanceMap[alert.id] || 'Loading guidance...'}
+                  </div>
+                )}
               </div>
             ))}
           </div>

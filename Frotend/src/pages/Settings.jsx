@@ -3,10 +3,8 @@ import {
   SunIcon,
   MoonIcon,
   UserCircleIcon,
-  KeyIcon,
   BellIcon,
   DocumentArrowDownIcon,
-  DocumentArrowUpIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   ClockIcon,
@@ -15,23 +13,23 @@ import {
   CubeIcon,
   TrashIcon,
   CloudArrowUpIcon,
-  EyeIcon,
-  Cog6ToothIcon,
-  ShieldCheckIcon,
-  DevicePhoneMobileIcon,
+  MapPinIcon,
 } from '@heroicons/react/24/outline';
+import toast, { Toaster } from 'react-hot-toast';
 import { useThemeStore } from '../stores/themeStore';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../api/client';
 import { useOfflineDrafts } from '../hooks/useOfflineDrafts';
+import { counties } from '../utils/constants';
 
 export default function Settings() {
   const { theme, toggleTheme } = useThemeStore();
+  const { user, setRoleAndCounty } = useAuth();
   const [backendStatus, setBackendStatus] = useState('checking');
   const [modelInfo, setModelInfo] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [clearing, setClearing] = useState(false);
-  const [profile, setProfile] = useState({ name: '', email: '' });
-  const [apiKeys, setApiKeys] = useState([]);
+  const [profile, setProfile] = useState({ name: '', email: '', county: '' });
   const [notifications, setNotifications] = useState({
     anomaly: true,
     highMdr: true,
@@ -40,10 +38,10 @@ export default function Settings() {
   const [retentionDays, setRetentionDays] = useState(365);
   const [auditLogs, setAuditLogs] = useState([]);
   const [editingProfile, setEditingProfile] = useState(false);
-  const [newApiKeyName, setNewApiKeyName] = useState('');
-  const [showApiKey, setShowApiKey] = useState(null);
+  const [loading, setLoading] = useState(false);
   const { drafts, syncDraft } = useOfflineDrafts();
 
+  // Load backend status
   useEffect(() => {
     const checkBackend = async () => {
       try {
@@ -59,37 +57,70 @@ export default function Settings() {
     return () => clearInterval(interval);
   }, []);
 
+  // Load profile, notifications, retention from localStorage and API
   useEffect(() => {
-    api.getMe().then(data => setProfile({ name: data.name, email: data.email })).catch(() => {});
+    const loadProfile = async () => {
+      try {
+        const data = await api.getMe();
+        setProfile({
+          name: data.name || user?.name || '',
+          email: data.email || user?.email || '',
+          county: data.county || user?.county || '',
+        });
+      } catch {
+        // fallback to AuthContext if API fails
+        setProfile({
+          name: user?.name || '',
+          email: user?.email || '',
+          county: user?.county || '',
+        });
+      }
+    };
+    loadProfile();
+
     const savedNotif = localStorage.getItem('notificationPrefs');
     if (savedNotif) setNotifications(JSON.parse(savedNotif));
     const savedRetention = localStorage.getItem('retentionDays');
     if (savedRetention) setRetentionDays(parseInt(savedRetention));
-    setApiKeys([{ id: 1, name: 'Default Key', key: 'amr_live_abc123', createdAt: '2025-01-01' }]);
-    setAuditLogs([
-      { id: 1, user: 'john.doe@amrnexus.org', action: 'Exported predictions', timestamp: new Date().toISOString() },
-      { id: 2, user: 'john.doe@amrnexus.org', action: 'Changed notification preferences', timestamp: new Date().toISOString() },
-    ]);
+
+    // In production, fetch audit logs from backend
+    // For now, we'll show a placeholder or fetch if endpoint exists
+    const fetchAuditLogs = async () => {
+      try {
+        // If you have an /audit endpoint, use it
+        // const logs = await api.getAuditLogs();
+        // setAuditLogs(logs);
+        // For now, we'll set empty array
+        setAuditLogs([]);
+      } catch {
+        setAuditLogs([]);
+      }
+    };
+    fetchAuditLogs();
   }, []);
 
   const updateProfile = async () => {
-    alert('Profile updated (mock)');
-    setEditingProfile(false);
+    setLoading(true);
+    try {
+      // In production, call API to update profile
+      // await api.updateMe({ name: profile.name, email: profile.email, county: profile.county });
+      // For now, update AuthContext and localStorage
+      setRoleAndCounty(user?.role || 'county', profile.county);
+      toast.success('Profile updated successfully');
+      setEditingProfile(false);
+    } catch (err) {
+      toast.error('Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateNotifications = (key, value) => {
     const newPrefs = { ...notifications, [key]: value };
     setNotifications(newPrefs);
     localStorage.setItem('notificationPrefs', JSON.stringify(newPrefs));
+    toast.success('Notification preferences updated');
   };
-
-  const generateApiKey = () => {
-    if (!newApiKeyName) return;
-    const newKey = `amr_${Math.random().toString(36).substring(2, 15)}`;
-    setApiKeys([...apiKeys, { id: Date.now(), name: newApiKeyName, key: newKey, createdAt: new Date().toISOString().split('T')[0] }]);
-    setNewApiKeyName('');
-  };
-  const revokeApiKey = (id) => setApiKeys(apiKeys.filter(k => k.id !== id));
 
   const handleExportCSV = async () => {
     setExporting(true);
@@ -102,27 +133,33 @@ export default function Settings() {
       a.download = `amr_predictions_${new Date().toISOString().slice(0, 19)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success('CSV exported successfully');
     } catch {
-      alert('Export failed');
+      toast.error('Export failed');
     } finally {
       setExporting(false);
     }
   };
 
   const exportBackup = async () => {
-    const predictions = await api.getPredictions(10000, 0);
-    const backup = {
-      predictions,
-      settings: { notifications, retentionDays },
-      timestamp: new Date().toISOString()
-    };
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `amr_backup_${new Date().toISOString().slice(0, 19)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const predictions = await api.getPredictions(10000, 0);
+      const backup = {
+        predictions,
+        settings: { notifications, retentionDays },
+        timestamp: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `amr_backup_${new Date().toISOString().slice(0, 19)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Backup downloaded');
+    } catch {
+      toast.error('Backup failed');
+    }
   };
 
   const importBackup = (event) => {
@@ -137,10 +174,10 @@ export default function Settings() {
           localStorage.setItem('notificationPrefs', JSON.stringify(data.settings.notifications));
           setRetentionDays(data.settings.retentionDays);
           localStorage.setItem('retentionDays', data.settings.retentionDays);
+          toast.success('Restore completed');
         }
-        alert('Restore completed (predictions not imported – use bulk import)');
       } catch {
-        alert('Invalid backup file');
+        toast.error('Invalid backup file');
       }
     };
     reader.readAsText(file);
@@ -154,15 +191,23 @@ export default function Settings() {
   };
 
   const syncAllDrafts = async () => {
-    for (const draft of drafts) {
-      await syncDraft(draft.id, async (data) => {
-        await api.submitPrediction(data.formData);
-      });
+    if (drafts.length === 0) {
+      toast.info('No drafts to sync');
+      return;
     }
-    alert('Drafts synced');
+    try {
+      for (const draft of drafts) {
+        await syncDraft(draft.id, async (data) => {
+          await api.submitPrediction(data.formData);
+        });
+      }
+      toast.success(`${drafts.length} draft(s) synced`);
+    } catch {
+      toast.error('Sync failed');
+    }
   };
 
-  // Reusable Section component
+  // Component helpers
   const Section = ({ icon, title, children }) => (
     <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 overflow-hidden transition-all hover:shadow-lg">
       <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
@@ -173,7 +218,6 @@ export default function Settings() {
     </div>
   );
 
-  // Reusable button with icon
   const ActionButton = ({ onClick, icon, label, disabled, variant = 'primary' }) => {
     const base = 'inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2';
     const variants = {
@@ -191,6 +235,7 @@ export default function Settings() {
 
   return (
     <div className="space-y-8">
+      <Toaster position="top-right" />
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">v1.0.0</span>
@@ -232,16 +277,32 @@ export default function Settings() {
                 className="mt-1 w-full rounded-full border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">County</label>
+              <select
+                value={profile.county}
+                onChange={e => setProfile({ ...profile, county: e.target.value })}
+                className="mt-1 w-full rounded-full border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+              >
+                {counties.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex gap-3">
-              <ActionButton onClick={updateProfile} icon={<DocumentArrowDownIcon className="h-4 w-4" />} label="Save" />
+              <ActionButton onClick={updateProfile} icon={<DocumentArrowDownIcon className="h-4 w-4" />} label={loading ? 'Saving...' : 'Save'} disabled={loading} />
               <ActionButton onClick={() => setEditingProfile(false)} variant="secondary" label="Cancel" />
             </div>
           </div>
         ) : (
           <div className="flex justify-between items-center">
             <div>
-              <p className="font-medium text-gray-800">{profile.name}</p>
-              <p className="text-sm text-gray-500">{profile.email}</p>
+              <p className="font-medium text-gray-800">{profile.name || 'Not set'}</p>
+              <p className="text-sm text-gray-500">{profile.email || 'Not set'}</p>
+              <p className="text-sm text-gray-500 flex items-center gap-1">
+                <MapPinIcon className="h-4 w-4 text-gray-400" />
+                {profile.county || 'Not set'}
+              </p>
             </div>
             <ActionButton onClick={() => setEditingProfile(true)} variant="secondary" icon={<UserCircleIcon className="h-4 w-4" />} label="Edit" />
           </div>
@@ -278,41 +339,6 @@ export default function Settings() {
               className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
             />
           </label>
-        </div>
-      </Section>
-
-      {/* API Keys */}
-      <Section icon={<KeyIcon className="h-5 w-5" />} title="API Keys">
-        <div className="space-y-4">
-          {apiKeys.map(k => (
-            <div key={k.id} className="flex justify-between items-center border-b pb-3">
-              <div>
-                <p className="font-mono text-sm font-medium">{k.name}</p>
-                <p className="text-xs text-gray-400">Created {k.createdAt}</p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowApiKey(showApiKey === k.id ? null : k.id)}
-                  className="p-1 text-gray-400 hover:text-gray-600"
-                >
-                  <EyeIcon className="h-4 w-4" />
-                </button>
-                <button onClick={() => revokeApiKey(k.id)} className="p-1 text-gray-400 hover:text-red-600">
-                  <TrashIcon className="h-4 w-4" />
-                </button>
-              </div>
-              {showApiKey === k.id && <p className="text-xs font-mono bg-gray-100 p-1 rounded col-span-full">{k.key}</p>}
-            </div>
-          ))}
-          <div className="flex gap-3">
-            <input
-              value={newApiKeyName}
-              onChange={e => setNewApiKeyName(e.target.value)}
-              placeholder="Key name"
-              className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500"
-            />
-            <ActionButton onClick={generateApiKey} label="Generate" icon={<KeyIcon className="h-4 w-4" />} />
-          </div>
         </div>
       </Section>
 
