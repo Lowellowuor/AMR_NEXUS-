@@ -1,33 +1,98 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DocumentDuplicateIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { useTemplateStorage } from '../../hooks/useTemplateStorage';
+import api from '../../api/client';
 
 export default function TemplateSelector({ onLoadTemplate, currentFormData }) {
-  const { templates, saveTemplate, deleteTemplate } = useTemplateStorage();
+  const [templates, setTemplates] = useState([]);
   const [templateName, setTemplateName] = useState('');
   const [showSave, setShowSave] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedId, setSelectedId] = useState('');
 
-  const handleSave = () => {
-    if (templateName && currentFormData) {
-      saveTemplate(templateName, currentFormData);
-      setTemplateName('');
-      setShowSave(false);
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const fetchTemplates = async () => {
+    try {
+      setLoading(true);
+      const data = await api.getTemplates();
+      setTemplates(data || []);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to load templates:', err);
+      setError('Could not load templates.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleLoad = (e) => {
-    const id = parseInt(e.target.value);
-    const t = templates.find(t => t.id === id);
-    if (t) onLoadTemplate(t.formData);
+  const handleSave = async () => {
+    if (!templateName || !currentFormData) return;
+    try {
+      await api.saveTemplate(templateName, currentFormData);
+      setTemplateName('');
+      setShowSave(false);
+      await fetchTemplates();
+    } catch (err) {
+      console.error('Failed to save template:', err);
+      alert('Could not save template.');
+    }
   };
+
+  const handleLoad = async (e) => {
+    const id = parseInt(e.target.value);
+    setSelectedId(e.target.value);
+    if (!id) return;
+    try {
+      const template = templates.find(t => t.id === id);
+      if (template) onLoadTemplate(template.form_data);
+    } catch (err) {
+      console.error('Failed to load template:', err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedId) return;
+    if (!window.confirm('Delete selected template?')) return;
+    try {
+      await api.deleteTemplate(parseInt(selectedId));
+      setSelectedId('');
+      await fetchTemplates();
+    } catch (err) {
+      console.error('Failed to delete template:', err);
+      alert('Could not delete template.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 p-4 mb-4">
+        <div className="flex items-center gap-2 text-gray-500">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+          <span className="text-sm">Loading templates...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 p-4 mb-4">
+        <p className="text-red-500 text-sm">{error}</p>
+        <button onClick={fetchTemplates} className="text-primary-600 underline text-sm mt-1">Retry</button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 p-4 mb-4 flex flex-wrap items-center gap-3">
-      {/* Template dropdown */}
       <div className="flex items-center gap-2">
         <DocumentDuplicateIcon className="h-4 w-4 text-gray-400" />
         <select
           onChange={handleLoad}
+          value={selectedId}
           className="rounded-full border border-gray-200 bg-white/70 px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
         >
           <option value="">Load template...</option>
@@ -37,7 +102,6 @@ export default function TemplateSelector({ onLoadTemplate, currentFormData }) {
         </select>
       </div>
 
-      {/* Save template toggle */}
       <button
         onClick={() => setShowSave(!showSave)}
         className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 transition-colors"
@@ -46,7 +110,6 @@ export default function TemplateSelector({ onLoadTemplate, currentFormData }) {
         Save current as template
       </button>
 
-      {/* Save input (conditional) */}
       {showSave && (
         <div className="flex items-center gap-2">
           <input
@@ -72,18 +135,9 @@ export default function TemplateSelector({ onLoadTemplate, currentFormData }) {
         </div>
       )}
 
-      {/* Delete template (if any selected) */}
       {templates.length > 0 && (
         <button
-          onClick={() => {
-            if (window.confirm('Delete selected template?')) {
-              const select = document.querySelector('select');
-              if (select && select.value) {
-                deleteTemplate(parseInt(select.value));
-                select.value = '';
-              }
-            }
-          }}
+          onClick={handleDelete}
           className="ml-auto text-xs text-gray-400 hover:text-red-500 transition-colors"
         >
           Delete template

@@ -222,3 +222,27 @@ async def get_dashboard_notifications(
         }
         for n in notifications
     ]
+
+
+
+@analytics_router.get("/metadata/options")
+async def get_form_options(
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    sectors = db.query(AMRIsolateRecord.sector).distinct().all()
+    sub_sectors = db.query(AMRIsolateRecord.sub_sector).distinct().all()
+    pathogens = db.query(AMRIsolateRecord.pathogen_code).distinct().all()
+    specimen_types = db.query(AMRIsolateRecord.specimen_type).distinct().all()
+    counties = db.query(AMRIsolateRecord.county).distinct().all()
+    antibiotic_classes = db.query(AMRIsolateRecord.antibiotic_class).distinct().all()
+    test_methods = db.query(AMRIsolateRecord.test_method).distinct().all()
+
+    return {
+        "sectors": [s[0] for s in sectors if s[0]],
+        "sub_sectors": [s[0] for s in sub_sectors if s[0]],
+        "pathogens": [{"code": p[0], "name": p[0]} for p in pathogens if p[0]],
+        "specimen_types": [s[0] for s in specimen_types if s[0]],
+        "counties": [c[0] for c in counties if c[0]],
+        "antibiotic_classes": [a[0] for a in antibiotic_classes if a[0]],
+        "test_methods": [t[0] for t in test_methods if t[0]],
+    }

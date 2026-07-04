@@ -10,6 +10,15 @@ class Settings(BaseSettings):
     DATABASE_URL: str
 
     MODEL_DIR: str = "./models"
+    DATA_FILE_PATH: str = "./data/AMR_Nexus_Kenya_Dataset_IMPROVED.csv"
+
+    
+    FRONTEND_FEATURES: List[str] = [
+        'sector', 'sub_sector', 'pathogen_code', 'specimen_type',
+        'county', 'antibiotic_class', 'test_method', 'sample_month',
+        'prior_antibiotic_exposure'
+    ]
+
     SHAP_TOP_FEATURES: int = 3
 
     ALERT_MDR_THRESHOLD: float = 30.0

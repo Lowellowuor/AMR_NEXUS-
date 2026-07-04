@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { initDB, saveDraft, getDrafts, deleteDraft, markSynced } from '../utils/offlineStorage';
+import { useState, useEffect, useCallback } from 'react';
+import { initDB, saveDraft, getDrafts, deleteDraft, markSynced, clearAllDrafts } from '../utils/offlineStorage';
 
 export function useOfflineDrafts() {
   const [drafts, setDrafts] = useState([]);
@@ -12,32 +12,39 @@ export function useOfflineDrafts() {
     });
   }, []);
 
-  const loadDrafts = async () => {
+  const loadDrafts = useCallback(async () => {
     const all = await getDrafts();
     setDrafts(all);
-  };
+  }, []);
 
-  const addDraft = async (data) => {
+  const addDraft = useCallback(async (data) => {
     await saveDraft(data);
     await loadDrafts();
-  };
+  }, [loadDrafts]);
 
-  const removeDraft = async (id) => {
+  const removeDraft = useCallback(async (id) => {
     await deleteDraft(id);
     await loadDrafts();
-  };
+  }, [loadDrafts]);
 
-  const syncDraft = async (id, submitFn) => {
+  const clearDrafts = useCallback(async () => {
+    await clearAllDrafts();
+    await loadDrafts();
+  }, [loadDrafts]);
+
+  const syncDraft = useCallback(async (id, submitFn) => {
     const draft = drafts.find(d => d.id === id);
-    if (!draft) return;
+    if (!draft) throw new Error('Draft not found');
     try {
       await submitFn(draft.formData);
       await markSynced(id);
       await loadDrafts();
+      return true;
     } catch (err) {
       console.error('Sync failed', err);
+      throw err;
     }
-  };
+  }, [drafts, loadDrafts]);
 
-  return { drafts, isReady, addDraft, removeDraft, syncDraft };
+  return { drafts, isReady, addDraft, removeDraft, clearDrafts, syncDraft };
 }

@@ -42,6 +42,25 @@ export const api = {
   getMe: () => fetch(`${API_BASE}/me`).then(handleResponse),
   getAlerts: (params = '') => fetch(`${API_BASE}/alerts?${params}`).then(handleResponse),
   getAlertsCount: () => fetch(`${API_BASE}/alerts/count`).then(handleResponse),
+  getOptions: () => fetch(`${API_BASE}/metadata/options`).then(handleResponse),
+  updatePredictionNote: (recordId, data) => fetch(`${API_BASE}/predictions/${recordId}/note`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(handleResponse),
+  getTemplates: () => fetch(`${API_BASE}/templates`).then(handleResponse),
+  saveTemplate: (name, formData) => fetch(`${API_BASE}/templates`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, form_data: formData })
+  }).then(handleResponse),
+  deleteTemplate: (id) => fetch(`${API_BASE}/templates/${id}`, {
+    method: 'DELETE'
+  }).then(handleResponse),
+  markAlertRead: (id) => fetch(`${API_BASE}/alerts/${id}/read`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+  }).then(handleResponse),
 };
 
 export default api;

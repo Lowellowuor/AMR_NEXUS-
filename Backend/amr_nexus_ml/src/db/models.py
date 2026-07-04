@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 import uuid
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Date, Numeric, Text, ForeignKey
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Date, Numeric, Text, ForeignKey, JSON
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from src.database import Base
 
 
@@ -80,3 +81,30 @@ class DashboardNotification(Base):
     county = Column(String(100), nullable=False)
     message = Column(String(500), nullable=False)
     is_read = Column(Boolean, default=False)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(100), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    role = Column(String(20), default="analyst")
+    assigned_county = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    templates = relationship("UserTemplate", back_populates="user", cascade="all, delete-orphan")
+
+
+class UserTemplate(Base):
+    __tablename__ = "user_templates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), nullable=False)
+    form_data = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="templates")

@@ -9,3 +9,4 @@ from src.api.routers.guidance import guidance_router
 from src.api.routers.search import search_router
 from src.api.routers.user import user_router
 from src.api.routers.ews import ews_router
+from .user_router import user_router
