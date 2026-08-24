@@ -1,0 +1,201 @@
+sector,sub_sector,pathogen_code,specimen_type,county,antibiotic_class,test_method,sample_month,prior_antibiotic_exposure,mdr_flag
+human,ICU,KPN,Respiratory,Turkana,Sulfonamides,Disk diffusion,9,0,1
+poultry,Hatchery,SAL,Egg,Kiambu,Aminoglycosides,Broth microdilution,9,1,0
+poultry,Layer,ECO,Tissue,Elgeyo-Marakwet,Tetracyclines,VITEK 2,6,0,0
+human,Outpatient,ABA,Urine,Kisumu,Carbapenems,VITEK 2,2,1,0
+human,ICU,PAE,Blood culture,Kirinyaga,Sulfonamides,Broth microdilution,8,0,1
+poultry,Indigenous,CIT,Fecal,Nakuru,Sulfonamides,VITEK 2,6,0,0
+human,Surgical,ECO,CSF,Bomet,Fluoroquinolones,Broth microdilution,2,0,1
+human,General ward,ECO,CSF,Nairobi,Aminoglycosides,Disk diffusion,9,1,0
+human,Surgical,KPN,Blood culture,Nairobi,Polymyxins,Disk diffusion,3,1,0
+poultry,Broiler,SAL,Egg,Kericho,Tetracyclines,E-test,12,0,1
+human,General ward,SAU,Respiratory,Nairobi,Cephalosporins,Disk diffusion,9,0,0
+human,Maternity,SAU,Urine,Bungoma,Tetracyclines,VITEK 2,10,0,0
+poultry,Broiler,ECO,Cloacal swab,Nandi,Penicillins,Disk diffusion,11,1,1
+environment,Wastewater,SAL,Swab,Bomet,Aminoglycosides,VITEK 2,1,0,0
+human,ICU,EFC,Wound swab,Nairobi,Macrolides,Disk diffusion,3,0,0
+human,Outpatient,KPN,Wound swab,Uasin Gishu,Polymyxins,E-test,7,0,1
+poultry,Hatchery,ECO,Fecal,Taita-Taveta,Aminoglycosides,E-test,7,0,0
+environment,Soil,SAL,Soil sample,Nairobi,Tetracyclines,E-test,6,0,0
+human,Outpatient,ECO,CSF,Bungoma,Tetracyclines,Disk diffusion,5,0,1
+poultry,Hatchery,ECO,Egg,Kiambu,Penicillins,VITEK 2,10,0,1
+human,General ward,SAU,Urine,Turkana,Aminoglycosides,Broth microdilution,5,0,0
+poultry,Hatchery,ECO,Egg,Nairobi,Aminoglycosides,Disk diffusion,1,1,1
+human,Maternity,KPN,Respiratory,Nakuru,Penicillins,Broth microdilution,3,1,1
+human,Surgical,PAE,Blood culture,Mombasa,Sulfonamides,Broth microdilution,8,0,1
+human,General ward,PAE,Blood culture,Nairobi,Cephalosporins,Disk diffusion,6,0,0
+human,General ward,ECO,Urine,Lamu,Penicillins,E-test,6,1,1
+environment,Wastewater,EFC,Water sample,Uasin Gishu,Aminoglycosides,Disk diffusion,4,0,0
+poultry,Layer,ECO,Egg,Nairobi,Tetracyclines,Broth microdilution,12,0,1
+human,Surgical,KPN,Wound swab,Nairobi,Cephalosporins,E-test,6,1,0
+human,Maternity,SAL,CSF,Meru,Tetracyclines,E-test,9,0,0
+human,ICU,KPN,Wound swab,Uasin Gishu,Fluoroquinolones,VITEK 2,2,0,1
+human,Maternity,PAE,Respiratory,Elgeyo-Marakwet,Fluoroquinolones,Broth microdilution,12,1,1
+environment,Wastewater,ECO,Soil sample,Nairobi,Aminoglycosides,Disk diffusion,2,0,0
+human,Maternity,SAU,Wound swab,Kajiado,Macrolides,Broth microdilution,2,1,1
+human,General ward,ECO,Blood culture,Bomet,Macrolides,Disk diffusion,3,0,0
+poultry,Layer,SAL,Tissue,Kericho,Fluoroquinolones,Broth microdilution,4,1,0
+environment,Soil,ECO,Water sample,Murang'a,Penicillins,Disk diffusion,10,1,0
+poultry,Indigenous,ECO,Fecal,Bungoma,Penicillins,Disk diffusion,3,0,0
+human,ICU,SAL,Urine,Mombasa,Aminoglycosides,E-test,10,1,0
+human,General ward,SAU,Wound swab,Bomet,Macrolides,Broth microdilution,7,0,1
+environment,Soil,SAL,Water sample,Machakos,Fluoroquinolones,Broth microdilution,4,1,0
+poultry,Indigenous,ECO,Fecal,Kiambu,Carbapenems,Disk diffusion,7,0,0
+human,General ward,PAE,Urine,Meru,Aminoglycosides,Broth microdilution,6,0,1
+environment,Surface swab,KPN,Swab,Kiambu,Tetracyclines,VITEK 2,10,0,0
+human,Maternity,SAL,Urine,West Pokot,Fluoroquinolones,Broth microdilution,8,0,1
+environment,Soil,SAL,Water sample,Nairobi,Aminoglycosides,Broth microdilution,4,1,1
+human,Maternity,PAE,Respiratory,Kiambu,Penicillins,Broth microdilution,12,0,1
+environment,Soil,KPN,Soil sample,Nakuru,Sulfonamides,Disk diffusion,8,1,1
+environment,Surface swab,ECO,Swab,Kakamega,Cephalosporins,VITEK 2,10,1,0
+poultry,Indigenous,KPN,Cloacal swab,Embu,Aminoglycosides,VITEK 2,4,0,0
+human,Maternity,CIT,Blood culture,Nyeri,Polymyxins,E-test,5,0,0
+poultry,Broiler,ECO,Egg,Kisumu,Carbapenems,E-test,3,1,1
+poultry,Indigenous,ECO,Tissue,Taita-Taveta,Tetracyclines,Broth microdilution,3,1,1
+human,ICU,SAL,Respiratory,Murang'a,Fluoroquinolones,Broth microdilution,10,1,0
+human,Outpatient,SAU,Wound swab,Murang'a,Penicillins,Broth microdilution,12,0,0
+human,Outpatient,SAU,Respiratory,Machakos,Sulfonamides,E-test,3,1,0
+poultry,Indigenous,SAL,Cloacal swab,Machakos,Tetracyclines,Broth microdilution,12,0,0
+human,ICU,ECO,Wound swab,Kiambu,Cephalosporins,Broth microdilution,3,1,0
+environment,Surface swab,SAU,Swab,Uasin Gishu,Aminoglycosides,Broth microdilution,9,1,0
+environment,Water,CIT,Water sample,Bungoma,Polymyxins,VITEK 2,8,1,0
+poultry,Hatchery,ECO,Cloacal swab,Isiolo,Carbapenems,Broth microdilution,9,0,0
+poultry,Indigenous,ECO,Tissue,Nyeri,Tetracyclines,Broth microdilution,9,0,0
+poultry,Indigenous,ABA,Cloacal swab,Machakos,Penicillins,Disk diffusion,2,1,1
+human,General ward,ABA,Wound swab,West Pokot,Fluoroquinolones,Broth microdilution,1,1,1
+human,Surgical,PAE,Blood culture,Trans Nzoia,Penicillins,VITEK 2,5,1,1
+human,Outpatient,SAL,Wound swab,Elgeyo-Marakwet,Fluoroquinolones,E-test,4,1,0
+human,General ward,ECO,CSF,Meru,Macrolides,VITEK 2,11,0,0
+poultry,Hatchery,SAL,Fecal,Nairobi,Macrolides,Broth microdilution,6,0,1
+poultry,Broiler,ECO,Tissue,Mandera,Macrolides,Broth microdilution,11,0,0
+poultry,Hatchery,SAL,Fecal,Kilifi,Aminoglycosides,Broth microdilution,11,0,1
+human,General ward,SAU,Wound swab,Murang'a,Polymyxins,Broth microdilution,11,0,0
+poultry,Indigenous,SAL,Tissue,Kajiado,Fluoroquinolones,Broth microdilution,12,0,1
+human,General ward,CIT,Wound swab,Murang'a,Polymyxins,Broth microdilution,3,1,1
+human,Outpatient,SAU,Wound swab,Kiambu,Sulfonamides,Disk diffusion,10,0,1
+poultry,Indigenous,EFC,Fecal,Turkana,Polymyxins,E-test,5,0,0
+human,ICU,SAU,Respiratory,Murang'a,Polymyxins,Broth microdilution,4,1,1
+human,General ward,SAU,Respiratory,Kajiado,Fluoroquinolones,Disk diffusion,3,0,1
+human,Surgical,PAE,Respiratory,Kiambu,Carbapenems,E-test,10,1,0
+poultry,Indigenous,ECO,Fecal,Garissa,Macrolides,VITEK 2,5,0,0
+human,General ward,ECO,Wound swab,Kirinyaga,Polymyxins,VITEK 2,3,0,1
+human,Outpatient,ECO,Wound swab,Meru,Tetracyclines,Disk diffusion,6,0,0
+human,Maternity,KPN,Urine,Nairobi,Macrolides,Disk diffusion,2,1,0
+environment,Water,ABA,Swab,Laikipia,Tetracyclines,VITEK 2,7,0,0
+human,Maternity,KPN,Blood culture,Kajiado,Penicillins,VITEK 2,1,1,1
+environment,Soil,PAE,Swab,Isiolo,Sulfonamides,E-test,4,0,0
+human,General ward,PAE,Blood culture,Turkana,Penicillins,Disk diffusion,7,1,1
+poultry,Indigenous,KPN,Fecal,Isiolo,Carbapenems,VITEK 2,10,0,1
+human,ICU,SAU,Wound swab,Kirinyaga,Tetracyclines,Broth microdilution,9,1,0
+human,Maternity,SAU,CSF,Kiambu,Cephalosporins,E-test,4,1,1
+poultry,Layer,KPN,Cloacal swab,Kiambu,Carbapenems,Disk diffusion,1,0,0
+environment,Water,ECO,Water sample,Busia,Cephalosporins,Disk diffusion,2,0,1
+poultry,Layer,SAL,Tissue,Kakamega,Sulfonamides,Broth microdilution,2,1,0
+poultry,Layer,SAL,Fecal,Mombasa,Tetracyclines,VITEK 2,10,0,1
+human,General ward,ECO,Wound swab,Kakamega,Aminoglycosides,E-test,5,1,1
+human,General ward,CIT,Blood culture,Murang'a,Aminoglycosides,VITEK 2,4,1,0
+human,Maternity,EFC,Wound swab,Embu,Cephalosporins,Disk diffusion,2,0,0
+environment,Surface swab,ECO,Swab,Laikipia,Fluoroquinolones,E-test,4,0,1
+human,Outpatient,EFC,Respiratory,Busia,Macrolides,Broth microdilution,4,0,0
+poultry,Indigenous,SAL,Egg,Nyandarua,Sulfonamides,Broth microdilution,6,0,0
+human,Outpatient,SAU,Urine,Turkana,Macrolides,VITEK 2,11,1,1
+human,Maternity,KPN,Respiratory,Meru,Sulfonamides,Broth microdilution,10,0,0
+environment,Soil,EFC,Swab,Kilifi,Fluoroquinolones,Broth microdilution,9,0,1
+human,General ward,KPN,Urine,Kiambu,Macrolides,Broth microdilution,11,0,0
+poultry,Layer,SAL,Tissue,Mombasa,Polymyxins,Disk diffusion,10,1,1
+poultry,Layer,SAL,Tissue,Kiambu,Macrolides,VITEK 2,11,1,1
+human,Outpatient,CIT,Respiratory,Kiambu,Polymyxins,Broth microdilution,3,0,1
+poultry,Hatchery,SAL,Cloacal swab,Trans Nzoia,Aminoglycosides,Disk diffusion,2,0,1
+environment,Wastewater,KPN,Soil sample,Turkana,Carbapenems,VITEK 2,5,1,1
+human,Outpatient,SAU,Wound swab,Samburu,Carbapenems,Broth microdilution,2,0,1
+human,ICU,SAL,Wound swab,Kiambu,Tetracyclines,Disk diffusion,6,0,0
+poultry,Layer,ECO,Egg,Kisumu,Tetracyclines,VITEK 2,1,0,0
+human,Outpatient,ECO,CSF,Murang'a,Tetracyclines,Broth microdilution,10,0,1
+poultry,Layer,SAL,Cloacal swab,Nairobi,Sulfonamides,E-test,9,0,1
+human,Maternity,KPN,Urine,Nakuru,Macrolides,Disk diffusion,12,0,0
+environment,Water,ABA,Swab,Elgeyo-Marakwet,Carbapenems,Broth microdilution,10,0,0
+human,ICU,PAE,Respiratory,Kisumu,Sulfonamides,VITEK 2,10,1,0
+human,General ward,SAU,CSF,Bomet,Aminoglycosides,Disk diffusion,11,1,0
+poultry,Layer,SAU,Egg,West Pokot,Fluoroquinolones,Broth microdilution,4,0,0
+environment,Water,KPN,Water sample,Nairobi,Sulfonamides,VITEK 2,2,0,1
+human,Maternity,EFC,Urine,Kilifi,Penicillins,VITEK 2,8,0,0
+human,General ward,SAU,Urine,Mandera,Sulfonamides,VITEK 2,6,0,0
+poultry,Broiler,KPN,Cloacal swab,Murang'a,Aminoglycosides,Disk diffusion,9,1,1
+environment,Surface swab,KPN,Swab,Busia,Fluoroquinolones,Disk diffusion,5,0,0
+poultry,Broiler,ECO,Cloacal swab,Kisumu,Tetracyclines,Disk diffusion,8,0,0
+environment,Surface swab,ABA,Soil sample,Bungoma,Cephalosporins,Disk diffusion,11,0,0
+environment,Water,ECO,Soil sample,Lamu,Polymyxins,Broth microdilution,10,0,0
+human,ICU,KPN,Blood culture,Mombasa,Fluoroquinolones,Disk diffusion,3,1,1
+environment,Wastewater,EFC,Swab,Murang'a,Carbapenems,E-test,6,0,1
+human,Maternity,ECO,CSF,Samburu,Fluoroquinolones,Broth microdilution,5,1,0
+human,General ward,ECO,Wound swab,Kiambu,Polymyxins,Disk diffusion,2,1,0
+poultry,Layer,CIT,Fecal,Bungoma,Sulfonamides,VITEK 2,6,0,0
+poultry,Broiler,SAU,Egg,Nakuru,Cephalosporins,Disk diffusion,2,1,0
+poultry,Broiler,ECO,Tissue,Meru,Macrolides,Broth microdilution,5,0,0
+human,Surgical,EFC,CSF,Busia,Cephalosporins,VITEK 2,6,1,0
+human,Maternity,EFC,Respiratory,Kisumu,Polymyxins,E-test,2,1,1
+human,General ward,KPN,Respiratory,Murang'a,Penicillins,VITEK 2,2,1,1
+poultry,Broiler,SAL,Tissue,Kajiado,Polymyxins,VITEK 2,10,0,1
+environment,Water,ECO,Water sample,Kilifi,Fluoroquinolones,Disk diffusion,7,1,0
+poultry,Broiler,ECO,Cloacal swab,Uasin Gishu,Cephalosporins,Disk diffusion,3,1,1
+human,General ward,SAL,CSF,Kirinyaga,Tetracyclines,VITEK 2,12,1,1
+environment,Water,ECO,Soil sample,Kajiado,Aminoglycosides,Broth microdilution,1,0,1
+poultry,Hatchery,SAL,Cloacal swab,Isiolo,Fluoroquinolones,VITEK 2,10,1,1
+human,General ward,KPN,Respiratory,Nakuru,Penicillins,VITEK 2,1,0,1
+human,Maternity,SAU,Blood culture,Nandi,Carbapenems,Disk diffusion,8,0,0
+human,Surgical,SAL,Urine,Kilifi,Polymyxins,E-test,5,0,0
+environment,Wastewater,ECO,Water sample,Kisumu,Penicillins,Broth microdilution,3,0,0
+human,Surgical,SAU,Urine,Kisumu,Tetracyclines,Disk diffusion,5,1,0
+environment,ICU,KPN,Water sample,Busia,Fluoroquinolones,VITEK 2,4,1,1
+human,Hatchery,KPN,Urine,Kirinyaga,Fluoroquinolones,Disk diffusion,7,1,1
+poultry,ICU,KPN,Fecal,Laikipia,Polymyxins,Broth microdilution,4,1,1
+environment,Maternity,KPN,Water sample,Kiambu,Sulfonamides,E-test,4,1,1
+human,Wastewater,KPN,Urine,Mandera,Sulfonamides,VITEK 2,3,1,1
+poultry,Surgical,KPN,Fecal,Embu,Aminoglycosides,Disk diffusion,5,1,1
+environment,Broiler,KPN,Water sample,Kirinyaga,Fluoroquinolones,E-test,3,1,1
+human,Water,KPN,Urine,Tana River,Penicillins,VITEK 2,4,1,1
+poultry,Hatchery,ABA,CSF,Nakuru,Polymyxins,E-test,5,0,0
+poultry,Layer,ABA,Blood culture,Nakuru,Aminoglycosides,E-test,1,0,0
+environment,Soil,KPN,Urine,Lamu,Fluoroquinolones,Broth microdilution,4,0,0
+environment,Water,SAL,Respiratory,Nakuru,Cephalosporins,Broth microdilution,8,0,0
+human,ICU,SAU,Egg,Kiambu,Polymyxins,E-test,2,0,0
+human,Surgical,KPN,Water sample,Mombasa,Cephalosporins,Broth microdilution,2,0,0
+poultry,Layer,SAL,CSF,Turkana,Aminoglycosides,E-test,12,0,0
+environment,Wastewater,KPN,Wound swab,Kajiado,Aminoglycosides,Disk diffusion,7,0,0
+poultry,Broiler,EFC,Tissue,Samburu,Polymyxins,Unknown method,4,1,0
+poultry,Indigenous,SAL,Cloacal swab,Embu,Fluoroquinolones,PCR,12,1,0
+poultry,Indigenous,EFC,Egg,Turkana,Cephalosporins,Culture-free assay,12,1,0
+poultry,Layer,SAU,Cloacal swab,Kisumu,Cephalosporins,Rapid molecular panel,5,1,1
+human,General ward,ECO,CSF,Isiolo,Tetracyclines,,5,1,1
+environment,Water,CIT,Soil sample,Mars,Penicillins,E-test,9,0,0
+environment,Soil,CIT,Swab,Narnia,Macrolides,VITEK 2,10,0,0
+human,Outpatient,CIT,Respiratory,Atlantis,Macrolides,Broth microdilution,8,0,0
+environment,Water,CIT,Soil sample,Wakanda,Macrolides,E-test,10,0,0
+environment,Soil,CIT,Water sample,Middle-earth,Fluoroquinolones,VITEK 2,5,0,0
+human,ICU,CIT,CSF,Neverland,Tetracyclines,Disk diffusion,4,0,0
+human,General ward,EFC,Respiratory,Nakuru,Carbapenems,Disk diffusion,0,0,1
+environment,Surface swab,PAE,Swab,Nakuru,Macrolides,E-test,13,1,1
+environment,Water,KPN,Water sample,Isiolo,Cephalosporins,Broth microdilution,-1,0,1
+human,Surgical,SAL,Wound swab,Taita-Taveta,Tetracyclines,Broth microdilution,14,2,1
+poultry,Indigenous,EFC,Fecal,Uasin Gishu,Sulfonamides,Disk diffusion,99,-1,1
+environment,Wastewater,EFC,Soil sample,Kirinyaga,Sulfonamides,VITEK 2,20,1,1
+environment,Water,SAL,Soil sample,Kilifi,Cephalosporins,Disk diffusion,25,0,1
+environment,Wastewater,CIT,Water sample,Mandera,Sulfonamides,E-test,6,1,1
+human,Surgical,CIT,Respiratory,Taita-Taveta,Tetracyclines,VITEK 2,1,1,0
+environment,Wastewater,CIT,Water sample,Bungoma,Aminoglycosides,VITEK 2,8,1,0
+human,Outpatient,CIT,CSF,Baringo,Carbapenems,Disk diffusion,3,0,0
+environment,Surface swab,CIT,Soil sample,Trans Nzoia,Sulfonamides,E-test,8,1,1
+environment,Surface swab,CIT,Swab,Murang'a,Carbapenems,VITEK 2,9,0,1
+environment,Water,CIT,Soil sample,Nyeri,Fluoroquinolones,E-test,2,0,0
+human,ICU,CIT,Wound swab,Wajir,Carbapenems,Disk diffusion,8,1,1
+poultry,Indigenous,ECO,Fecal,Kakamega,Carbapenems,E-test,6,1,1
+poultry,Hatchery,SAL,Cloacal swab,Murang'a,Carbapenems,Disk diffusion,11,1,1
+environment,Water,SAL,Water sample,Kisumu,Carbapenems,E-test,6,1,1
+environment,Wastewater,ECO,Soil sample,Kisumu,Carbapenems,VITEK 2,11,1,1
+environment,Soil,SAL,Soil sample,Mombasa,Carbapenems,Disk diffusion,6,1,1
+environment,Wastewater,KPN,Water sample,Nairobi,Carbapenems,VITEK 2,6,1,1
+environment,Wastewater,KPN,Water sample,Kiambu,Carbapenems,VITEK 2,6,1,1
+environment,Wastewater,KPN,Water sample,Kisumu,Carbapenems,VITEK 2,6,1,1
+human,ICU,KPN,Respiratory,Turkana,Sulfonamides,Disk diffusion,9,0,1
+poultry,Hatchery,SAL,Egg,Kiambu,Aminoglycosides,Broth microdilution,9,1,0
+poultry,Layer,ECO,Tissue,Elgeyo-Marakwet,Tetracyclines,VITEK 2,6,0,0

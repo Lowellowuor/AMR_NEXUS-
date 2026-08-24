@@ -28,9 +28,10 @@ class AMRIsolateRecord(Base):
     production_system = Column(String(50))
 
     county = Column(String(100))
+    sub_county = Column(String(100))          
     urban_rural = Column(String(10))
 
-    sample_collection_date = Column(Date)
+    sample_collection_date = Column(Date)    
     sample_month = Column(Integer)
 
     patient_age_years = Column(Numeric(5, 1))
@@ -49,6 +50,16 @@ class AMRIsolateRecord(Base):
 
     gene_marker_blandm = Column(Boolean, nullable=True, default=False)
     gene_marker_mcr1 = Column(Boolean, nullable=True, default=False)
+
+
+class SubCountyLocation(Base):
+    __tablename__ = "sub_county_locations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    county = Column(String(100), index=True)
+    sub_county = Column(String(100), index=True)
+    latitude = Column(Numeric(8, 6))
+    longitude = Column(Numeric(9, 6))
 
 
 class Comment(Base):

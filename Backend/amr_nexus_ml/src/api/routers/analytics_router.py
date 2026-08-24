@@ -1,4 +1,3 @@
-# src/api/routers/analytics.py
 from typing import Dict, Any, List, Optional
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -7,6 +6,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from src.api.deps import get_db
 from src.db.models import AMRIsolateRecord, DashboardNotification
+from src.services.geospatial_service import get_sub_county_mdr, get_mdr_difference
 
 analytics_router = APIRouter()
 
@@ -224,7 +224,6 @@ async def get_dashboard_notifications(
     ]
 
 
-
 @analytics_router.get("/metadata/options")
 async def get_form_options(
     db: Session = Depends(get_db)
@@ -246,3 +245,23 @@ async def get_form_options(
         "antibiotic_classes": [a[0] for a in antibiotic_classes if a[0]],
         "test_methods": [t[0] for t in test_methods if t[0]],
     }
+
+
+@analytics_router.get("/sub_county_mdr")
+async def sub_county_mdr(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    features = get_sub_county_mdr(db, start_date, end_date)
+    return {"type": "FeatureCollection", "features": features}
+
+
+@analytics_router.get("/mdr_difference")
+async def mdr_difference(
+    start_month: str,
+    end_month: str,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    features = get_mdr_difference(db, start_month, end_month)
+    return {"type": "FeatureCollection", "features": features}

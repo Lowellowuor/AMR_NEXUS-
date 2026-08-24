@@ -1,5 +1,4 @@
-﻿// src/pages/Alerts.jsx
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import toast, { Toaster } from 'react-hot-toast';
 import api from '../api/client';
@@ -8,6 +7,7 @@ import AlertFilters from '../components/alerts/AlertFilters';
 import AlertStatsSummary from '../components/alerts/AlertStatsSummary';
 import ExportAlertsButton from '../components/alerts/ExportAlertsButton';
 import AcknowledgeAlertsButton from '../components/alerts/AcknowledgeAlertsButton';
+import CriticalAlertBanner from '../components/alerts/CriticalAlertBanner';
 
 export default function Alerts() {
   const { user } = useAuth();
@@ -20,6 +20,7 @@ export default function Alerts() {
   const [showAcknowledged, setShowAcknowledged] = useState(false);
   const [expandedAlertId, setExpandedAlertId] = useState(null);
   const [guidanceMap, setGuidanceMap] = useState({});
+  const [explanationMap, setExplanationMap] = useState({});
 
   const fetchAlerts = async () => {
     setLoading(true);
@@ -29,7 +30,6 @@ export default function Alerts() {
       if (user?.county) params.append('county', user.county);
       const qs = params.toString();
 
-      // Fetch from new /alerts endpoint
       const data = await api.getAlerts(qs);
       setAlerts(data);
     } catch (err) {
@@ -47,7 +47,6 @@ export default function Alerts() {
     return () => clearInterval(interval);
   }, [user?.county]);
 
-  // Apply filters
   useEffect(() => {
     let filtered = [...alerts];
     if (severityFilter !== 'all') {
@@ -76,24 +75,19 @@ export default function Alerts() {
     setAlerts(prev => prev.filter(a => a.id !== id));
   };
 
-  const fetchGuidance = async (alert) => {
-    if (guidanceMap[alert.id]) return;
+  const fetchAlertIntelligence = async (alert) => {
+    if (guidanceMap[alert.id] && explanationMap[alert.id]) return;
+
     try {
-      const response = await fetch('http://localhost:8000/guidance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pathogen_code: alert.pathogen_code,
-          resistance_pattern: alert.resistance_pattern || 'ESBL',
-          user_role: user?.role || 'county',
-          county: user?.county || 'Nairobi',
-        }),
-      });
-      const data = await response.json();
-      setGuidanceMap(prev => ({ ...prev, [alert.id]: data.guidance }));
+      const [explanation, llmResponse] = await Promise.all([
+        api.getAlertExplanation(alert.id),
+        api.generateLLM(alert.id),
+      ]);
+      setExplanationMap(prev => ({ ...prev, [alert.id]: explanation }));
+      setGuidanceMap(prev => ({ ...prev, [alert.id]: llmResponse.text }));
     } catch (err) {
-      console.error('Guidance fetch error:', err);
-      toast.error('Could not load guidance');
+      console.error('Alert intelligence fetch error:', err);
+      toast.error('Could not load guidance or explanation');
     }
   };
 
@@ -103,16 +97,14 @@ export default function Alerts() {
       setExpandedAlertId(null);
     } else {
       setExpandedAlertId(id);
-      if (!guidanceMap[id]) {
-        fetchGuidance(alert);
-      }
+      fetchAlertIntelligence(alert);
     }
   };
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--accent-cyan)]" />
       </div>
     );
   }
@@ -124,8 +116,12 @@ export default function Alerts() {
   return (
     <div className="space-y-6">
       <Toaster position="top-right" />
+
+      {/* Critical alert banner */}
+      <CriticalAlertBanner alerts={alerts} />
+
       <div className="flex justify-between items-center flex-wrap gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Stewardship Alerts</h1>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Stewardship Alerts</h1>
         <div className="flex gap-2">
           <ExportAlertsButton alerts={filteredAlerts} />
           <AcknowledgeAlertsButton alerts={filteredAlerts} onAcknowledgeAll={handleAcknowledgeAll} />
@@ -146,8 +142,8 @@ export default function Alerts() {
       <AlertStatsSummary alerts={filteredAlerts} />
 
       {filteredAlerts.length === 0 ? (
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md p-8 text-center">
-          <p className="text-gray-500">No alerts match your filters.</p>
+        <div className="bg-[var(--bg-secondary)]/80 backdrop-blur-sm rounded-2xl shadow-md p-8 text-center">
+          <p className="text-[var(--text-muted)]">No alerts match your filters.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -160,6 +156,7 @@ export default function Alerts() {
                 onToggleGuidance={() => toggleGuidance(alert)}
                 isExpanded={expandedAlertId === alert.id}
                 guidance={guidanceMap[alert.id] || null}
+                explanation={explanationMap[alert.id] || null}
               />
             </div>
           ))}

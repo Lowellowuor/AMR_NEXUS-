@@ -9,6 +9,7 @@ import PathogenResistanceChart from '../components/analytics/PathogenResistanceC
 import SectorPieChart from '../components/analytics/SectorPieChart';
 import CountyHeatmap from '../components/analytics/CountyHeatmap';
 import PathogenAntibioticHeatmap from '../components/analytics/PathogenAntibioticHeatmap';
+import SectorTrendChart from '../components/trends/SectorTrendChart';
 import ExportAnalyticsButton from '../components/analytics/ExportAnalyticsButton';
 import CompareModal from '../components/analytics/CompareModal';
 
@@ -59,7 +60,6 @@ export default function Analytics() {
     fetchAll();
   }, [fetchAll]);
 
-  // Auto-refresh interval
   useEffect(() => {
     if (filters.autoRefresh) {
       const timer = setInterval(fetchAll, 30000);
@@ -104,6 +104,11 @@ export default function Analytics() {
 
       <div id="analytics-dashboard" ref={dashboardRef} className="space-y-6">
         <AnalyticsSummaryCards summary={summary} />
+
+        {/* Sector Monthly Trend Chart */}
+        <div className="grid grid-cols-1 gap-6">
+          <SectorTrendChart months={12} />
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <MDTTrendChart startDate={filters.startDate} endDate={filters.endDate} county={filters.county} onDrillDown={handleCountyClick} />

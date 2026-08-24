@@ -1,4 +1,4 @@
-﻿const API_BASE = 'http://localhost:8000';
+﻿const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 async function handleResponse(res) {
   if (!res.ok) {
@@ -18,6 +18,7 @@ export const api = {
   getMDRTrend: (months = 6, params = '') => fetch(`${API_BASE}/analytics/mdr_trend?months=${months}&${params}`).then(handleResponse),
   getByPathogen: (limit = 10, params = '') => fetch(`${API_BASE}/analytics/by_pathogen?limit=${limit}&${params}`).then(handleResponse),
   getBySector: (params = '') => fetch(`${API_BASE}/analytics/by_sector?${params}`).then(handleResponse),
+  getSectorMonthly: (months = 12) => fetch(`${API_BASE}/analytics/sector_monthly?months=${months}`).then(handleResponse),
   getTopCounties: (limit = 5, params = '') => fetch(`${API_BASE}/analytics/top_counties?limit=${limit}&${params}`).then(handleResponse),
   getPredictions: (limit = 50, skip = 0, params = '') => fetch(`${API_BASE}/predictions?limit=${limit}&skip=${skip}&${params}`).then(handleResponse),
   submitPrediction: (data) => fetch(`${API_BASE}/predict`, {
@@ -26,6 +27,10 @@ export const api = {
     body: JSON.stringify(data)
   }).then(handleResponse),
   getCountyMDR: (params = '') => fetch(`${API_BASE}/analytics/county_mdr?${params}`).then(handleResponse),
+  getSubCountyMDR: (params = '') => fetch(`${API_BASE}/analytics/sub_county_mdr?${params}`).then(handleResponse),
+  getMDRDifference: (startMonth, endMonth) => fetch(`${API_BASE}/analytics/mdr_difference?start_month=${startMonth}&end_month=${endMonth}`).then(handleResponse),
+  getResistanceByPathogenClass: (pathogenCode, params = '') => fetch(`${API_BASE}/analytics/resistance_by_pathogen/${pathogenCode}?${params}`).then(handleResponse),
+  getPathogenTrend: (pathogenCode, months = 12, params = '') => fetch(`${API_BASE}/analytics/pathogen_trend?pathogen_code=${pathogenCode}&months=${months}&${params}`).then(handleResponse),
   emailReport: (data) => fetch(`${API_BASE}/reports/email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -39,6 +44,18 @@ export const api = {
   }).then(handleResponse),
   getForecast: (params = '') => fetch(`${API_BASE}/ews/forecast?${params}`).then(handleResponse),
   getRecommendations: (pathogen, antibioticClass) => fetch(`${API_BASE}/recommendations/${pathogen}/${antibioticClass}`).then(handleResponse),
+  getAlertExplanation: (alertId) => fetch(`${API_BASE}/alerts/${alertId}/explanation`).then(handleResponse),
+  getAlertDetail: (alertId) => fetch(`${API_BASE}/alerts/${alertId}`).then(handleResponse),
+  generateLLM: (alertId) => fetch(`${API_BASE}/llm/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alert_id: alertId }),
+  }).then(handleResponse),
+  sendSMS: (phone, message) => fetch(`${API_BASE}/send-sms`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, message }),
+  }).then(handleResponse),
   getMe: () => fetch(`${API_BASE}/me`).then(handleResponse),
   getAlerts: (params = '') => fetch(`${API_BASE}/alerts?${params}`).then(handleResponse),
   getAlertsCount: () => fetch(`${API_BASE}/alerts/count`).then(handleResponse),

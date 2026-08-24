@@ -1,7 +1,7 @@
+﻿import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout/Layout';
-import Dashboard from './pages/Dashboard';
 import NationalDashboard from './pages/NationalDashboard';
 import CountyDashboard from './pages/CountyDashboard';
 import Predict from './pages/Predict';
@@ -18,13 +18,35 @@ import DataQuality from './pages/DataQuality';
 
 function AppRoutes() {
   const { user } = useAuth();
-  const isNational = user?.role === 'national';
+  const [role, setRole] = useState(user?.role || 'national');
+  const [darkMode, setDarkMode] = useState(true);
+
+  useEffect(() => {
+    if (user?.role) setRole(user.role);
+  }, [user]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+  }, [darkMode]);
+
+  const toggleRole = () =>
+    setRole(prev => (prev === 'national' ? 'county' : 'national'));
 
   return (
     <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={isNational ? <NationalDashboard /> : <CountyDashboard />} />
-        <Route path="dashboard" element={isNational ? <NationalDashboard /> : <CountyDashboard />} />
+      <Route
+        element={
+          <Layout
+            role={role}
+            onToggleRole={toggleRole}
+            darkMode={darkMode}
+            onToggleDark={() => setDarkMode(prev => !prev)}
+          />
+        }
+      >
+        <Route index element={role === 'national' ? <NationalDashboard /> : <CountyDashboard />} />
+        <Route path="dashboard" element={role === 'national' ? <NationalDashboard /> : <CountyDashboard />} />
+
         {/* Shared pages */}
         <Route path="predict" element={<Predict />} />
         <Route path="analytics" element={<Analytics />} />

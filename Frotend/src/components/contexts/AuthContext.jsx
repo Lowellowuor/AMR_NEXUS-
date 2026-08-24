@@ -1,4 +1,4 @@
-﻿// src/contexts/AuthContext.jsx
+﻿
 import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
@@ -8,21 +8,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch user from backend on mount
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       fetchUserFromBackend(token);
     } else {
-      // Fallback to localStorage role/county (demo mode)
-      const savedRole = localStorage.getItem('role') || 'county';
-      const savedCounty = localStorage.getItem('county') || 'Nairobi';
-      setUser({
-        role: savedRole,
-        county: savedCounty,
-        name: localStorage.getItem('userName') || 'John Doe',
-        email: localStorage.getItem('userEmail') || 'john.doe@amrnexus.org',
-      });
       setLoading(false);
     }
   }, []);
@@ -34,25 +24,17 @@ export function AuthProvider({ children }) {
       });
       if (!response.ok) throw new Error('Failed to fetch user');
       const data = await response.json();
-      // Merge with backend data; keep existing fallback values
       setUser({
-        role: data.role || 'county',
-        county: data.county || 'Nairobi',
-        name: data.name || 'John Doe',
-        email: data.email || 'john.doe@amrnexus.org',
+        role: data.role || '',
+        county: data.assigned_county || '',
+        name: data.name || '',
+        email: data.email || '',
       });
     } catch (err) {
       console.error('Auth fetch error:', err);
       setError(err.message);
-      // Fallback to localStorage
-      const savedRole = localStorage.getItem('role') || 'county';
-      const savedCounty = localStorage.getItem('county') || 'Nairobi';
-      setUser({
-        role: savedRole,
-        county: savedCounty,
-        name: localStorage.getItem('userName') || 'John Doe',
-        email: localStorage.getItem('userEmail') || 'john.doe@amrnexus.org',
-      });
+      setUser(null);
+      localStorage.removeItem('token');
     } finally {
       setLoading(false);
     }
@@ -62,7 +44,6 @@ export function AuthProvider({ children }) {
     setLoading(true);
     setError(null);
     try {
-      // Replace with actual login endpoint
       const response = await fetch('http://localhost:8000/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -73,10 +54,10 @@ export function AuthProvider({ children }) {
       const { token, user: userData } = data;
       localStorage.setItem('token', token);
       setUser({
-        role: userData.role || 'county',
-        county: userData.county || 'Nairobi',
-        name: userData.name || 'John Doe',
-        email: userData.email || 'john.doe@amrnexus.org',
+        role: userData.role || '',
+        county: userData.assigned_county || '',
+        name: userData.name || '',
+        email: userData.email || '',
       });
     } catch (err) {
       setError(err.message);
@@ -92,10 +73,7 @@ export function AuthProvider({ children }) {
     window.location.href = '/login';
   };
 
-  // For demo, if no token, allow setting role manually
   const setRoleAndCounty = (role, county) => {
-    localStorage.setItem('role', role);
-    localStorage.setItem('county', county);
     setUser(prev => ({ ...prev, role, county }));
   };
 
@@ -107,7 +85,7 @@ export function AuthProvider({ children }) {
         error,
         login,
         logout,
-        setRoleAndCounty, // for demo purposes
+        setRoleAndCounty,
         isAuthenticated: !!user,
         isNational: user?.role === 'national',
       }}

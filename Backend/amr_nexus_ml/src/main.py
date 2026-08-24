@@ -1,7 +1,8 @@
 ﻿from datetime import datetime
 import sys
+import json
 from contextlib import asynccontextmanager
-from typing import Dict, Any, Generator
+from typing import Dict, Any, Generator, List, Optional
 
 import socketio
 import uvicorn
@@ -11,12 +12,16 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from src.core.config import settings
 from src.core.ml import load_models
 from src.db.session import engine
 from src.db.models import Base, DashboardNotification, AMRIsolateRecord
 from src.services.prediction_service import PredictionService
+from src.services.shap_service import compute_shap_explanation
+from src.services.llm_service import generate_llm_response
+from src.services.sms_service import send_sms
 from src.database import SessionLocal
 from src.utils.logger import logger
 from src.api.deps import get_db
@@ -34,11 +39,23 @@ from src.api.routers import (
 )
 from src.services.forecast_utils import generate_time_series_forecast
 
+# ---------------------- CORS ORIGINS PARSING ----------------------
+def get_cors_origins() -> List[str]:
+    raw = settings.CORS_ORIGINS
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return [raw]
+    return raw
+
+CORS_ORIGINS = get_cors_origins()
+# -----------------------------------------------------------------
+
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins=settings.CORS_ORIGINS
+    cors_allowed_origins=CORS_ORIGINS
 )
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> Generator[None, None, None]:
@@ -49,18 +66,18 @@ async def lifespan(app: FastAPI) -> Generator[None, None, None]:
     load_models()
     yield
 
-
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
+        allow_origins=CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
+    app.include_router(health_router, prefix="/api/v1", tags=["health"])
     app.include_router(prediction_router, prefix="/api/v1", tags=["predictions"])
     app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["analytics"])
     app.include_router(alerts_router, prefix="/api/v1/alerts", tags=["alerts"])
@@ -69,26 +86,24 @@ def create_app() -> FastAPI:
     app.include_router(guidance_router, prefix="/api/v1", tags=["guidance"])
     app.include_router(search_router, prefix="/api/v1", tags=["search"])
     app.include_router(user_router, prefix="/api/v1", tags=["user"])
-    app.include_router(health_router, prefix="/api/v1", tags=["health"])
     app.include_router(ews_router, prefix="/api/v1/ews", tags=["ews"])
 
+    app.include_router(health_router, tags=["health"])
     app.include_router(prediction_router, tags=["predictions"])
     app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
     app.include_router(alerts_router, prefix="/alerts", tags=["alerts"])
     app.include_router(reports_router, tags=["reports"])
+    app.include_router(comments_router, tags=["comments"])
     app.include_router(guidance_router, tags=["guidance"])
     app.include_router(search_router, tags=["search"])
     app.include_router(user_router, tags=["user"])
-    app.include_router(health_router, tags=["health"])
     app.include_router(ews_router, tags=["ews"])
 
-    # ===== DIRECT /ews/forecast =====
     @app.get("/ews/forecast")
     async def direct_ews_forecast(
-        county: str = Query(None, description="Optional county filter"),
+        county: str = Query(None),
         db: Session = Depends(get_db)
     ):
-        print(" /ews/forecast called!")
         try:
             forecast = generate_time_series_forecast(db, county)
             return forecast
@@ -99,11 +114,8 @@ def create_app() -> FastAPI:
             logger.error(f"Forecast error: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error")
 
-    # ===== ROOT /metadata/options (for frontend) =====
     @app.get("/metadata/options")
-    async def root_metadata_options(
-        db: Session = Depends(get_db)
-    ) -> Dict[str, Any]:
+    async def root_metadata_options(db: Session = Depends(get_db)) -> Dict[str, Any]:
         sectors = db.query(AMRIsolateRecord.sector).distinct().all()
         sub_sectors = db.query(AMRIsolateRecord.sub_sector).distinct().all()
         pathogens = db.query(AMRIsolateRecord.pathogen_code).distinct().all()
@@ -121,6 +133,37 @@ def create_app() -> FastAPI:
             "antibiotic_classes": [a[0] for a in antibiotic_classes if a[0]],
             "test_methods": [t[0] for t in test_methods if t[0]],
         }
+
+    @app.get("/alerts/{alert_id}/explanation")
+    async def get_alert_explanation(alert_id: str, db: Session = Depends(get_db)):
+        alert_record = db.query(DashboardNotification).filter(DashboardNotification.id == alert_id).first()
+        if not alert_record:
+            raise HTTPException(status_code=404, detail="Alert not found")
+        explanation = compute_shap_explanation(alert_record.features)
+        return explanation
+
+    class LLMRequest(BaseModel):
+        alert_id: str
+
+    @app.post("/llm/generate")
+    async def generate_llm(req: LLMRequest, db: Session = Depends(get_db)):
+        alert_record = db.query(DashboardNotification).filter(DashboardNotification.id == req.alert_id).first()
+        if not alert_record:
+            raise HTTPException(status_code=404, detail="Alert not found")
+        explanation = compute_shap_explanation(alert_record.features)
+        text = generate_llm_response(alert_record, explanation)
+        return {"text": text}
+
+    class SMSRequest(BaseModel):
+        phone: str
+        message: str
+
+    @app.post("/send-sms")
+    async def send_sms_endpoint(req: SMSRequest):
+        result = send_sms(req.phone, req.message)
+        if result["status"] == "error":
+            raise HTTPException(status_code=500, detail=result["detail"])
+        return result
 
     @app.on_event("startup")
     async def startup_event():
@@ -145,26 +188,21 @@ def create_app() -> FastAPI:
 
     return app
 
-
 app = create_app()
-
 combined_app = socketio.ASGIApp(socketio_server=sio, other_asgi_app=app)
 app.sio = sio
-
 
 @sio.event
 async def connect(sid: str, environ: Dict[str, Any]) -> None:
     logger.info(f"SocketIO client connected securely. Session ID: {sid}")
 
-
 @sio.event
 async def disconnect(sid: str) -> None:
     logger.info(f"SocketIO client disconnected cleanly. Session ID: {sid}")
 
-
 @sio.event
 async def stream_isolate_data(sid: str, data: Dict[str, Any]) -> None:
-    logger.info(f"Real‑time pipeline payload received via socket channel from: {sid}")
+    logger.info(f"Real-time pipeline payload received via socket channel from: {sid}")
     db = SessionLocal()
     try:
         service = PredictionService(db)
@@ -195,7 +233,6 @@ async def stream_isolate_data(sid: str, data: Dict[str, Any]) -> None:
         await sio.emit("prediction_failed", {"error": str(e)}, to=sid)
     finally:
         db.close()
-
 
 if __name__ == "__main__":
     try:

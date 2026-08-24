@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.env
+models/
+saved_models/
+data/*.csv
+*.db
+
+# Node
+node_modules/
+dist/
+build/
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/

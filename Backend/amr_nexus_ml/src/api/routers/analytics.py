@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from src.api.deps import get_db
 from src.db.models import AMRIsolateRecord, DashboardNotification
+from src.services.geospatial_service import get_sub_county_mdr, get_mdr_difference
+from src.services.forecast_service import generate_prophet_forecast
 
 analytics_router = APIRouter()
 
@@ -87,6 +89,46 @@ async def get_resistance_by_sector(
     return [
         {"name": row.sector, "value": round((row.mdr_count or 0) / row.total * 100, 1) if row.total else 0}
         for row in results
+    ]
+
+
+@analytics_router.get("/sector_monthly", response_model=List[Dict[str, Any]])
+async def get_sector_monthly(
+    months: int = 12,
+    db: Session = Depends(get_db)
+) -> List[Dict[str, Any]]:
+    results = db.query(
+        AMRIsolateRecord.sector,
+        func.strftime('%Y-%m', AMRIsolateRecord.sample_collection_date).label('month'),
+        func.count(AMRIsolateRecord.record_id).label("total"),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)).label("mdr_count")
+    ).filter(
+        AMRIsolateRecord.sample_collection_date >= datetime.now() - timedelta(days=months * 30)
+    ).group_by(
+        AMRIsolateRecord.sector,
+        func.strftime('%Y-%m', AMRIsolateRecord.sample_collection_date)
+    ).all()
+
+    sector_map = {}
+    for row in results:
+        sector = row.sector
+        month = row.month
+        rate = round((row.mdr_count or 0) / row.total * 100, 1) if row.total else 0.0
+        if sector not in sector_map:
+            sector_map[sector] = []
+        sector_map[sector].append({
+            "month": month,
+            "rate": rate,
+            "total_isolates": row.total,
+            "mdr_count": row.mdr_count,
+        })
+
+    for sector in sector_map:
+        sector_map[sector].sort(key=lambda x: x["month"])
+
+    return [
+        {"sector": sector, "monthly": monthly}
+        for sector, monthly in sector_map.items()
     ]
 
 
@@ -188,18 +230,13 @@ async def get_prophet_resistance_trajectory(
     antibiotic_class: str,
     db: Session = Depends(get_db)
 ) -> List[Dict[str, Any]]:
-    trajectory_points = []
-    base_rate = 0.25
-    for month in range(1, 13):
-        growth = (month * 0.03) if month > 6 else (month * 0.01)
-        is_inflection = bool(month == 7)
-        trajectory_points.append({
-            "month": month,
-            "predicted_resistance_rate": float(base_rate + growth),
-            "is_inflection_point": is_inflection,
-            "clinical_warning": "Statistically significant risk surge detected via Prophet engine" if is_inflection else None
-        })
-    return trajectory_points
+    try:
+        trajectory = generate_prophet_forecast(db, pathogen_code, antibiotic_class)
+        return trajectory
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Forecast generation failed")
 
 
 @analytics_router.get("/notifications", response_model=List[Dict[str, Any]])
@@ -221,3 +258,46 @@ async def get_dashboard_notifications(
         }
         for n in notifications
     ]
+
+
+@analytics_router.get("/metadata/options")
+async def get_form_options(
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    sectors = db.query(AMRIsolateRecord.sector).distinct().all()
+    sub_sectors = db.query(AMRIsolateRecord.sub_sector).distinct().all()
+    pathogens = db.query(AMRIsolateRecord.pathogen_code).distinct().all()
+    specimen_types = db.query(AMRIsolateRecord.specimen_type).distinct().all()
+    counties = db.query(AMRIsolateRecord.county).distinct().all()
+    antibiotic_classes = db.query(AMRIsolateRecord.antibiotic_class).distinct().all()
+    test_methods = db.query(AMRIsolateRecord.test_method).distinct().all()
+
+    return {
+        "sectors": [s[0] for s in sectors if s[0]],
+        "sub_sectors": [s[0] for s in sub_sectors if s[0]],
+        "pathogens": [{"code": p[0], "name": p[0]} for p in pathogens if p[0]],
+        "specimen_types": [s[0] for s in specimen_types if s[0]],
+        "counties": [c[0] for c in counties if c[0]],
+        "antibiotic_classes": [a[0] for a in antibiotic_classes if a[0]],
+        "test_methods": [t[0] for t in test_methods if t[0]],
+    }
+
+
+@analytics_router.get("/sub_county_mdr")
+async def sub_county_mdr(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    features = get_sub_county_mdr(db, start_date, end_date)
+    return {"type": "FeatureCollection", "features": features}
+
+
+@analytics_router.get("/mdr_difference")
+async def mdr_difference(
+    start_month: str,
+    end_month: str,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    features = get_mdr_difference(db, start_month, end_month)
+    return {"type": "FeatureCollection", "features": features}
