@@ -82,7 +82,7 @@ export default function CountyChoroplethMap({
 
   if (isLoading) {
     return (
-      <div className="h-full w-full flex items-center justify-center bg-[var(--bg-primary)]">
+      <div className="h-full w-full flex items-center justify-center bg-[var(--bg-primary)] min-h-[400px]">
         <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-cyan)]" />
       </div>
     );
@@ -119,45 +119,25 @@ export default function CountyChoroplethMap({
           {features.map((feature, idx) => {
             const props = feature.properties;
             const [lng, lat] = feature.geometry.coordinates;
-            const isDifference = mode === 'difference';
-            const value = isDifference ? props.change : props.mdr_rate;
-            const color = isDifference
-              ? props.change > 0
-                ? '#FF5A6E'
-                : props.change < 0
-                ? '#00FF88'
-                : '#94A3B8'
-              : getColor(props.risk_level);
-            const radius = isDifference
-              ? Math.min(20, Math.abs(props.change) * 50 + 8)
-              : Math.max(12, props.mdr_rate * 60);
+            const value = props.mdr_rate ?? 0;
+            const color = getColor(props.risk_level);
 
             return (
               <CircleMarker
                 key={`${props.county}-${props.sub_county}-${idx}`}
                 center={[lat, lng]}
-                radius={radius}
-                pathOptions={{
-                  color,
-                  fillColor: color,
-                  fillOpacity: 0.6,
-                  weight: 1.5,
-                }}
+                radius={Math.max(12, value * 60)}
+                pathOptions={{ color, fillColor: color, fillOpacity: 0.5, weight: 1.5 }}
                 eventHandlers={{ click: () => onCountyClick?.(props) }}
               >
-                <Tooltip permanent direction="top" offset={[0, -radius]}>
-                  <span
-                    style={{
-                      textShadow: isDark ? '0 1px 4px black' : '0 1px 4px white',
-                      color: isDark ? 'white' : '#0F172A',
-                      fontWeight: 600,
-                      fontSize: 12,
-                    }}
-                  >
-                    {props.sub_county}
-                    {isDifference
-                      ? ` (${props.change_percent > 0 ? '+' : ''}${props.change_percent}%)`
-                      : ` (${(props.mdr_rate * 100).toFixed(1)}%)`}
+                <Tooltip permanent direction="top" offset={[0, -Math.max(12, value * 60)]}>
+                  <span style={{
+                    textShadow: isDark ? '0 1px 4px black' : '0 1px 4px white',
+                    color: isDark ? 'white' : '#0F172A',
+                    fontWeight: 600,
+                    fontSize: 12,
+                  }}>
+                    {props.sub_county} ({Math.round(value * 100)}%)
                   </span>
                 </Tooltip>
               </CircleMarker>

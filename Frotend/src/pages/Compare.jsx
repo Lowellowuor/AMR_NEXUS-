@@ -3,6 +3,8 @@ import { ArrowsRightLeftIcon, DocumentArrowUpIcon } from '@heroicons/react/24/ou
 import api from '../api/client';
 import ResultCard from '../components/predictions/ResultCard';
 import Select from 'react-select';
+import { compareWithLLM } from '../api/endpoints';
+import toast from 'react-hot-toast';
 
 const SOURCE_TYPES = [
   { value: 'record', label: 'From Records' },
@@ -134,7 +136,6 @@ function ComparePanel({ side, onData, onClear }) {
             onChange={handleRecordChange}
             placeholder="Search prediction records..."
             isClearable
-            className="text-sm"
             styles={{
               control: (base) => ({
                 ...base,
@@ -144,7 +145,13 @@ function ComparePanel({ side, onData, onClear }) {
                 '&:hover': { borderColor: '#9ca3af' },
                 minHeight: '38px',
               }),
+              menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+              menu: (base) => ({ ...base, zIndex: 9999 }),
             }}
+            menuPortalTarget={document.body}
+            menuPosition="fixed"
+            menuPlacement="auto"
+            className="text-sm"
           />
           {selectedRecord && (
             <p className="text-xs text-gray-500 mt-2">Selected: {selectedRecord.label}</p>
@@ -185,14 +192,21 @@ function ComparePanel({ side, onData, onClear }) {
 export default function Compare() {
   const [leftData, setLeftData] = useState(null);
   const [rightData, setRightData] = useState(null);
+  const [explanation, setExplanation] = useState(null);
+  const [loadingExplanation, setLoadingExplanation] = useState(false);
 
-  const handleLeftData = (data) => {
-    setLeftData(data);
-  };
-
-  const handleRightData = (data) => {
-    setRightData(data);
-  };
+  useEffect(() => {
+    if (leftData && rightData) {
+      setLoadingExplanation(true);
+      compareWithLLM(leftData, rightData)
+        .then(res => setExplanation(res.text))
+        .catch(err => {
+          console.error('Comparison LLM error:', err);
+          toast.error('Could not generate comparison explanation');
+        })
+        .finally(() => setLoadingExplanation(false));
+    }
+  }, [leftData, rightData]);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -203,7 +217,7 @@ export default function Compare() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <ComparePanel side="left" onData={handleLeftData} />
+          <ComparePanel side="left" onData={setLeftData} />
           {leftData && (
             <div className="mt-4">
               <ResultCard result={leftData} />
@@ -211,7 +225,7 @@ export default function Compare() {
           )}
         </div>
         <div>
-          <ComparePanel side="right" onData={handleRightData} />
+          <ComparePanel side="right" onData={setRightData} />
           {rightData && (
             <div className="mt-4">
               <ResultCard result={rightData} />
@@ -240,6 +254,17 @@ export default function Compare() {
                 </div>
               );
             })}
+          </div>
+
+          <div className="mt-4">
+            {loadingExplanation ? (
+              <p className="text-sm text-slate-500">Generating plain‑English explanation…</p>
+            ) : explanation ? (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-slate-700">
+                <strong>Why they are different:</strong>
+                <p className="whitespace-pre-line mt-2">{explanation}</p>
+              </div>
+            ) : null}
           </div>
         </div>
       )}

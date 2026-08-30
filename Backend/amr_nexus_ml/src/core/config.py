@@ -57,8 +57,8 @@ class Settings(BaseSettings):
     SMTP_PASS: str = ""
     SMTP_FROM: str = "reports@amrnexus.org"
 
-    # Claude API (Anthropic)
-    ANTHROPIC_API_KEY: str = ""
+    # Gemini API
+    GEMINI_API_KEY: str = ""
 
     # Default user
     DEFAULT_USER_NAME: str = "John Doe"

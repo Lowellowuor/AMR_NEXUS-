@@ -10,9 +10,11 @@ import CriticalAlertBanner from '../components/alerts/CriticalAlertBanner';
 import { fetchSummary, fetchAlerts } from '../api/endpoints';
 
 export default function CountyDashboard() {
-  const { selectedCounty, role } = useOutletContext();
+  const { selectedCounty, role, counties } = useOutletContext();
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  const countyName = counties?.find(c => c.code === selectedCounty)?.name || selectedCounty;
 
   const { data: summary } = useQuery({
     queryKey: ['summary', selectedCounty],
@@ -36,7 +38,7 @@ export default function CountyDashboard() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-slate-900">
-                {selectedCounty || 'County'} Dashboard
+                {countyName} Dashboard
               </h1>
               <p className="text-sm text-slate-600">
                 County Veterinarian View · Poultry & Livestock AMR Surveillance

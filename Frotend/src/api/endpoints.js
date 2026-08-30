@@ -65,6 +65,9 @@ export const fetchAlertDetail = (alertId) => api.getAlertDetail(alertId);
 export const fetchAlertExplanation = (alertId) =>
   api.getAlertExplanation(alertId);
 
+export const fetchPredictionExplanation = (recordId) =>
+  api.getPredictionExplanation(recordId);
+
 export const fetchAlertGuidance = async ({ alertId }) => {
   const alert = await fetchAlertDetail(alertId);
   if (!alert) {
@@ -95,6 +98,9 @@ export const fetchAlertGuidance = async ({ alertId }) => {
 };
 
 export const generateLLMResponse = (alertId) => api.generateLLM(alertId);
+
+export const compareWithLLM = (recordA, recordB) =>
+  api.compareWithLLM(recordA, recordB);
 
 export const fetchTrends = ({ queryKey }) => {
   const [, pathogen, drug, region, months] = queryKey;

@@ -75,17 +75,25 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
       try {
         setOptionsLoading(true);
         const data = await api.getOptions();
+
         const pathogenOpts = (data.pathogens || []).map(p => ({
           value: p.code,
           label: `${p.name || p.code} (${p.code})`,
         }));
+
         const toOpts = (arr) => (arr || []).map(v => ({ value: v, label: v }));
+
+        const countyOpts = (data.counties || []).map(c => ({
+          value: c.code,
+          label: c.name,
+        }));
+
         setOptions({
           sectors: toOpts(data.sectors),
           sub_sectors: toOpts(data.sub_sectors),
           pathogens: pathogenOpts,
           specimen_types: toOpts(data.specimen_types),
-          counties: toOpts(data.counties),
+          counties: countyOpts,              // <-- fixed mapping
           antibiotic_classes: toOpts(data.antibiotic_classes),
           test_methods: toOpts(data.test_methods),
         });
@@ -102,7 +110,10 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
 
   useEffect(() => {
     if (user?.assigned_county && options.counties.length > 0 && !watch('county')) {
-      setValue('county', user.assigned_county);
+      const countyExists = options.counties.some(opt => opt.value === user.assigned_county);
+      if (countyExists) {
+        setValue('county', user.assigned_county);
+      }
     }
   }, [user, options.counties, setValue, watch]);
 
@@ -135,7 +146,6 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
     return () => clearInterval(interval);
   }, [watch, addDraft]);
 
-  // Updated select styles with proper z-index and portal positioning
   const selectStyles = {
     control: (base, state) => ({
       ...base,

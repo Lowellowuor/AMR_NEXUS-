@@ -46,10 +46,16 @@ export const api = {
   getRecommendations: (pathogen, antibioticClass) => fetch(`${API_BASE}/recommendations/${pathogen}/${antibioticClass}`).then(handleResponse),
   getAlertExplanation: (alertId) => fetch(`${API_BASE}/alerts/${alertId}/explanation`).then(handleResponse),
   getAlertDetail: (alertId) => fetch(`${API_BASE}/alerts/${alertId}`).then(handleResponse),
+  getPredictionExplanation: (recordId) => fetch(`${API_BASE}/predictions/${recordId}/explanation`).then(handleResponse),
   generateLLM: (alertId) => fetch(`${API_BASE}/llm/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ alert_id: alertId }),
+  }).then(handleResponse),
+  compareWithLLM: (recordA, recordB) => fetch(`${API_BASE}/llm/compare`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ record_a: recordA, record_b: recordB }),
   }).then(handleResponse),
   sendSMS: (phone, message) => fetch(`${API_BASE}/send-sms`, {
     method: 'POST',

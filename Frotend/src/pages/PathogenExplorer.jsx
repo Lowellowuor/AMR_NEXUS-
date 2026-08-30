@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import api from '../api/client';
-import CountyHeatmap from '../components/analytics/CountyHeatmap';
+import CountyChoroplethMap from '../components/map/CountyChoroplethMap';
 import { saveAs } from 'file-saver';
 
 export default function PathogenExplorer() {
@@ -45,7 +45,9 @@ export default function PathogenExplorer() {
           api.getOptions(),
         ]);
 
-        const sortedPathogens = pathogens
+        // Deduplicate by pathogen name
+        const uniquePathogens = Array.from(new Map(pathogens.map(p => [p.name, p])).values());
+        const sortedPathogens = uniquePathogens
           .map(p => ({ value: p.name, label: `${p.name} (${p.resistance}%)` }))
           .sort((a, b) => {
             const aRate = parseFloat(a.label.match(/\(([\d.]+)%/)?.[1] || 0);
@@ -54,7 +56,10 @@ export default function PathogenExplorer() {
           });
         setPathogenOptions(sortedPathogens);
 
-        const allCountyOptions = (options.counties || []).map(c => ({ value: c, label: c }));
+        const allCountyOptions = (options.counties || []).map(c => ({
+          value: c.code,
+          label: c.name,
+        }));
         setCountyOptions(allCountyOptions);
       } catch (err) {
         console.error('Failed to load options:', err);
@@ -64,7 +69,7 @@ export default function PathogenExplorer() {
   }, []);
 
   useEffect(() => {
-    if (!selectedPathogen) return;
+    if (!selectedPathogen || selectedPathogen === '') return;
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -181,6 +186,8 @@ export default function PathogenExplorer() {
               isClearable
               styles={selectStyles}
               menuPortalTarget={document.body}
+              menuPosition="fixed"
+              menuPlacement="auto"
             />
           </div>
           <div>
@@ -196,6 +203,8 @@ export default function PathogenExplorer() {
               isClearable
               styles={selectStyles}
               menuPortalTarget={document.body}
+              menuPosition="fixed"
+              menuPlacement="auto"
             />
           </div>
           <div>
@@ -300,11 +309,10 @@ export default function PathogenExplorer() {
               <MapPinIcon className="h-5 w-5 text-[var(--accent-cyan)]" />
               Geographic Distribution – <span className="text-[var(--accent-cyan)] font-bold">{selectedPathogen.toUpperCase()}</span>
             </h2>
-            <CountyHeatmap
-              startDate={startDate}
-              endDate={endDate}
-              pathogenCode={selectedPathogen}
-              county={selectedCounty}
+            <CountyChoroplethMap
+              darkMode={false}
+              mode="current"
+              onCountyClick={(props) => setSelectedCounty(props.code || props.county)}
             />
           </div>
         </div>

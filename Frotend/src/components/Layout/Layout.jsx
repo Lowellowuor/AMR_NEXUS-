@@ -19,7 +19,7 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
         if (options.counties?.length) {
           setCounties(options.counties);
           if (!selectedCounty && options.counties.length) {
-            setSelectedCounty(options.counties[0]);
+            setSelectedCounty(options.counties[0].code);   // <-- fixed: use code
           }
         }
       })
@@ -47,7 +47,7 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* Mobile sidebar overlay – transparent, no dark colour */}
+      {/* Mobile sidebar overlay */}
       <div
         className={`fixed inset-0 z-40 lg:hidden transition-opacity duration-300 ${
           sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -83,7 +83,7 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
         </div>
       </div>
 
-      {/* Desktop floating sidebar – light glass, no dark border */}
+      {/* Desktop floating sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:items-center lg:justify-center lg:pointer-events-none">
         <div className="lg:relative lg:w-64 lg:mx-6 lg:my-8 lg:pointer-events-auto">
           <div className="flex flex-col bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
@@ -117,7 +117,7 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
         />
         <main className="flex-1 p-4 sm:p-6 bg-white">
           <div className="max-w-7xl mx-auto">
-            <Outlet context={{ selectedCounty, role }} />
+            <Outlet context={{ selectedCounty, role, counties }} />
           </div>
         </main>
         <Footer />

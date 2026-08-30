@@ -4,22 +4,26 @@ from src.core.config import settings
 from src.utils.logger import logger
 
 try:
-    import anthropic
-    ANTHROPIC_AVAILABLE = True
+    from google import genai
+    from google.genai import types
+    GEMINI_AVAILABLE = True
 except ImportError:
-    ANTHROPIC_AVAILABLE = False
-    logger.warning("Anthropic SDK not installed. LLM features will be unavailable.")
+    GEMINI_AVAILABLE = False
+    logger.warning("Google GenAI SDK not installed. LLM features will be unavailable.")
+
+
+def _get_client():
+    api_key = getattr(settings, "GEMINI_API_KEY", None) or os.getenv("GEMINI_API_KEY")
+    if not api_key or api_key == "your_gemini_api_key":
+        raise RuntimeError("GEMINI_API_KEY is not set in .env")
+    return genai.Client(api_key=api_key)
 
 
 def generate_llm_response(alert_data: Dict[str, Any], explanation: Dict[str, Any]) -> str:
-    if not ANTHROPIC_AVAILABLE:
-        raise RuntimeError("Anthropic SDK is not installed. Install with: pip install anthropic")
+    if not GEMINI_AVAILABLE:
+        raise RuntimeError("Google GenAI SDK is not installed. Install with: pip install google-genai")
 
-    api_key = getattr(settings, "ANTHROPIC_API_KEY", None) or os.getenv("ANTHROPIC_API_KEY")
-    if not api_key or api_key == "your_claude_api_key":
-        raise RuntimeError("ANTHROPIC_API_KEY is not set in .env")
-
-    client = anthropic.Anthropic(api_key=api_key)
+    client = _get_client()
 
     system_prompt = """
     You are an expert in antimicrobial resistance surveillance and stewardship.
@@ -48,13 +52,35 @@ def generate_llm_response(alert_data: Dict[str, Any], explanation: Dict[str, Any
     """
 
     try:
-        message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=1024,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}]
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                max_output_tokens=1024,
+            ),
         )
-        return message.content[0].text
+        return response.text
     except Exception as e:
-        logger.error(f"Claude API call failed: {str(e)}")
+        logger.error(f"Gemini API call failed: {str(e)}")
+        raise
+
+
+def generate_comparison_response(prompt: str) -> str:
+    if not GEMINI_AVAILABLE:
+        raise RuntimeError("Google GenAI SDK is not installed. Install with: pip install google-genai")
+
+    client = _get_client()
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                max_output_tokens=1024,
+            ),
+        )
+        return response.text
+    except Exception as e:
+        logger.error(f"Gemini comparison call failed: {str(e)}")
         raise

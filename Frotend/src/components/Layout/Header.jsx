@@ -1,3 +1,4 @@
+
 import { useRef } from 'react';
 import { Sun, Moon, MapPin, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -83,7 +84,9 @@ export default function Header({
                   className="bg-transparent border-none outline-none text-xs font-medium text-slate-900 cursor-pointer"
                 >
                   {counties.map((county) => (
-                    <option key={county} value={county}>{county}</option>
+                    <option key={county.code} value={county.code}>
+                      {county.name}
+                    </option>
                   ))}
                 </select>
               </div>

@@ -1,6 +1,7 @@
 ﻿from datetime import datetime
 import sys
 import json
+import uuid
 from contextlib import asynccontextmanager
 from typing import Dict, Any, Generator, List, Optional
 
@@ -19,8 +20,8 @@ from src.core.ml import load_models
 from src.db.session import engine
 from src.db.models import Base, DashboardNotification, AMRIsolateRecord
 from src.services.prediction_service import PredictionService
-from src.services.shap_service import compute_shap_explanation
-from src.services.llm_service import generate_llm_response
+from src.services.shap_service import compute_shap_explanation, record_to_feature_dict
+from src.services.llm_service import generate_llm_response, generate_comparison_response
 from src.services.sms_service import send_sms
 from src.database import SessionLocal
 from src.utils.logger import logger
@@ -39,7 +40,7 @@ from src.api.routers import (
 )
 from src.services.forecast_utils import generate_time_series_forecast
 
-# ---------------------- CORS ORIGINS PARSING ----------------------
+
 def get_cors_origins() -> List[str]:
     raw = settings.CORS_ORIGINS
     if isinstance(raw, str):
@@ -49,13 +50,14 @@ def get_cors_origins() -> List[str]:
             return [raw]
     return raw
 
+
 CORS_ORIGINS = get_cors_origins()
-# -----------------------------------------------------------------
 
 sio = socketio.AsyncServer(
     async_mode="asgi",
     cors_allowed_origins=CORS_ORIGINS
 )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> Generator[None, None, None]:
@@ -65,6 +67,7 @@ async def lifespan(app: FastAPI) -> Generator[None, None, None]:
     logger.info("Triggering background loading for binary ML model artifacts...")
     load_models()
     yield
+
 
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
@@ -116,43 +119,145 @@ def create_app() -> FastAPI:
 
     @app.get("/metadata/options")
     async def root_metadata_options(db: Session = Depends(get_db)) -> Dict[str, Any]:
-        sectors = db.query(AMRIsolateRecord.sector).distinct().all()
-        sub_sectors = db.query(AMRIsolateRecord.sub_sector).distinct().all()
-        pathogens = db.query(AMRIsolateRecord.pathogen_code).distinct().all()
-        specimen_types = db.query(AMRIsolateRecord.specimen_type).distinct().all()
-        counties = db.query(AMRIsolateRecord.county).distinct().all()
-        antibiotic_classes = db.query(AMRIsolateRecord.antibiotic_class).distinct().all()
-        test_methods = db.query(AMRIsolateRecord.test_method).distinct().all()
+        sectors = [s[0] for s in db.query(AMRIsolateRecord.sector).distinct().all() if s[0]]
+        sub_sectors = [s[0] for s in db.query(AMRIsolateRecord.sub_sector).distinct().all() if s[0]]
+        pathogens = [{"code": p[0], "name": p[0]} for p in db.query(AMRIsolateRecord.pathogen_code).distinct().all() if p[0]]
+        specimen_types = [s[0] for s in db.query(AMRIsolateRecord.specimen_type).distinct().all() if s[0]]
+        counties_raw = [c[0] for c in db.query(AMRIsolateRecord.county).distinct().all() if c[0]]
+        antibiotic_classes = [a[0] for a in db.query(AMRIsolateRecord.antibiotic_class).distinct().all() if a[0]]
+        test_methods = [t[0] for t in db.query(AMRIsolateRecord.test_method).distinct().all() if t[0]]
+
+        counties = [{"code": c, "name": c} for c in counties_raw]
 
         return {
-            "sectors": [s[0] for s in sectors if s[0]],
-            "sub_sectors": [s[0] for s in sub_sectors if s[0]],
-            "pathogens": [{"code": p[0], "name": p[0]} for p in pathogens if p[0]],
-            "specimen_types": [s[0] for s in specimen_types if s[0]],
-            "counties": [c[0] for c in counties if c[0]],
-            "antibiotic_classes": [a[0] for a in antibiotic_classes if a[0]],
-            "test_methods": [t[0] for t in test_methods if t[0]],
+            "sectors": sectors,
+            "sub_sectors": sub_sectors,
+            "pathogens": pathogens,
+            "specimen_types": specimen_types,
+            "counties": counties,
+            "antibiotic_classes": antibiotic_classes,
+            "test_methods": test_methods,
         }
 
-    @app.get("/alerts/{alert_id}/explanation")
-    async def get_alert_explanation(alert_id: str, db: Session = Depends(get_db)):
-        alert_record = db.query(DashboardNotification).filter(DashboardNotification.id == alert_id).first()
-        if not alert_record:
-            raise HTTPException(status_code=404, detail="Alert not found")
-        explanation = compute_shap_explanation(alert_record.features)
+    @app.get("/alerts/{alert_id}")
+    async def get_alert_detail(alert_id: str, db: Session = Depends(get_db)):
+        # Try integer notification ID
+        try:
+            int_id = int(alert_id)
+            notif = db.query(DashboardNotification).filter(DashboardNotification.id == int_id).first()
+            if notif:
+                return {
+                    "id": notif.id,
+                    "timestamp": notif.created_at.isoformat(),
+                    "county": notif.county,
+                    "message": notif.message,
+                    "is_read": notif.is_read,
+                    "record_id": notif.record_id,
+                }
+        except ValueError:
+            pass
+
+        # Try UUID (with or without "alert-" prefix)
+        try:
+            clean_id = alert_id.replace("alert-", "")
+            record_uuid = uuid.UUID(clean_id)
+            record = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.record_id == record_uuid).first()
+            if record:
+                return {
+                    "id": str(record.record_id),
+                    "timestamp": record.created_at.isoformat(),
+                    "county": record.county,
+                    "message": f"Prediction record {clean_id}",
+                    "record_id": str(record.record_id),
+                }
+        except ValueError:
+            pass
+
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    @app.get("/predictions/{record_id}/explanation")
+    async def prediction_explanation(record_id: str, db: Session = Depends(get_db)):
+        try:
+            record_uuid = uuid.UUID(record_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid record ID format")
+
+        record = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.record_id == record_uuid).first()
+        if not record:
+            raise HTTPException(status_code=404, detail="Prediction record not found")
+
+        explanation = compute_shap_explanation(record_to_feature_dict(record))
         return explanation
+
+    @app.get("/alerts/{alert_id}/explanation")
+    async def alert_explanation(alert_id: str, db: Session = Depends(get_db)):
+        try:
+            int_id = int(alert_id)
+            notif = db.query(DashboardNotification).filter(DashboardNotification.id == int_id).first()
+            if notif:
+                raise HTTPException(status_code=404, detail="No linked prediction record for this alert")
+        except ValueError:
+            pass
+
+        try:
+            clean_id = alert_id.replace("alert-", "")
+            record_uuid = uuid.UUID(clean_id)
+            record = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.record_id == record_uuid).first()
+            if record:
+                return compute_shap_explanation(record_to_feature_dict(record))
+        except ValueError:
+            pass
+
+        raise HTTPException(status_code=404, detail="Alert or prediction not found")
 
     class LLMRequest(BaseModel):
         alert_id: str
 
     @app.post("/llm/generate")
     async def generate_llm(req: LLMRequest, db: Session = Depends(get_db)):
-        alert_record = db.query(DashboardNotification).filter(DashboardNotification.id == req.alert_id).first()
-        if not alert_record:
-            raise HTTPException(status_code=404, detail="Alert not found")
-        explanation = compute_shap_explanation(alert_record.features)
-        text = generate_llm_response(alert_record, explanation)
+        record = None
+
+        try:
+            int_id = int(req.alert_id)
+            notif = db.query(DashboardNotification).filter(DashboardNotification.id == int_id).first()
+            if notif:
+                raise HTTPException(status_code=404, detail="No linked prediction record for this alert")
+        except ValueError:
+            pass
+
+        try:
+            clean_id = req.alert_id.replace("alert-", "")
+            record_uuid = uuid.UUID(clean_id)
+            record = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.record_id == record_uuid).first()
+        except ValueError:
+            pass
+
+        if not record:
+            raise HTTPException(status_code=404, detail="Prediction record not found")
+
+        explanation = compute_shap_explanation(record_to_feature_dict(record))
+        text = generate_llm_response(record_to_feature_dict(record), explanation)
         return {"text": text}
+
+    class CompareRequest(BaseModel):
+        record_a: Dict[str, Any]
+        record_b: Dict[str, Any]
+
+    @app.post("/llm/compare")
+    async def compare_llm(req: CompareRequest):
+        try:
+            prompt = f"""
+            Compare these two AMR prediction records and explain in plain English why they are different.
+            Record A: {json.dumps(req.record_a, default=str)}
+            Record B: {json.dumps(req.record_b, default=str)}
+            Focus on differences in pathogen, antibiotic class, sector, county, MDR probability, anomaly flags, and key features.
+            Keep explanation under 150 words and use simple language.
+            """
+            text = generate_comparison_response(prompt)
+            return {"text": text}
+        except Exception as e:
+            logger.error(f"Comparison LLM error: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
 
     class SMSRequest(BaseModel):
         phone: str
@@ -188,17 +293,21 @@ def create_app() -> FastAPI:
 
     return app
 
+
 app = create_app()
 combined_app = socketio.ASGIApp(socketio_server=sio, other_asgi_app=app)
 app.sio = sio
+
 
 @sio.event
 async def connect(sid: str, environ: Dict[str, Any]) -> None:
     logger.info(f"SocketIO client connected securely. Session ID: {sid}")
 
+
 @sio.event
 async def disconnect(sid: str) -> None:
     logger.info(f"SocketIO client disconnected cleanly. Session ID: {sid}")
+
 
 @sio.event
 async def stream_isolate_data(sid: str, data: Dict[str, Any]) -> None:
@@ -233,6 +342,7 @@ async def stream_isolate_data(sid: str, data: Dict[str, Any]) -> None:
         await sio.emit("prediction_failed", {"error": str(e)}, to=sid)
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     try:
