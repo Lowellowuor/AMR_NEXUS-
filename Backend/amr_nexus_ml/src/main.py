@@ -13,6 +13,8 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
+import sqlalchemy as sa
 from pydantic import BaseModel
 
 from src.core.config import settings
@@ -141,7 +143,6 @@ def create_app() -> FastAPI:
 
     @app.get("/alerts/{alert_id}")
     async def get_alert_detail(alert_id: str, db: Session = Depends(get_db)):
-        # Try integer notification ID
         try:
             int_id = int(alert_id)
             notif = db.query(DashboardNotification).filter(DashboardNotification.id == int_id).first()
@@ -157,7 +158,6 @@ def create_app() -> FastAPI:
         except ValueError:
             pass
 
-        # Try UUID (with or without "alert-" prefix)
         try:
             clean_id = alert_id.replace("alert-", "")
             record_uuid = uuid.UUID(clean_id)
@@ -269,6 +269,50 @@ def create_app() -> FastAPI:
         if result["status"] == "error":
             raise HTTPException(status_code=500, detail=result["detail"])
         return result
+
+    @app.get("/analytics/pathogen_antibiotic_matrix")
+    async def pathogen_antibiotic_matrix(
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        county: Optional[str] = None,
+        db: Session = Depends(get_db)
+    ) -> Dict[str, Any]:
+        query = db.query(
+            AMRIsolateRecord.pathogen_code,
+            AMRIsolateRecord.antibiotic_class,
+            func.count(AMRIsolateRecord.record_id).label("total"),
+            func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)).label("mdr_count")
+        ).group_by(AMRIsolateRecord.pathogen_code, AMRIsolateRecord.antibiotic_class)
+
+        if start_date:
+            query = query.filter(AMRIsolateRecord.sample_collection_date >= start_date)
+        if end_date:
+            query = query.filter(AMRIsolateRecord.sample_collection_date <= end_date)
+        if county:
+            query = query.filter(AMRIsolateRecord.county == county)
+
+        rows = query.all()
+        if not rows:
+            return {"pathogens": [], "antibiotics": [], "matrix": []}
+
+        pathogens = sorted(set(r[0] for r in rows))
+        antibiotics = sorted(set(r[1] for r in rows))
+        data = {}
+        for r in rows:
+            pathogen, antibiotic, total, mdr = r
+            rate = (mdr or 0) / total * 100 if total else 0.0
+            data[(pathogen, antibiotic)] = round(rate, 1)
+
+        matrix = [
+            [data.get((p, a), 0.0) for a in antibiotics]
+            for p in pathogens
+        ]
+
+        return {
+            "pathogens": pathogens,
+            "antibiotics": antibiotics,
+            "matrix": matrix
+        }
 
     @app.on_event("startup")
     async def startup_event():

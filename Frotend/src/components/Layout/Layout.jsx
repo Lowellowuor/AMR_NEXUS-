@@ -11,19 +11,30 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
   const [counties, setCounties] = useState([]);
+  const [countiesLoading, setCountiesLoading] = useState(true);
   const [selectedCounty, setSelectedCounty] = useState(user?.assigned_county || '');
 
   useEffect(() => {
     api.getOptions()
       .then(options => {
-        if (options.counties?.length) {
-          setCounties(options.counties);
-          if (!selectedCounty && options.counties.length) {
-            setSelectedCounty(options.counties[0].code);   // <-- fixed: use code
+        const rawCounties = options.counties || [];
+        const normalized = rawCounties.map(c => {
+          if (typeof c === 'object' && c.code) {
+            return { code: c.code, name: c.name || c.code };
           }
+          return { code: c, name: c };
+        });
+        setCounties(normalized);
+        if (!selectedCounty && normalized.length > 0) {
+          setSelectedCounty(normalized[0].code);
         }
       })
-      .catch(() => {});
+      .catch(err => {
+        console.error('Failed to load counties:', err);
+      })
+      .finally(() => {
+        setCountiesLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -46,8 +57,7 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Mobile sidebar overlay */}
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <div
         className={`fixed inset-0 z-40 lg:hidden transition-opacity duration-300 ${
           sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -83,7 +93,6 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
         </div>
       </div>
 
-      {/* Desktop floating sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:items-center lg:justify-center lg:pointer-events-none">
         <div className="lg:relative lg:w-64 lg:mx-6 lg:my-8 lg:pointer-events-auto">
           <div className="flex flex-col bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
@@ -103,7 +112,6 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
         </div>
       </div>
 
-      {/* Main content */}
       <div className="lg:pl-72 flex flex-col flex-1">
         <Header
           role={role}
@@ -112,10 +120,11 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
           onToggleDark={onToggleDark}
           onMenuClick={() => setSidebarOpen(true)}
           counties={counties}
+          countiesLoading={countiesLoading}
           selectedCounty={selectedCounty}
           onCountyChange={setSelectedCounty}
         />
-        <main className="flex-1 p-4 sm:p-6 bg-white">
+        <main className="flex-1 p-4 sm:p-6">
           <div className="max-w-7xl mx-auto">
             <Outlet context={{ selectedCounty, role, counties }} />
           </div>

@@ -19,7 +19,7 @@ import DataQuality from './pages/DataQuality';
 function AppRoutes() {
   const { user } = useAuth();
   const [role, setRole] = useState(user?.role || 'national');
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     if (user?.role) setRole(user.role);

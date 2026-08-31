@@ -31,6 +31,7 @@ export const api = {
   getMDRDifference: (startMonth, endMonth) => fetch(`${API_BASE}/analytics/mdr_difference?start_month=${startMonth}&end_month=${endMonth}`).then(handleResponse),
   getResistanceByPathogenClass: (pathogenCode, params = '') => fetch(`${API_BASE}/analytics/resistance_by_pathogen/${pathogenCode}?${params}`).then(handleResponse),
   getPathogenTrend: (pathogenCode, months = 12, params = '') => fetch(`${API_BASE}/analytics/pathogen_trend?pathogen_code=${pathogenCode}&months=${months}&${params}`).then(handleResponse),
+  getPathogenAntibioticMatrix: (params = '') => fetch(`${API_BASE}/analytics/pathogen_antibiotic_matrix?${params}`).then(handleResponse),
   emailReport: (data) => fetch(`${API_BASE}/reports/email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

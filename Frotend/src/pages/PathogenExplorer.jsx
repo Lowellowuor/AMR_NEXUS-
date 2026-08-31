@@ -45,7 +45,6 @@ export default function PathogenExplorer() {
           api.getOptions(),
         ]);
 
-        // Deduplicate by pathogen name
         const uniquePathogens = Array.from(new Map(pathogens.map(p => [p.name, p])).values());
         const sortedPathogens = uniquePathogens
           .map(p => ({ value: p.name, label: `${p.name} (${p.resistance}%)` }))
@@ -304,16 +303,18 @@ export default function PathogenExplorer() {
             </div>
           )}
 
-          <div className="bg-[var(--bg-secondary)]/80 backdrop-blur-sm rounded-2xl shadow-md border border-[var(--border-primary)] p-6">
+          <div className="bg-[var(--bg-secondary)]/80 backdrop-blur-sm rounded-2xl shadow-md border border-[var(--border-primary)] p-6 overflow-hidden">
             <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
               <MapPinIcon className="h-5 w-5 text-[var(--accent-cyan)]" />
               Geographic Distribution – <span className="text-[var(--accent-cyan)] font-bold">{selectedPathogen.toUpperCase()}</span>
             </h2>
-            <CountyChoroplethMap
-              darkMode={false}
-              mode="current"
-              onCountyClick={(props) => setSelectedCounty(props.code || props.county)}
-            />
+            <div className="h-[450px] w-full min-h-0">
+              <CountyChoroplethMap
+                darkMode={false}
+                mode="current"
+                onCountyClick={(props) => setSelectedCounty(props.code || props.county)}
+              />
+            </div>
           </div>
         </div>
       )}

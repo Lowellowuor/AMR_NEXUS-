@@ -23,8 +23,8 @@ export const getMDRTrend = (months = 6, params = '') =>
 export const getSectorMonthly = (months = 12) =>
   api.getSectorMonthly(months);
 
-export const getResistanceByPathogen = (limit = 10) =>
-  api.getByPathogen(limit);
+export const getResistanceByPathogen = (limit = 10, params = '') =>
+  api.getByPathogen(limit, params);
 
 export const getResistanceBySector = () => api.getBySector();
 
@@ -35,6 +35,9 @@ export const getResistanceByPathogenClass = (pathogenCode, params = '') =>
 
 export const getPathogenTrend = (pathogenCode, months = 12, params = '') =>
   api.getPathogenTrend(pathogenCode, months, params);
+
+export const getPathogenAntibioticMatrix = (params = '') =>
+  api.getPathogenAntibioticMatrix(params);
 
 export const getPredictionHistory = (params = {}) => {
   const { limit = 50, skip = 0 } = params;

@@ -7,11 +7,12 @@ import MDTTrendChart from '../components/analytics/MDTTrendChart';
 import AnomalyTimeline from '../components/analytics/AnomalyTimeline';
 import PathogenResistanceChart from '../components/analytics/PathogenResistanceChart';
 import SectorPieChart from '../components/analytics/SectorPieChart';
-import CountyHeatmap from '../components/analytics/CountyHeatmap';
+import CountyChoroplethMap from '../components/map/CountyChoroplethMap';
 import PathogenAntibioticHeatmap from '../components/analytics/PathogenAntibioticHeatmap';
 import SectorTrendChart from '../components/trends/SectorTrendChart';
 import ExportAnalyticsButton from '../components/analytics/ExportAnalyticsButton';
 import CompareModal from '../components/analytics/CompareModal';
+import { DataCard } from '../components/ui/DataCard';
 
 export default function Analytics() {
   const { filters, updateFilters } = useAnalyticsFilters();
@@ -105,7 +106,6 @@ export default function Analytics() {
       <div id="analytics-dashboard" ref={dashboardRef} className="space-y-6">
         <AnalyticsSummaryCards summary={summary} />
 
-        {/* Sector Monthly Trend Chart */}
         <div className="grid grid-cols-1 gap-6">
           <SectorTrendChart months={12} />
         </div>
@@ -121,11 +121,27 @@ export default function Analytics() {
         </div>
 
         <div className="grid grid-cols-1 gap-6">
-          <CountyHeatmap startDate={filters.startDate} endDate={filters.endDate} selectedCounty={filters.county} onCountyClick={handleCountyClick} />
+          <DataCard title="Geographic Distribution" className="p-0 overflow-hidden">
+            <div className="h-[450px] w-full min-h-0">
+              <CountyChoroplethMap
+                darkMode={false}
+                mode="current"
+                startDate={filters.startDate}
+                endDate={filters.endDate}
+                county={filters.county}
+                pathogen={filters.pathogen}
+                onCountyClick={(props) => handleCountyClick(props.county || props.code)}
+              />
+            </div>
+          </DataCard>
         </div>
 
         <div className="grid grid-cols-1 gap-6">
-          <PathogenAntibioticHeatmap startDate={filters.startDate} endDate={filters.endDate} county={filters.county} />
+          <PathogenAntibioticHeatmap
+            startDate={filters.startDate}
+            endDate={filters.endDate}
+            county={filters.county}
+          />
         </div>
       </div>
     </div>

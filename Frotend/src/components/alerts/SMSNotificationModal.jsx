@@ -39,10 +39,10 @@ export default function SMSNotificationModal() {
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
-      <div className="relative card max-w-md w-full p-6">
+      <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 max-w-md w-full p-6">
         <button
           onClick={() => setOpen(false)}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"
         >
           <X className="w-4 h-4" />
         </button>
@@ -52,25 +52,25 @@ export default function SMSNotificationModal() {
             <Send className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-[var(--text-primary)]">Send SMS Alert</h3>
-            <p className="text-xs text-[var(--text-muted)]">Africa’s Talking</p>
+            <h3 className="font-semibold text-slate-900">Send SMS Alert</h3>
+            <p className="text-xs text-slate-500">Africa’s Talking</p>
           </div>
         </div>
 
         {alert && (
-          <div className="p-3 rounded-lg bg-slate-50 dark:bg-zinc-800 mb-4">
-            <p className="text-xs font-semibold text-[var(--text-primary)]">
+          <div className="p-3 rounded-lg bg-slate-50 mb-4">
+            <p className="text-xs font-semibold text-slate-900">
               To: {alert.recipient || alert.county} AMR Focal Person
             </p>
-            <p className="text-xs text-[var(--text-muted)] mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               {alert.phone || '+254 7XX XXX XXX'}
             </p>
-            <p className="text-sm text-[var(--text-secondary)] mt-2">{alert.message || alert.summary}</p>
+            <p className="text-sm text-slate-600 mt-2">{alert.message || alert.summary}</p>
           </div>
         )}
 
         {error && (
-          <div className="p-2 mb-3 rounded-lg bg-red-50 dark:bg-red-950/30 text-red-500 text-xs">
+          <div className="p-2 mb-3 rounded-lg bg-red-50 text-red-500 text-xs">
             {error}
           </div>
         )}
