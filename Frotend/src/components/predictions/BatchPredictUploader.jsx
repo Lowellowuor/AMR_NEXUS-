@@ -1,33 +1,81 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   CloudArrowUpIcon,
   DocumentArrowUpIcon,
   XMarkIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
-  PencilSquareIcon,
-  EyeIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../api/client';
 import { useOfflineDrafts } from '../../hooks/useOfflineDrafts';
 
-const FIELDS = [
-  { key: 'sector', label: 'Sector', required: false, default: 'ANIMAL' },
-  { key: 'sub_sector', label: 'Sub-sector', required: false, default: 'Poultry-Broiler' },
-  { key: 'pathogen_code', label: 'Pathogen', required: true, default: 'eco' },
-  { key: 'specimen_type', label: 'Specimen Type', required: false, default: 'Swab' },
-  { key: 'county', label: 'County', required: true, default: 'Nairobi' },
-  { key: 'antibiotic_class', label: 'Antibiotic Class', required: true, default: 'Fluoroquinolone' },
-  { key: 'test_method', label: 'Test Method', required: false, default: 'Disk diffusion' },
-  { key: 'sample_month', label: 'Sample Month', required: false, default: 6 },
-  { key: 'isolate_id', label: 'Isolate ID', required: false, default: '' },
-  { key: 'prior_antibiotic_exposure', label: 'Prior Exposure', required: false, default: false },
-  { key: 'age_group', label: 'Age Group', required: false, default: '' },
-  { key: 'gender', label: 'Gender', required: false, default: '' },
-  { key: 'hospitalised', label: 'Hospitalised', required: false, default: false },
-  { key: 'facility', label: 'Facility', required: false, default: '' },
+const BOOLEAN_FIELDS = [
+  'mdr_flag',
+  'prior_antibiotic_exposure',
+  'anomaly_flag',
+  'gene_marker_blandm',
+  'gene_marker_mcr1',
 ];
+
+const NUMBER_FIELDS = [
+  'sample_month',
+  'patient_age_years',
+  'anomaly_score',
+  'shap_value',
+  'mdr_probability',
+];
+
+const DATE_FIELDS = [
+  'created_at',
+  'updated_at',
+  'sample_collection_date',
+];
+
+function excelSerialToDate(serial) {
+  if (typeof serial === 'string') {
+    serial = Number(serial);
+  }
+  if (typeof serial !== 'number' || isNaN(serial)) {
+    return null;
+  }
+  const excelEpoch = new Date(1899, 11, 30);
+  const date = new Date(excelEpoch.getTime() + serial * 86400000);
+  return date.toISOString().slice(0, 10);
+}
+
+function convertValue(value, fieldName) {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  if (BOOLEAN_FIELDS.includes(fieldName)) {
+    if (typeof value === 'boolean') return value;
+    return value === true || value === 'true' || value === 1 || value === '1';
+  }
+
+  if (NUMBER_FIELDS.includes(fieldName)) {
+    const num = Number(value);
+    return isNaN(num) ? null : num;
+  }
+
+  if (DATE_FIELDS.includes(fieldName)) {
+    return excelSerialToDate(value);
+  }
+
+  return String(value);
+}
+
+function findColumnKey(row, target) {
+  const targetLower = target.toLowerCase().replace(/\s+/g, '_');
+  const keys = Object.keys(row);
+  const exact = keys.find(k => k.toLowerCase().replace(/\s+/g, '_') === targetLower);
+  if (exact) return exact;
+
+  const partial = keys.find(k => k.toLowerCase().includes(targetLower.split('_')[0]));
+  return partial || null;
+}
 
 export default function BatchPredictUploader({ onBatchComplete }) {
   const [file, setFile] = useState(null);
@@ -35,24 +83,8 @@ export default function BatchPredictUploader({ onBatchComplete }) {
   const [processing, setProcessing] = useState(false);
   const [results, setResults] = useState([]);
   const [progress, setProgress] = useState({ processed: 0, total: 0 });
-  const [columnMapping, setColumnMapping] = useState({});
-  const [showMapping, setShowMapping] = useState(false);
   const { addDraft } = useOfflineDrafts();
-
-  const detectColumns = (headers) => {
-    const mapping = {};
-    const usedColumns = new Set();
-    FIELDS.forEach(field => {
-      const match = headers.find(h =>
-        !usedColumns.has(h) &&
-        (h.toLowerCase() === field.key.toLowerCase() ||
-         h.toLowerCase().replace(/[^a-z0-9]/g, '') === field.key.toLowerCase())
-      );
-      mapping[field.key] = match || '';
-      if (match) usedColumns.add(match);
-    });
-    return mapping;
-  };
+  const queryClient = useQueryClient();
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -67,10 +99,6 @@ export default function BatchPredictUploader({ onBatchComplete }) {
       setRows(json);
       setResults([]);
       setProgress({ processed: 0, total: 0 });
-      const headers = Object.keys(json[0] || {});
-      const mapping = detectColumns(headers);
-      setColumnMapping(mapping);
-      setShowMapping(true);
     };
     reader.readAsArrayBuffer(file);
   };
@@ -80,18 +108,6 @@ export default function BatchPredictUploader({ onBatchComplete }) {
     setRows([]);
     setResults([]);
     setProgress({ processed: 0, total: 0 });
-    setColumnMapping({});
-    setShowMapping(false);
-  };
-
-  const getRowValue = (row, fieldKey) => {
-    const colName = columnMapping[fieldKey];
-    if (!colName) {
-      const field = FIELDS.find(f => f.key === fieldKey);
-      return field?.default || '';
-    }
-    const val = row[colName];
-    return val !== undefined && val !== null ? val : FIELDS.find(f => f.key === fieldKey)?.default || '';
   };
 
   const handleBatchSubmit = async () => {
@@ -105,24 +121,43 @@ export default function BatchPredictUploader({ onBatchComplete }) {
       const row = rows[i];
       try {
         const payload = {};
-        FIELDS.forEach(field => {
-          let val = getRowValue(row, field.key);
-          if (field.key === 'sample_month') val = parseInt(val) || field.default;
-          if (field.key === 'prior_antibiotic_exposure' || field.key === 'hospitalised') {
-            val = val === true || val === 'true' || val === 1 || val === '1';
-          }
-          payload[field.key] = val;
+        Object.keys(row).forEach((col) => {
+          const fieldName = col.trim().toLowerCase().replace(/\s+/g, '_');
+          payload[fieldName] = convertValue(row[col], fieldName);
         });
+
+        if (!payload.county) {
+          const countyCol = findColumnKey(row, 'county');
+          if (countyCol) payload.county = row[countyCol];
+        }
+        if (!payload.sub_county) {
+          const subCol = findColumnKey(row, 'sub_county') || findColumnKey(row, 'sub county');
+          if (subCol) payload.sub_county = row[subCol];
+        }
+
+        if (!payload.record_id) {
+          payload.record_id = crypto.randomUUID ? crypto.randomUUID() : `uuid-${Date.now()}-${i}`;
+        }
+        if (!payload.created_at) {
+          payload.created_at = new Date().toISOString();
+        }
+        if (!payload.updated_at) {
+          payload.updated_at = new Date().toISOString();
+        }
+        if (!payload.sample_collection_date) {
+          payload.sample_collection_date = new Date().toISOString().slice(0, 10);
+        }
+        if (!payload.sample_month) {
+          payload.sample_month = new Date(payload.sample_collection_date).getMonth() + 1;
+        }
+
         const result = await api.submitPrediction(payload);
         outcomes.push({ row, result, success: true });
+        queryClient.invalidateQueries({ queryKey: ['hotspots'] });
       } catch (err) {
         outcomes.push({ row, error: err.message, success: false });
         if (!navigator.onLine) {
-          const payload = {};
-          FIELDS.forEach(field => {
-            payload[field.key] = getRowValue(row, field.key);
-          });
-          await addDraft({ formData: payload, timestamp: new Date() });
+          await addDraft({ formData: row, timestamp: new Date() });
         }
       }
       setProgress({ processed: i + 1, total });
@@ -137,16 +172,6 @@ export default function BatchPredictUploader({ onBatchComplete }) {
   const failCount = results.length - successCount;
   const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
 
-  const getPreview = () => {
-    if (rows.length === 0) return {};
-    const row = rows[0];
-    const preview = {};
-    FIELDS.forEach(field => {
-      preview[field.key] = getRowValue(row, field.key);
-    });
-    return preview;
-  };
-
   return (
     <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 p-6">
       <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
@@ -154,7 +179,6 @@ export default function BatchPredictUploader({ onBatchComplete }) {
         Batch Upload & Predict
       </h3>
       <div className="space-y-4">
-        {/* File input */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-full transition font-medium">
             <CloudArrowUpIcon className="h-5 w-5" />
@@ -171,62 +195,6 @@ export default function BatchPredictUploader({ onBatchComplete }) {
           )}
         </div>
 
-        {/* Column Mapping */}
-        {rows.length > 0 && showMapping && (
-          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 max-h-64 overflow-y-auto">
-            <div className="flex justify-between items-center mb-3">
-              <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <PencilSquareIcon className="h-4 w-4 text-gray-500" />
-                Column Mapping
-              </h4>
-              <button
-                onClick={() => setShowMapping(false)}
-                className="text-xs text-gray-400 hover:text-gray-600"
-              >
-                Hide mapping
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {FIELDS.map(field => {
-                const value = columnMapping[field.key] || '';
-                return (
-                  <div key={field.key} className="flex items-center gap-2">
-                    <span className="text-xs text-gray-600 w-24 truncate flex-shrink-0">
-                      {field.label}
-                      {field.required && <span className="text-red-500 ml-0.5">*</span>}
-                    </span>
-                    <select
-                      value={value}
-                      onChange={(e) => setColumnMapping({ ...columnMapping, [field.key]: e.target.value })}
-                      className="flex-1 rounded-full border border-gray-300 bg-white px-3 py-1 text-xs focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="">— auto —</option>
-                      {headers.map(h => (
-                        <option key={h} value={h}>{h}</option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-3 p-2 bg-white rounded-lg border border-gray-100">
-              <p className="text-xs text-gray-400 mb-1 flex items-center gap-1">
-                <EyeIcon className="h-3 w-3" />
-                Preview (first row mapped values)
-              </p>
-              <div className="flex flex-wrap gap-2 text-xs">
-                {Object.entries(getPreview()).map(([key, val]) => (
-                  <span key={key} className="bg-gray-100 px-2 py-0.5 rounded">
-                    <span className="text-gray-500">{key}:</span>
-                    <span className="font-medium ml-1">{String(val)}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Data preview table (scrollable) */}
         {rows.length > 0 && (
           <div className="overflow-x-auto max-h-48 overflow-y-auto">
             <p className="text-sm text-gray-500 mb-2 sticky top-0 bg-white/80 backdrop-blur-sm py-1">
@@ -265,7 +233,6 @@ export default function BatchPredictUploader({ onBatchComplete }) {
           </div>
         )}
 
-        {/* Progress bar */}
         {progress.total > 0 && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-gray-500">
@@ -281,7 +248,6 @@ export default function BatchPredictUploader({ onBatchComplete }) {
           </div>
         )}
 
-        {/* Results summary */}
         {results.length > 0 && (
           <div className="mt-3 p-3 bg-gray-50 rounded-xl max-h-48 overflow-y-auto">
             <div className="flex items-center gap-4 text-sm mb-2">
@@ -308,7 +274,6 @@ export default function BatchPredictUploader({ onBatchComplete }) {
           </div>
         )}
 
-        {/* Submit button – ALWAYS VISIBLE */}
         <div className="pt-2 border-t border-gray-200 flex flex-wrap items-center gap-3">
           <button
             onClick={handleBatchSubmit}

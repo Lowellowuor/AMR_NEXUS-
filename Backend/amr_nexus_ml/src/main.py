@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from src.core.config import settings
 from src.core.ml import load_models
 from src.db.session import engine
-from src.db.models import Base, DashboardNotification, AMRIsolateRecord
+from src.db.models import Base, DashboardNotification, AMRIsolateRecord, Hotspot, User, UserTemplate
 from src.services.prediction_service import PredictionService
 from src.services.shap_service import compute_shap_explanation, record_to_feature_dict
 from src.services.llm_service import generate_llm_response, generate_comparison_response
@@ -39,6 +39,7 @@ from src.api.routers import (
     search_router,
     user_router,
     ews_router,
+    hotspot_router,
 )
 from src.services.forecast_utils import generate_time_series_forecast
 
@@ -82,6 +83,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Versioned routes
     app.include_router(health_router, prefix="/api/v1", tags=["health"])
     app.include_router(prediction_router, prefix="/api/v1", tags=["predictions"])
     app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["analytics"])
@@ -92,7 +94,9 @@ def create_app() -> FastAPI:
     app.include_router(search_router, prefix="/api/v1", tags=["search"])
     app.include_router(user_router, prefix="/api/v1", tags=["user"])
     app.include_router(ews_router, prefix="/api/v1/ews", tags=["ews"])
+    app.include_router(hotspot_router, prefix="/api/v1", tags=["hotspots"])
 
+    # Non-versioned routes (legacy / direct)
     app.include_router(health_router, tags=["health"])
     app.include_router(prediction_router, tags=["predictions"])
     app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
@@ -103,6 +107,7 @@ def create_app() -> FastAPI:
     app.include_router(search_router, tags=["search"])
     app.include_router(user_router, tags=["user"])
     app.include_router(ews_router, tags=["ews"])
+    app.include_router(hotspot_router, tags=["hotspots"])
 
     @app.get("/ews/forecast")
     async def direct_ews_forecast(
@@ -139,6 +144,50 @@ def create_app() -> FastAPI:
             "counties": counties,
             "antibiotic_classes": antibiotic_classes,
             "test_methods": test_methods,
+        }
+
+    @app.get("/templates")
+    @app.get("/api/v1/templates")
+    def get_templates_direct(db: Session = Depends(get_db)):
+        templates = db.query(UserTemplate).all()
+        return [
+            {
+                "id": t.id,
+                "name": t.name,
+                "form_data": t.form_data,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+            }
+            for t in templates
+        ]
+
+    @app.post("/templates")
+    @app.post("/api/v1/templates")
+    def save_template_direct(name: str, form_data: Dict[str, Any], db: Session = Depends(get_db)):
+        user = db.query(User).first()
+        if not user:
+            user = User(
+                email="admin@amrnexus.com",
+                name="Admin",
+                hashed_password="dummy",
+                role="admin",
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        template = UserTemplate(
+            user_id=user.id,
+            name=name,
+            form_data=form_data,
+        )
+        db.add(template)
+        db.commit()
+        db.refresh(template)
+        return {
+            "id": template.id,
+            "name": template.name,
+            "form_data": template.form_data,
+            "created_at": template.created_at.isoformat() if template.created_at else None,
         }
 
     @app.get("/alerts/{alert_id}")

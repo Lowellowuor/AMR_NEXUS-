@@ -1,10 +1,12 @@
+import hashlib
 import joblib
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from typing import Optional
 from sqlalchemy.orm import Session
 
-from src.db.models import AMRIsolateRecord, DashboardNotification
+from src.db.models import AMRIsolateRecord, DashboardNotification, Hotspot, SubCountyLocation
 from src.core.config import settings
 from src.utils.logger import logger
 
@@ -45,6 +47,44 @@ class PredictionService:
         record['sector_sub_pair_count'] = self.pair_freq_map.get(pair_key, 0)
         return record
 
+    def _get_or_create_hotspot(self, county: str, sub_county: Optional[str]) -> Hotspot:
+        hotspot = self.db.query(Hotspot).filter(
+            Hotspot.county == county,
+            Hotspot.sub_county == sub_county
+        ).first()
+        if hotspot:
+            return hotspot
+
+        loc = self.db.query(SubCountyLocation).filter(
+            SubCountyLocation.county == county,
+            SubCountyLocation.sub_county == sub_county
+        ).first()
+
+        if loc:
+            lat = float(loc.latitude)
+            lon = float(loc.longitude)
+        else:
+            # Deterministic pseudo‑coordinates within Kenya
+            name_str = f"{county}_{sub_county or ''}"
+            hash_val = int(hashlib.md5(name_str.encode()).hexdigest(), 16)
+            lat = -4.5 + (hash_val % 900) / 100.0
+            lon = 34.0 + ((hash_val // 900) % 800) / 100.0
+
+        hotspot = Hotspot(
+            name=f"{sub_county or county} Health Facility",
+            type="sub_county",
+            latitude=lat,
+            longitude=lon,
+            county=county,
+            sub_county=sub_county,
+            is_active=True
+        )
+        self.db.add(hotspot)
+        self.db.commit()
+        self.db.refresh(hotspot)
+        logger.info(f"Created hotspot for {county}/{sub_county}: id={hotspot.id}")
+        return hotspot
+
     async def predict(self, record, background_tasks=None):
         data = record.dict()
         data = self._add_pair_frequency_feature(data)
@@ -77,6 +117,12 @@ class PredictionService:
         except Exception as e:
             logger.warning(f"SHAP computation failed: {e}")
 
+        county = data.get('county')
+        sub_county = data.get('sub_county')
+        sample_date = data.get('sample_collection_date')
+
+        hotspot = self._get_or_create_hotspot(county, sub_county)
+
         db_record = AMRIsolateRecord(
             submission_type="REAL",
             pathogen_code=data.get('pathogen_code'),
@@ -86,7 +132,9 @@ class PredictionService:
             sector=data.get('sector'),
             sub_sector=data.get('sub_sector'),
             specimen_type=data.get('specimen_type'),
-            county=data.get('county'),
+            county=county,
+            sub_county=sub_county,
+            sample_collection_date=sample_date,
             sample_month=data.get('sample_month'),
             prior_antibiotic_exposure=bool(data.get('prior_antibiotic_exposure')),
             anomaly_score=anomaly_score,
@@ -96,6 +144,7 @@ class PredictionService:
             shap_top_feature=shap_top_feature,
             shap_value=shap_value,
             shap_summary=shap_summary,
+            hotspot_id=hotspot.id,
         )
         self.db.add(db_record)
         self.db.commit()
@@ -103,7 +152,7 @@ class PredictionService:
 
         if anomaly_flag:
             notif = DashboardNotification(
-                county=data.get('county', 'unknown'),
+                county=county,
                 message=f"Anomaly detected (score={anomaly_score:.3f}).",
             )
             self.db.add(notif)

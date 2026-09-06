@@ -5,8 +5,19 @@ async function handleResponse(res) {
     let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
     try {
       const errorData = await res.json();
-      errorMessage = errorData.detail || errorMessage;
+      if (errorData.detail) {
+        if (Array.isArray(errorData.detail)) {
+          errorMessage = errorData.detail
+            .map((e) => `${e.loc?.join('.') || 'body'}: ${e.msg}`)
+            .join('; ');
+        } else if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else {
+          errorMessage = JSON.stringify(errorData.detail);
+        }
+      }
     } catch { }
+    console.error('API Error:', errorMessage);
     throw new Error(errorMessage);
   }
   return res.json();
@@ -72,18 +83,32 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   }).then(handleResponse),
-  getTemplates: () => fetch(`${API_BASE}/templates`).then(handleResponse),
-  saveTemplate: (name, formData) => fetch(`${API_BASE}/templates`, {
+  getTemplates: () => fetch(`${API_BASE}/api/v1/templates`).then(handleResponse),
+  saveTemplate: (name, formData) => fetch(`${API_BASE}/api/v1/templates`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, form_data: formData })
   }).then(handleResponse),
-  deleteTemplate: (id) => fetch(`${API_BASE}/templates/${id}`, {
+  deleteTemplate: (id) => fetch(`${API_BASE}/api/v1/templates/${id}`, {
     method: 'DELETE'
   }).then(handleResponse),
   markAlertRead: (id) => fetch(`${API_BASE}/alerts/${id}/read`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
+  }).then(handleResponse),
+  getHotspots: (params = '') => fetch(`${API_BASE}/hotspots?${params}`).then(handleResponse),
+  createHotspot: (data) => fetch(`${API_BASE}/hotspots`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(handleResponse),
+  updateHotspot: (id, data) => fetch(`${API_BASE}/hotspots/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(handleResponse),
+  deleteHotspot: (id) => fetch(`${API_BASE}/hotspots/${id}`, {
+    method: 'DELETE'
   }).then(handleResponse),
 };
 

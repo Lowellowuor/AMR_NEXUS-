@@ -24,6 +24,13 @@ export default function NationalMap({ role, darkMode }) {
     queryFn: fetchAlerts,
   });
 
+  const isAdmin = role === 'admin';
+
+  // Convert month strings to date strings for hotspot filtering (optional)
+  // For now, we pass undefined to avoid 422; hotspot endpoint will return all hotspots.
+  const startDate = filters.startMonth ? `${filters.startMonth}-01` : undefined;
+  const endDate = filters.endMonth ? `${filters.endMonth}-28` : undefined; // rough end, but not used now
+
   return (
     <div className="flex flex-col h-full space-y-4">
       <div className="flex items-center justify-between shrink-0">
@@ -40,13 +47,20 @@ export default function NationalMap({ role, darkMode }) {
 
       <div className="flex-1 min-h-0 relative">
         <DataCard className="h-full p-0 overflow-hidden">
-          <CountyChoroplethMap
-            darkMode={darkMode}
-            mode={filters.mode}
-            startMonth={filters.startMonth}
-            endMonth={filters.endMonth}
-            onCountyClick={(props) => setSelectedCounty(props)}
-          />
+          <div className="h-full w-full" style={{ minHeight: '400px' }}>
+            <CountyChoroplethMap
+              darkMode={darkMode}
+              mode={filters.mode}
+              startMonth={filters.startMonth}
+              endMonth={filters.endMonth}
+              startDate={startDate}
+              endDate={endDate}
+              county={undefined}
+              pathogen={undefined}
+              onCountyClick={(props) => setSelectedCounty(props)}
+              isAdmin={isAdmin}
+            />
+          </div>
         </DataCard>
 
         <CountyDetailPanel

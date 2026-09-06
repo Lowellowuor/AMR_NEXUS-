@@ -93,7 +93,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
           sub_sectors: toOpts(data.sub_sectors),
           pathogens: pathogenOpts,
           specimen_types: toOpts(data.specimen_types),
-          counties: countyOpts,              // <-- fixed mapping
+          counties: countyOpts,
           antibiotic_classes: toOpts(data.antibiotic_classes),
           test_methods: toOpts(data.test_methods),
         });
@@ -150,10 +150,10 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
     control: (base, state) => ({
       ...base,
       borderRadius: '9999px',
-      borderColor: state.isFocused ? '#0D9488' : '#CBD5E1',
+      borderColor: state.isFocused ? '#4B5563' : '#CBD5E1',
       borderWidth: '1px',
-      boxShadow: state.isFocused ? '0 0 0 3px rgba(13,148,136,0.2)' : 'none',
-      '&:hover': { borderColor: '#94A3B8' },
+      boxShadow: state.isFocused ? '0 0 0 3px rgba(75,85,99,0.2)' : 'none',
+      '&:hover': { borderColor: '#9CA3AF' },
       minHeight: '42px',
       backgroundColor: '#FFFFFF',
     }),
@@ -172,12 +172,12 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
     }),
     option: (base, { isFocused, isSelected }) => ({
       ...base,
-      backgroundColor: isSelected ? '#0D9488' : isFocused ? '#F0FDFA' : '#FFFFFF',
+      backgroundColor: isSelected ? '#6B7280' : isFocused ? '#F3F4F6' : '#FFFFFF',
       color: isSelected ? '#FFFFFF' : '#1F2937',
       padding: '8px 16px',
       cursor: 'pointer',
     }),
-    placeholder: (base) => ({ ...base, color: '#94A3B8' }),
+    placeholder: (base) => ({ ...base, color: '#9CA3AF' }),
     singleValue: (base) => ({ ...base, color: '#1F2937', fontWeight: 500 }),
     input: (base) => ({ ...base, color: '#1F2937' }),
   };
@@ -201,7 +201,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
     return (
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-slate-200 p-6 flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto"></div>
           <p className="mt-4 text-slate-600">Loading form options...</p>
         </div>
       </div>
@@ -212,7 +212,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
     return (
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-slate-200 p-6">
         <p className="text-red-500 text-center">{optionsError}</p>
-        <button onClick={() => window.location.reload()} className="mt-4 text-teal-600 underline">
+        <button onClick={() => window.location.reload()} className="mt-4 text-gray-600 underline">
           Retry
         </button>
       </div>
@@ -233,7 +233,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Sub-sector *</label>
-              <input {...register('sub_sector')} className="mt-1 block w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" placeholder="e.g., Poultry-Broiler" />
+              <input {...register('sub_sector')} className="mt-1 block w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800 focus:border-gray-500 focus:ring-2 focus:ring-gray-500/20" placeholder="e.g., Poultry-Broiler" />
               {errors.sub_sector && <p className="text-red-500 text-xs mt-1">{errors.sub_sector.message}</p>}
             </div>
             <div>
@@ -263,13 +263,13 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Sample Month *</label>
-              <input type="number" {...register('sample_month', { valueAsNumber: true })} className="mt-1 block w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" min="1" max="12" />
+              <input type="number" {...register('sample_month', { valueAsNumber: true })} className="mt-1 block w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800 focus:border-gray-500 focus:ring-2 focus:ring-gray-500/20" min="1" max="12" />
               {errors.sample_month && <p className="text-red-500 text-xs mt-1">{errors.sample_month.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Isolate ID</label>
               <div className="flex gap-2">
-                <input {...register('isolate_id')} className="mt-1 block w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" placeholder="Scan or enter ID" />
+                <input {...register('isolate_id')} className="mt-1 block w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800 focus:border-gray-500 focus:ring-2 focus:ring-gray-500/20" placeholder="Scan or enter ID" />
                 <button type="button" onClick={startScan} className="mt-1 inline-flex items-center gap-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-full text-sm font-medium text-slate-800 transition-colors">
                   <QrCodeIcon className="h-4 w-4" /> Scan
                 </button>
@@ -277,7 +277,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
             </div>
           </div>
 
-          <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-medium text-teal-600 hover:text-teal-700">
+          <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-medium text-gray-600 hover:text-gray-800">
             {showAdvanced ? '− Hide advanced' : '+ Show advanced'}
           </button>
 
@@ -287,7 +287,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
               <label className="flex items-center gap-2"><input type="checkbox" {...register('hospitalised')} className="rounded border-slate-300" /><span className="text-sm text-slate-800">Hospitalised</span></label>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Age group</label>
-                <input {...register('age_group')} className="mt-1 block w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
+                <input {...register('age_group')} className="mt-1 block w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800 focus:border-gray-500 focus:ring-2 focus:ring-gray-500/20" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Gender</label>
@@ -296,7 +296,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Facility</label>
                 <div className="flex gap-2">
-                  <input {...register('facility')} className="mt-1 block w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" placeholder="Enter facility name" />
+                  <input {...register('facility')} className="mt-1 block w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800 focus:border-gray-500 focus:ring-2 focus:ring-gray-500/20" placeholder="Enter facility name" />
                   <button type="button" onClick={startListening} disabled={isListening} className="mt-1 inline-flex items-center gap-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-full text-sm font-medium text-slate-800 transition-colors disabled:opacity-50">
                     <MicrophoneIcon className={`h-4 w-4 ${isListening ? 'text-red-500 animate-pulse' : ''}`} />
                     {isListening ? 'Listening...' : 'Speak'}
@@ -311,7 +311,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full md:w-auto px-10 py-3.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-lg rounded-full shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-teal-500/30"
+            className="w-full md:w-auto px-10 py-3.5 bg-gray-800 hover:bg-gray-900 text-white font-bold text-lg rounded-full shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-gray-500/30"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-3">

@@ -5,10 +5,13 @@ import {
   TileLayer,
   CircleMarker,
   Tooltip,
+  Marker,
+  Popup,
   useMap,
 } from 'react-leaflet';
 import { Loader2 } from 'lucide-react';
-import { fetchSubCountyMDR, fetchMDRDifference } from '../../api/endpoints';
+import { fetchSubCountyMDR, fetchMDRDifference, fetchHotspots } from '../../api/endpoints';
+import HotspotDetailPanel from './HotspotDetailPanel';
 
 function MapResizer() {
   const map = useMap();
@@ -30,13 +33,9 @@ const getColor = (level) => {
   }
 };
 
-const DARK_TILE = {
-  url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-};
-const LIGHT_TILE = {
-  url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-  attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+const OSM_TILE = {
+  url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 };
 
 export default function CountyChoroplethMap({
@@ -44,12 +43,17 @@ export default function CountyChoroplethMap({
   mode = 'current',
   startMonth,
   endMonth,
+  startDate,
+  endDate,
+  county,
+  pathogen,
   onCountyClick,
 }) {
   const containerRef = useRef(null);
-  const [mapReady, setMapReady] = useState(false);
+  const [mapReady, setMapReady] = useState(true);
+  const [selectedHotspot, setSelectedHotspot] = useState(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey:
       mode === 'difference'
         ? ['mdr-difference', startMonth, endMonth]
@@ -58,6 +62,13 @@ export default function CountyChoroplethMap({
       mode === 'difference'
         ? () => fetchMDRDifference(startMonth, endMonth)
         : fetchSubCountyMDR,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: hotspotsData } = useQuery({
+    queryKey: ['hotspots', startDate, endDate, county, pathogen],
+    queryFn: () => fetchHotspots({ start_date: startDate, end_date: endDate, county, pathogen }),
+    enabled: true,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -77,7 +88,13 @@ export default function CountyChoroplethMap({
     observer.observe(container);
     const rect = container.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) setMapReady(true);
-    return () => observer.disconnect();
+
+    const timer = setTimeout(() => setMapReady(true), 500);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
   }, []);
 
   if (isLoading) {
@@ -88,16 +105,23 @@ export default function CountyChoroplethMap({
     );
   }
 
+  if (isError) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-[var(--bg-primary)] min-h-[400px] text-red-500">
+        Error loading map data: {error?.message}
+      </div>
+    );
+  }
+
   const features = data?.features || [];
   const isDark = darkMode !== false;
-  const currentTile = isDark ? DARK_TILE : LIGHT_TILE;
   const mapBackground = isDark ? '#0A0E17' : '#F8FAFC';
 
   return (
     <div
       key={isDark ? 'dark-map' : 'light-map'}
       ref={containerRef}
-      className="h-full w-full"
+      className="h-full w-full relative"
       style={{ minHeight: 400, background: mapBackground }}
     >
       {!mapReady && (
@@ -109,12 +133,17 @@ export default function CountyChoroplethMap({
         <MapContainer
           center={[-0.5, 37.0]}
           zoom={7}
-          style={{ height: '100%', width: '100%', background: mapBackground }}
+          style={{
+            height: '100%',
+            width: '100%',
+            background: mapBackground,
+            filter: isDark ? 'invert(1) hue-rotate(180deg)' : 'none',
+          }}
           scrollWheelZoom={false}
           zoomControl={true}
         >
           <MapResizer />
-          <TileLayer url={currentTile.url} attribution={currentTile.attribution} />
+          <TileLayer url={OSM_TILE.url} attribution={OSM_TILE.attribution} />
 
           {features.map((feature, idx) => {
             const props = feature.properties;
@@ -143,7 +172,29 @@ export default function CountyChoroplethMap({
               </CircleMarker>
             );
           })}
+
+          {hotspotsData?.map((hotspot) => (
+            <Marker
+              key={`hotspot-${hotspot.id}`}
+              position={[hotspot.latitude, hotspot.longitude]}
+              eventHandlers={{ click: () => setSelectedHotspot(hotspot) }}
+            >
+              <Popup>
+                <div>
+                  <strong>{hotspot.name}</strong><br />
+                  <span>Resistance: {hotspot.resistance_rate?.toFixed(1)}%</span>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
         </MapContainer>
+      )}
+
+      {selectedHotspot && (
+        <HotspotDetailPanel
+          hotspot={selectedHotspot}
+          onClose={() => setSelectedHotspot(null)}
+        />
       )}
     </div>
   );

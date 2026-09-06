@@ -113,3 +113,15 @@ export const fetchTrends = ({ queryKey }) => {
   if (region) params.append('county', region);
   return api.getMDRTrend(months || 6, params.toString());
 };
+
+// Hotspot functions (using specific API client methods)
+export const fetchHotspots = (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  return api.getHotspots(query);
+};
+
+export const createHotspot = (data) => api.createHotspot(data);
+
+export const updateHotspot = (id, data) => api.updateHotspot(id, data);
+
+export const deleteHotspot = (id) => api.deleteHotspot(id);

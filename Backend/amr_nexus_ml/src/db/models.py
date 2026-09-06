@@ -14,7 +14,7 @@ class AMRIsolateRecord(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     submission_type = Column(String(20))
 
-    pathogen_code = Column(String(20))
+    pathogen_code = Column(String(100))
     mdr_flag = Column(Boolean)
 
     antibiotic_class = Column(String(100))
@@ -51,6 +51,9 @@ class AMRIsolateRecord(Base):
     gene_marker_blandm = Column(Boolean, nullable=True, default=False)
     gene_marker_mcr1 = Column(Boolean, nullable=True, default=False)
 
+    # NEW: Optional link to a Hotspot (facility)
+    hotspot_id = Column(Integer, ForeignKey("hotspots.id"), nullable=True)
+
 
 class SubCountyLocation(Base):
     __tablename__ = "sub_county_locations"
@@ -60,6 +63,23 @@ class SubCountyLocation(Base):
     sub_county = Column(String(100), index=True)
     latitude = Column(Numeric(8, 6))
     longitude = Column(Numeric(9, 6))
+
+
+class Hotspot(Base):
+    __tablename__ = "hotspots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(200), nullable=False)
+    type = Column(String(50), nullable=False)  
+    latitude = Column(Numeric(8, 6), nullable=False)
+    longitude = Column(Numeric(9, 6), nullable=False)
+    county = Column(String(100), nullable=False, index=True)
+    sub_county = Column(String(100), nullable=True)
+    address = Column(String(300), nullable=True)
+    contact = Column(String(100), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class Comment(Base):

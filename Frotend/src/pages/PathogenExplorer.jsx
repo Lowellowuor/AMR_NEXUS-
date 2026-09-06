@@ -111,7 +111,7 @@ export default function PathogenExplorer() {
   const ActionButton = ({ onClick, icon, label, disabled, variant = 'primary' }) => {
     const base = 'inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2';
     const variants = {
-      primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500',
+      primary: 'bg-gray-800 text-white hover:bg-gray-900 focus:ring-gray-500',
       secondary: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-300',
       dark: 'bg-gray-800 text-white hover:bg-gray-900 focus:ring-gray-700',
     };
@@ -127,30 +127,30 @@ export default function PathogenExplorer() {
     control: (base) => ({
       ...base,
       borderRadius: '9999px',
-      borderColor: 'var(--border-primary)',
+      borderColor: '#d1d5db',
       boxShadow: 'none',
-      '&:hover': { borderColor: 'var(--border-secondary)' },
-      backgroundColor: 'var(--bg-secondary)',
+      '&:hover': { borderColor: '#9ca3af' },
+      backgroundColor: '#ffffff',
     }),
     menu: (base) => ({
       ...base,
       borderRadius: '12px',
       marginTop: '4px',
       zIndex: 9999,
-      backgroundColor: 'var(--bg-secondary)',
-      border: '1px solid var(--border-primary)',
+      backgroundColor: '#ffffff',
+      border: '1px solid #e5e7eb',
     }),
     menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-    singleValue: (base) => ({ ...base, color: 'var(--text-primary)' }),
-    input: (base) => ({ ...base, color: 'var(--text-primary)' }),
-    placeholder: (base) => ({ ...base, color: 'var(--text-muted)' }),
+    singleValue: (base) => ({ ...base, color: '#1f2937' }),
+    input: (base) => ({ ...base, color: '#1f2937' }),
+    placeholder: (base) => ({ ...base, color: '#9ca3af' }),
   };
 
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-          <ChartBarIcon className="h-6 w-6 text-[var(--accent-cyan)]" />
+        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <ChartBarIcon className="h-6 w-6 text-gray-800" />
           Pathogen Explorer
         </h1>
         <div className="flex gap-2">
@@ -170,11 +170,11 @@ export default function PathogenExplorer() {
         </div>
       </div>
 
-      <div className="bg-[var(--bg-secondary)]/80 backdrop-blur-sm rounded-2xl p-6 shadow-md border border-[var(--border-primary)] space-y-4 relative" style={{ overflow: 'visible' }}>
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-md border border-white/50 space-y-4 relative" style={{ overflow: 'visible' }}>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
           <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
-              <ChartBarIcon className="h-4 w-4 text-[var(--text-muted)]" />
+            <label className="block text-sm font-medium text-gray-600 mb-1 flex items-center gap-1">
+              <ChartBarIcon className="h-4 w-4 text-gray-400" />
               Pathogen
             </label>
             <Select
@@ -190,8 +190,8 @@ export default function PathogenExplorer() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
-              <MapPinIcon className="h-4 w-4 text-[var(--text-muted)]" />
+            <label className="block text-sm font-medium text-gray-600 mb-1 flex items-center gap-1">
+              <MapPinIcon className="h-4 w-4 text-gray-400" />
               County
             </label>
             <Select
@@ -207,27 +207,27 @@ export default function PathogenExplorer() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
-              <CalendarIcon className="h-4 w-4 text-[var(--text-muted)]" />
+            <label className="block text-sm font-medium text-gray-600 mb-1 flex items-center gap-1">
+              <CalendarIcon className="h-4 w-4 text-gray-400" />
               Start Date
             </label>
             <input
               type="date"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
-              className="w-full rounded-full border border-[var(--border-primary)] bg-[var(--bg-secondary)] px-4 py-2 text-sm text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent-cyan)]"
+              className="w-full rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-gray-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
-              <CalendarIcon className="h-4 w-4 text-[var(--text-muted)]" />
+            <label className="block text-sm font-medium text-gray-600 mb-1 flex items-center gap-1">
+              <CalendarIcon className="h-4 w-4 text-gray-400" />
               End Date
             </label>
             <input
               type="date"
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
-              className="w-full rounded-full border border-[var(--border-primary)] bg-[var(--bg-secondary)] px-4 py-2 text-sm text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent-cyan)]"
+              className="w-full rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-gray-500"
             />
           </div>
         </div>
@@ -241,7 +241,7 @@ export default function PathogenExplorer() {
                 setStartDate('');
                 setEndDate('');
               }}
-              className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
             >
               <XMarkIcon className="h-4 w-4" />
               Clear all filters
@@ -251,62 +251,62 @@ export default function PathogenExplorer() {
       </div>
 
       {!selectedPathogen && (
-        <div className="text-center py-12 bg-[var(--bg-secondary)]/80 backdrop-blur-sm rounded-2xl shadow-md border border-[var(--border-primary)]">
-          <ChartBarIcon className="h-12 w-12 text-[var(--text-muted)] mx-auto mb-3" />
-          <p className="text-[var(--text-muted)]">Select a pathogen to explore resistance patterns.</p>
+        <div className="text-center py-12 bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50">
+          <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <p className="text-gray-500">Select a pathogen to explore resistance patterns.</p>
         </div>
       )}
 
       {selectedPathogen && loading && (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--accent-cyan)]" />
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-800" />
         </div>
       )}
 
       {selectedPathogen && !loading && (
         <div className="space-y-8">
-          <div className="bg-[var(--bg-secondary)]/80 backdrop-blur-sm rounded-2xl shadow-md border border-[var(--border-primary)] p-6">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-              <ChartBarIcon className="h-5 w-5 text-[var(--accent-cyan)]" />
-              Resistance by Antibiotic Class – <span className="text-[var(--accent-cyan)] font-bold">{selectedPathogen.toUpperCase()}</span>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <ChartBarIcon className="h-5 w-5 text-gray-800" />
+              Resistance by Antibiotic Class – <span className="text-gray-800 font-bold">{selectedPathogen.toUpperCase()}</span>
             </h2>
             {resistanceData.length === 0 ? (
-              <p className="text-[var(--text-muted)] text-center py-8">No resistance data available for this pathogen.</p>
+              <p className="text-gray-500 text-center py-8">No resistance data available for this pathogen.</p>
             ) : (
               <ResponsiveContainer width="100%" height={400}>
                 <BarChart data={resistanceData} margin={{ top: 10, right: 30, left: 20, bottom: 70 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" />
-                  <XAxis dataKey="antibiotic_class" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
-                  <YAxis unit="%" domain={[0, 100]} tick={{ fill: 'var(--text-muted)' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="antibiotic_class" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                  <YAxis unit="%" domain={[0, 100]} tick={{ fill: '#6b7280' }} />
                   <Tooltip formatter={(v) => `${v}%`} />
-                  <Bar dataKey="resistance" fill="#8884d8" name="MDR (%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="resistance" fill="#6b7280" name="MDR (%)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
 
           {trendData.length > 0 && (
-            <div className="bg-[var(--bg-secondary)]/80 backdrop-blur-sm rounded-2xl shadow-md border border-[var(--border-primary)] p-6">
-              <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-                <ArrowTrendingUpIcon className="h-5 w-5 text-[var(--accent-cyan)]" />
-                MDR Trend (last 12 months) – <span className="text-[var(--accent-cyan)] font-bold">{selectedPathogen.toUpperCase()}</span>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 p-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <ArrowTrendingUpIcon className="h-5 w-5 text-gray-800" />
+                MDR Trend (last 12 months) – <span className="text-gray-800 font-bold">{selectedPathogen.toUpperCase()}</span>
               </h2>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" />
-                  <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)' }} />
-                  <YAxis unit="%" domain={[0, 100]} tick={{ fill: 'var(--text-muted)' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="month" tick={{ fill: '#6b7280' }} />
+                  <YAxis unit="%" domain={[0, 100]} tick={{ fill: '#6b7280' }} />
                   <Tooltip formatter={(v) => `${v}%`} />
-                  <Line type="monotone" dataKey="rate" stroke="#3b82f6" strokeWidth={2} name="MDR Rate (%)" dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="rate" stroke="#6b7280" strokeWidth={2} name="MDR Rate (%)" dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           )}
 
-          <div className="bg-[var(--bg-secondary)]/80 backdrop-blur-sm rounded-2xl shadow-md border border-[var(--border-primary)] p-6 overflow-hidden">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-              <MapPinIcon className="h-5 w-5 text-[var(--accent-cyan)]" />
-              Geographic Distribution – <span className="text-[var(--accent-cyan)] font-bold">{selectedPathogen.toUpperCase()}</span>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/50 p-6 overflow-hidden">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <MapPinIcon className="h-5 w-5 text-gray-800" />
+              Geographic Distribution – <span className="text-gray-800 font-bold">{selectedPathogen.toUpperCase()}</span>
             </h2>
             <div className="h-[450px] w-full min-h-0">
               <CountyChoroplethMap
