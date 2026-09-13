@@ -3,20 +3,18 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, datetime
 from src.database import get_db
-from src.db.models import Hotspot, AMRIsolateRecord
+from src.db.models import Hotspot, AMRIsolateRecord, User
 from src.api.deps import require_admin
 
 router = APIRouter(prefix="/hotspots", tags=["hotspots"])
 
 
 def _parse_date(value: Optional[str]) -> Optional[date]:
-    """Convert an ISO date string to a date object, or return None if empty/invalid."""
     if not value:
         return None
     try:
         return datetime.fromisoformat(value).date()
     except ValueError:
-        # If invalid, treat as None to avoid 500
         return None
 
 
@@ -63,7 +61,7 @@ def compute_hotspot_stats(
     return total_samples, overall_rate, breakdown_list
 
 
-@router.get("/", response_model=List[dict])
+@router.get("", response_model=List[dict])
 def get_hotspots(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
@@ -72,7 +70,6 @@ def get_hotspots(
     sector: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    # Convert empty strings / invalid dates to None
     start = _parse_date(start_date)
     end = _parse_date(end_date)
     county = county or None
@@ -106,11 +103,11 @@ def get_hotspots(
     return result
 
 
-@router.post("/", status_code=201)
+@router.post("", status_code=201)
 def create_hotspot(
     payload: dict,
     db: Session = Depends(get_db),
-    current_user=Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
     hotspot = Hotspot(**payload)
     db.add(hotspot)
@@ -124,7 +121,7 @@ def update_hotspot(
     hotspot_id: int,
     payload: dict,
     db: Session = Depends(get_db),
-    current_user=Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
     hotspot = db.query(Hotspot).filter(Hotspot.id == hotspot_id).first()
     if not hotspot:
@@ -140,7 +137,7 @@ def update_hotspot(
 def delete_hotspot(
     hotspot_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
     hotspot = db.query(Hotspot).filter(Hotspot.id == hotspot_id).first()
     if not hotspot:

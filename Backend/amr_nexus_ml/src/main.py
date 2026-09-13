@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 import sys
 import json
 import uuid
@@ -8,6 +8,10 @@ from typing import Dict, Any, Generator, List, Optional
 import socketio
 import uvicorn
 from fastapi import FastAPI, Depends, Query, HTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from src.core.security import decode_token
+from src.core.audit_middleware import AuditMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -20,14 +24,14 @@ from pydantic import BaseModel
 from src.core.config import settings
 from src.core.ml import load_models
 from src.db.session import engine
-from src.db.models import Base, DashboardNotification, AMRIsolateRecord, Hotspot, User, UserTemplate
+from src.db.models import AMRIsolateRecord, Base, DashboardNotification, Hotspot, User, UserTemplate
 from src.services.prediction_service import PredictionService
 from src.services.shap_service import compute_shap_explanation, record_to_feature_dict
 from src.services.llm_service import generate_llm_response, generate_comparison_response
 from src.services.sms_service import send_sms
 from src.database import SessionLocal
 from src.utils.logger import logger
-from src.api.deps import get_db
+from src.api.deps import get_current_user, get_db, require_admin
 from src.api.routers import (
     health_router,
     prediction_router,
@@ -42,6 +46,7 @@ from src.api.routers import (
     hotspot_router,
 )
 from src.services.forecast_utils import generate_time_series_forecast
+from src.api.routers import auth_router, audit_router, user_actions_router, analyst_router, model_health_router, admin_users_router, notifications_router
 
 
 def get_cors_origins() -> List[str]:
@@ -55,6 +60,44 @@ def get_cors_origins() -> List[str]:
 
 
 CORS_ORIGINS = get_cors_origins()
+
+
+PUBLIC_PATHS = {
+    "/auth/login",
+    "/api/v1/auth/login",
+    "/auth/verify",
+    "/api/v1/auth/verify",
+    "/health",
+    "/api/v1/health",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+    "/favicon.ico",
+}
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        if path in PUBLIC_PATHS or path.startswith("/docs") or path.startswith("/redoc") or path.startswith("/openapi"):
+            return await call_next(request)
+        auth = request.headers.get("Authorization", "")
+        if not auth.startswith("Bearer "):
+            return JSONResponse(
+                {"detail": "Authentication required"},
+                status_code=401,
+            )
+        try:
+            decode_token(auth[7:])
+        except Exception:
+            return JSONResponse(
+                {"detail": "Invalid or expired token"},
+                status_code=401,
+            )
+        return await call_next(request)
+
 
 sio = socketio.AsyncServer(
     async_mode="asgi",
@@ -82,6 +125,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    app.add_middleware(AuditMiddleware)
+
+    app.add_middleware(AuthMiddleware)
 
     # Versioned routes
     app.include_router(health_router, prefix="/api/v1", tags=["health"])
@@ -162,7 +209,7 @@ def create_app() -> FastAPI:
 
     @app.post("/templates")
     @app.post("/api/v1/templates")
-    def save_template_direct(name: str, form_data: Dict[str, Any], db: Session = Depends(get_db)):
+    def save_template_direct(name: str, form_data: Dict[str, Any], db: Session = Depends(get_db), current_user=Depends(require_admin)):
         user = db.query(User).first()
         if not user:
             user = User(
@@ -288,6 +335,252 @@ def create_app() -> FastAPI:
         text = generate_llm_response(record_to_feature_dict(record), explanation)
         return {"text": text}
 
+    class InsightRequest(BaseModel):
+        context: str
+        data: Dict[str, Any]
+
+    class InsightRequest(BaseModel):
+        context: str
+        data: Dict[str, Any]
+
+    def _narrative(context: str, data: Dict[str, Any]) -> str:
+        """Deterministic narrative generator. Produces factual prose from structured data."""
+        ctx = (context or "").lower()
+
+        def pct(v):
+            try:
+                return f"{float(v):.1f}%"
+            except (TypeError, ValueError):
+                return "—"
+
+        def num(v):
+            try:
+                return f"{int(v):,}"
+            except (TypeError, ValueError):
+                return "—"
+
+        def tone_for(rate):
+            try:
+                r = float(rate)
+            except (TypeError, ValueError):
+                return "within expected range"
+            if r >= 60:
+                return "critically high"
+            if r >= 30:
+                return "elevated"
+            if r >= 15:
+                return "moderate"
+            return "low"
+
+        parts = []
+
+        # National / county summary
+        if "summary" in ctx or "national" in ctx or "county" in ctx:
+            cur = data.get("current") or data
+            prev = data.get("previous")
+            total = cur.get("total_records")
+            rate = cur.get("mdr_rate")
+            anom = cur.get("anomaly_count")
+            counties = cur.get("active_counties")
+
+            if total is not None:
+                parts.append(
+                    f"{num(total)} isolates were recorded during this period, "
+                    f"with an overall MDR rate of {pct(rate)} — {tone_for(rate)} "
+                    f"by current surveillance thresholds."
+                )
+            if anom is not None and anom > 0:
+                parts.append(
+                    f"{num(anom)} isolates were flagged as anomalous, "
+                    f"indicating patterns that warrant epidemiological review."
+                )
+            if counties:
+                parts.append(f"Data was reported from {num(counties)} counties.")
+
+            if prev and prev.get("mdr_rate") is not None and rate is not None:
+                delta = round(float(rate) - float(prev.get("mdr_rate")), 1)
+                if delta > 2:
+                    parts.append(
+                        f"MDR rose {delta} percentage points compared to the previous period, "
+                        f"which is a meaningful deterioration."
+                    )
+                elif delta < -2:
+                    parts.append(
+                        f"MDR fell {abs(delta)} percentage points compared to the previous period, "
+                        f"indicating improvement."
+                    )
+                elif abs(delta) <= 2:
+                    parts.append(
+                        f"The rate is essentially unchanged from the previous period "
+                        f"(difference of {abs(delta)} percentage points)."
+                    )
+
+            if rate is not None and float(rate) >= 30:
+                parts.append(
+                    "Recommended next step: review antimicrobial stewardship practices "
+                    "in the highest-burden counties and verify that first-line agents "
+                    "remain effective."
+                )
+
+        # Pathogen detail
+        elif "pathogen" in ctx:
+            code = data.get("code") or "This pathogen"
+            s = data.get("summary") or {}
+            samples = s.get("samples")
+            rate = s.get("mdr_rate")
+            by_class = data.get("by_class") or []
+
+            parts.append(
+                f"{code} accounted for {num(samples)} isolates with an MDR rate of {pct(rate)} "
+                f"— {tone_for(rate)}."
+            )
+            if by_class:
+                top = sorted(by_class, key=lambda x: x.get("resistance", 0), reverse=True)[:3]
+                tops = ", ".join(
+                    f"{t.get('antibiotic_class')} ({pct(t.get('resistance'))}, n={t.get('samples', 0)})"
+                    for t in top
+                )
+                parts.append(f"Highest resistance was observed for {tops}.")
+            by_sector = data.get("by_sector") or []
+            if by_sector:
+                top_sector = sorted(by_sector, key=lambda x: x.get("mdr_rate", 0), reverse=True)[0]
+                parts.append(
+                    f"The {top_sector.get('sector')} sector showed the highest MDR rate at "
+                    f"{pct(top_sector.get('mdr_rate'))}."
+                )
+            if rate is not None and float(rate) >= 60:
+                parts.append(
+                    "Recommended next step: escalate to the county surveillance team and "
+                    "consider empiric therapy adjustments pending culture confirmation."
+                )
+            elif rate is not None and float(rate) >= 30:
+                parts.append(
+                    "Recommended next step: review treatment protocols and reinforce "
+                    "culture-directed prescribing."
+                )
+
+        # Period comparison
+        elif "compare" in ctx:
+            a = data.get("a", {}).get("summary", {})
+            b = data.get("b", {}).get("summary", {})
+            rate_a = a.get("mdr_rate")
+            rate_b = b.get("mdr_rate")
+            if rate_a is not None and rate_b is not None:
+                delta = round(float(rate_b) - float(rate_a), 1)
+                direction = "increase" if delta > 0 else "decrease" if delta < 0 else "no change"
+                parts.append(
+                    f"Period A recorded an MDR rate of {pct(rate_a)} and Period B recorded "
+                    f"{pct(rate_b)}, representing a {direction} of {abs(delta)} percentage points."
+                )
+                if abs(delta) > 5:
+                    parts.append(
+                        "This magnitude of change is clinically meaningful and should be "
+                        "investigated for underlying causes — policy changes, outbreak activity, "
+                        "or shifts in reporting coverage."
+                    )
+            total_a = a.get("total_records")
+            total_b = b.get("total_records")
+            if total_a and total_b:
+                parts.append(
+                    f"Sample volume moved from {num(total_a)} in Period A to {num(total_b)} in Period B."
+                )
+
+        # Single prediction record
+        elif "record" in ctx or "prediction" in ctx:
+            pathogen = data.get("pathogen") or "The isolate"
+            county = data.get("county") or "an unspecified county"
+            mdr = data.get("mdr_flag")
+            prob = data.get("mdr_probability")
+            antibiotic = data.get("antibiotic_class")
+            sector = data.get("sector")
+            specimen = data.get("specimen")
+
+            prob_pct = None
+            try:
+                prob_pct = float(prob) * 100 if prob is not None else None
+            except (TypeError, ValueError):
+                pass
+
+            parts.append(
+                f"{pathogen} isolated from {specimen or 'an unspecified specimen'} in "
+                f"{county}, submitted by the {sector or 'unspecified'} sector."
+            )
+            if antibiotic:
+                parts.append(f"Tested against {antibiotic}.")
+            if mdr:
+                if prob_pct is not None:
+                    parts.append(
+                        f"The isolate is classified as multidrug resistant with a "
+                        f"model probability of {prob_pct:.1f}%."
+                    )
+                else:
+                    parts.append("The isolate is classified as multidrug resistant.")
+            else:
+                if prob_pct is not None:
+                    parts.append(
+                        f"The isolate is classified as susceptible with an MDR "
+                        f"probability of {prob_pct:.1f}%, "
+                        f"{tone_for(prob_pct)}."
+                    )
+                else:
+                    parts.append("The isolate is classified as susceptible.")
+
+            if data.get("anomaly_flag"):
+                score = data.get("anomaly_score")
+                try:
+                    score_str = f"{float(score):.3f}"
+                except (TypeError, ValueError):
+                    score_str = "unspecified"
+                parts.append(
+                    f"The record was flagged as anomalous (score {score_str}), "
+                    f"indicating an unusual pattern worth review."
+                )
+
+            if mdr and prob_pct and prob_pct >= 80:
+                parts.append(
+                    "Recommended next step: confirm with culture and susceptibility, "
+                    "review empiric therapy, and consider infection control measures."
+                )
+            elif mdr:
+                parts.append(
+                    "Recommended next step: verify with laboratory confirmation before "
+                    "adjusting treatment."
+                )
+
+        # Anomalies
+        elif "anomal" in ctx or "alert" in ctx:
+            total = data.get("total") or len(data.get("items") or [])
+            last24 = data.get("last24h")
+            parts.append(f"{num(total)} anomalies are currently open in the system.")
+            if last24:
+                parts.append(f"{num(last24)} were detected in the last 24 hours, indicating active signal.")
+            top = data.get("top_counties") or []
+            if top:
+                c, n = top[0]
+                parts.append(f"The highest concentration is in {c} with {n} flagged isolates.")
+            parts.append(
+                "Recommended next step: triage by severity, acknowledge alerts already "
+                "under investigation, and escalate critical signals to the county health officer."
+            )
+
+        # Fallback
+        if not parts:
+            parts.append(
+                "Summary unavailable for this data shape. Provide a context string such as "
+                "'national summary', 'pathogen detail', 'period compare', or 'alert summary'."
+            )
+
+        return " ".join(parts)
+
+    @app.post("/llm/insight")
+    async def llm_insight(req: InsightRequest):
+        try:
+            narrative = _narrative(req.context, req.data)
+            return {"text": narrative, "source": "deterministic"}
+        except Exception as e:
+            logger.error(f"Narrative generation error: {e}")
+            raise HTTPException(status_code=500, detail="Failed to generate narrative")
+
     class CompareRequest(BaseModel):
         record_a: Dict[str, Any]
         record_b: Dict[str, Any]
@@ -363,6 +656,18 @@ def create_app() -> FastAPI:
             "matrix": matrix
         }
 
+    @app.get("/me")
+    async def direct_me(current_user: User = Depends(get_current_user)):
+        return {
+            "id": current_user.id,
+            "name": current_user.name,
+            "email": current_user.email,
+            "role": current_user.role,
+            "assigned_county": current_user.assigned_county,
+            "must_change_password": bool(current_user.must_change_password),
+            "last_login_at": current_user.last_login_at.isoformat() if current_user.last_login_at else None,
+        }
+
     @app.on_event("startup")
     async def startup_event():
         print("\n Registered routes:")
@@ -383,6 +688,21 @@ def create_app() -> FastAPI:
             status_code=422,
             content={"error": "Validation error", "details": exc.errors()}
         )
+
+    app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+    app.include_router(notifications_router, prefix="/api/v1/notifications", tags=["notifications"])
+    app.include_router(admin_users_router, prefix="/api/v1/admin", tags=["admin"])
+    app.include_router(analyst_router, prefix="/api/v1/analyst", tags=["analyst"])
+    app.include_router(model_health_router, prefix="/api/v1/ml", tags=["ml"])
+    app.include_router(user_actions_router, prefix="/api/v1/user", tags=["user-actions"])
+    app.include_router(audit_router, prefix="/api/v1/audit", tags=["audit"])
+    app.include_router(auth_router, prefix="/auth", tags=["auth"])
+    app.include_router(notifications_router, prefix="/notifications", tags=["notifications"])
+    app.include_router(admin_users_router, prefix="/admin", tags=["admin"])
+    app.include_router(analyst_router, prefix="/analyst", tags=["analyst"])
+    app.include_router(model_health_router, prefix="/ml", tags=["ml"])
+    app.include_router(user_actions_router, prefix="/user", tags=["user-actions"])
+    app.include_router(audit_router, prefix="/audit", tags=["audit"])
 
     return app
 

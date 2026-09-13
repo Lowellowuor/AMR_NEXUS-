@@ -10,3 +10,10 @@ from src.api.routers.search import search_router
 from src.api.routers.user import user_router
 from src.api.routers.ews import ews_router
 from src.api.routers.hotspots import router as hotspot_router
+from src.api.routers.auth import router as auth_router
+from src.api.routers.audit import audit_router
+from src.api.routers.user_actions import router as user_actions_router
+from src.api.routers.analyst import router as analyst_router
+from src.api.routers.model_health import router as model_health_router
+from src.api.routers.admin_users import router as admin_users_router
+from src.api.routers.notifications import router as notifications_router

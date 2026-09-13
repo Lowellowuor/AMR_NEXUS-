@@ -1,11 +1,11 @@
-﻿from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, desc, extract
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-from src.api.deps import get_db
-from src.db.models import AMRIsolateRecord, DashboardNotification
+from datetime import datetime, timedelta, date
+from src.api.deps import get_current_user, get_db
+from src.db.models import AMRIsolateRecord, DashboardNotification, Hotspot, SubCountyLocation, User
 from src.services.geospatial_service import get_sub_county_mdr, get_mdr_difference
 from src.services.forecast_service import generate_prophet_forecast
 
@@ -301,3 +301,876 @@ async def mdr_difference(
 ) -> Dict[str, Any]:
     features = get_mdr_difference(db, start_month, end_month)
     return {"type": "FeatureCollection", "features": features}
+
+@analytics_router.get("/month_range")
+def get_month_range(db: Session = Depends(get_db)):
+    min_date, max_date = db.query(
+        func.min(AMRIsolateRecord.sample_collection_date),
+        func.max(AMRIsolateRecord.sample_collection_date),
+    ).first()
+
+    if not min_date or not max_date:
+        current = date.today().replace(day=1).isoformat()[:7]
+        return {"min": current, "max": current, "available": False}
+
+    return {
+        "min": min_date.isoformat()[:7],
+        "max": max_date.isoformat()[:7],
+        "available": True,
+    }
+
+
+# =============================================================
+# Pathogen Explorer
+# =============================================================
+
+@analytics_router.get("/pathogens")
+async def list_pathogens(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    county: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    q = db.query(
+        AMRIsolateRecord.pathogen_code,
+        func.count(AMRIsolateRecord.record_id).label("n"),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)).label("mdr"),
+    ).filter(AMRIsolateRecord.pathogen_code.isnot(None))
+
+    if start_date:
+        try:
+            q = q.filter(AMRIsolateRecord.sample_collection_date >= date.fromisoformat(start_date))
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            q = q.filter(AMRIsolateRecord.sample_collection_date <= date.fromisoformat(end_date))
+        except ValueError:
+            pass
+    if county:
+        q = q.filter(AMRIsolateRecord.county == county)
+
+    rows = q.group_by(AMRIsolateRecord.pathogen_code).all()
+
+    out = []
+    for name, n, mdr in rows:
+        rate = round((mdr or 0) / n * 100, 1) if n else 0
+        out.append({
+            "code": name,
+            "name": name,
+            "samples": int(n),
+            "mdr_count": int(mdr or 0),
+            "mdr_rate": rate,
+        })
+    out.sort(key=lambda x: x["samples"], reverse=True)
+    return out
+
+
+def _wilson_ci(mdr_count: int, n: int, z: float = 1.96):
+    if n == 0:
+        return [0.0, 0.0]
+    p = mdr_count / n
+    denom = 1 + (z * z) / n
+    center = (p + (z * z) / (2 * n)) / denom
+    half = (z * ((p * (1 - p) + (z * z) / (4 * n)) / n) ** 0.5) / denom
+    return [round(max(0, center - half) * 100, 1), round(min(1, center + half) * 100, 1)]
+
+
+@analytics_router.get("/pathogens/{pathogen_code}")
+async def pathogen_detail(
+    pathogen_code: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    county: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    def _apply(q):
+        q = q.filter(AMRIsolateRecord.pathogen_code == pathogen_code)
+        if start_date:
+            try:
+                q = q.filter(AMRIsolateRecord.sample_collection_date >= date.fromisoformat(start_date))
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                q = q.filter(AMRIsolateRecord.sample_collection_date <= date.fromisoformat(end_date))
+            except ValueError:
+                pass
+        if county:
+            q = q.filter(AMRIsolateRecord.county == county)
+        return q
+
+    # ---- Summary ----
+    base = _apply(db.query(AMRIsolateRecord))
+    records = base.all()
+    total = len(records)
+    mdr_total = sum(1 for r in records if r.mdr_flag)
+    mdr_rate = round((mdr_total / total * 100) if total else 0, 1)
+    ci_low, ci_high = _wilson_ci(mdr_total, total)
+
+    # Previous period (same length, immediately before)
+    prev_rate = None
+    if start_date and end_date:
+        try:
+            sd = date.fromisoformat(start_date)
+            ed = date.fromisoformat(end_date)
+            span = (ed - sd).days + 1
+            prev_end = sd - timedelta(days=1)
+            prev_start = prev_end - timedelta(days=span - 1)
+            prev_records = db.query(AMRIsolateRecord).filter(
+                AMRIsolateRecord.pathogen_code == pathogen_code,
+                AMRIsolateRecord.sample_collection_date >= prev_start,
+                AMRIsolateRecord.sample_collection_date <= prev_end,
+            ).all()
+            if county:
+                prev_records = [r for r in prev_records if r.county == county]
+            if prev_records:
+                prev_mdr = sum(1 for r in prev_records if r.mdr_flag)
+                prev_rate = round(prev_mdr / len(prev_records) * 100, 1)
+        except (ValueError, TypeError):
+            pass
+
+    change = round(mdr_rate - prev_rate, 1) if prev_rate is not None else None
+
+    # ---- By antibiotic class ----
+    aq = _apply(db.query(
+        AMRIsolateRecord.antibiotic_class,
+        func.count(AMRIsolateRecord.record_id),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+    )).filter(AMRIsolateRecord.antibiotic_class.isnot(None))
+    aq = aq.group_by(AMRIsolateRecord.antibiotic_class).all()
+    by_class = []
+    for name, n, mdr in aq:
+        lo, hi = _wilson_ci(int(mdr or 0), int(n))
+        by_class.append({
+            "antibiotic_class": name,
+            "samples": int(n),
+            "mdr_count": int(mdr or 0),
+            "resistance": round((mdr or 0) / n * 100, 1) if n else 0,
+            "ci_low": lo,
+            "ci_high": hi,
+        })
+    by_class.sort(key=lambda x: x["resistance"], reverse=True)
+
+    # ---- By antibiotic (name) grouped by class ----
+    abq = _apply(db.query(
+        AMRIsolateRecord.antibiotic_class,
+        AMRIsolateRecord.sir_result,
+        AMRIsolateRecord.test_method,
+        func.count(AMRIsolateRecord.record_id),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+    )).filter(AMRIsolateRecord.antibiotic_class.isnot(None))
+    abq = abq.group_by(
+        AMRIsolateRecord.antibiotic_class,
+        AMRIsolateRecord.sir_result,
+        AMRIsolateRecord.test_method,
+    ).all()
+
+    # Aggregate per (class, sir, method) — kept as detail for drill-down
+    detail_map = {}
+    for cls, sir, method, n, mdr in abq:
+        key = (cls, sir or "—", method or "—")
+        if key not in detail_map:
+            detail_map[key] = {"samples": 0, "mdr_count": 0}
+        detail_map[key]["samples"] += int(n)
+        detail_map[key]["mdr_count"] += int(mdr or 0)
+
+    by_antibiotic = [
+        {
+            "antibiotic_class": cls,
+            "sir_result": sir,
+            "test_method": method,
+            "samples": v["samples"],
+            "mdr_count": v["mdr_count"],
+            "mdr_rate": round(v["mdr_count"] / v["samples"] * 100, 1) if v["samples"] else 0,
+        }
+        for (cls, sir, method), v in detail_map.items()
+    ]
+    by_antibiotic.sort(key=lambda x: (x["antibiotic_class"], -x["samples"]))
+
+    # ---- By specimen type ----
+    sq = _apply(db.query(
+        AMRIsolateRecord.specimen_type,
+        func.count(AMRIsolateRecord.record_id),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+    )).filter(AMRIsolateRecord.specimen_type.isnot(None))
+    sq = sq.group_by(AMRIsolateRecord.specimen_type).all()
+    by_specimen = [
+        {
+            "specimen_type": s,
+            "samples": int(n),
+            "mdr_count": int(mdr or 0),
+            "mdr_rate": round((mdr or 0) / n * 100, 1) if n else 0,
+        }
+        for s, n, mdr in sq
+    ]
+    by_specimen.sort(key=lambda x: x["samples"], reverse=True)
+
+    # ---- By sector ----
+    secq = _apply(db.query(
+        AMRIsolateRecord.sector,
+        func.count(AMRIsolateRecord.record_id),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+    )).filter(AMRIsolateRecord.sector.isnot(None))
+    secq = secq.group_by(AMRIsolateRecord.sector).all()
+    by_sector = [
+        {
+            "sector": s,
+            "samples": int(n),
+            "mdr_count": int(mdr or 0),
+            "mdr_rate": round((mdr or 0) / n * 100, 1) if n else 0,
+        }
+        for s, n, mdr in secq
+    ]
+    by_sector.sort(key=lambda x: x["samples"], reverse=True)
+
+    # Build county centroid lookup
+    loc_rows = db.query(
+        SubCountyLocation.county,
+        func.avg(SubCountyLocation.latitude),
+        func.avg(SubCountyLocation.longitude),
+    ).group_by(SubCountyLocation.county).all()
+    centroids = {}
+    for c_name, lat, lon in loc_rows:
+        if c_name and lat is not None and lon is not None:
+            centroids[c_name] = (float(lat), float(lon))
+
+    # ---- By county ----
+    cq = _apply(db.query(
+        AMRIsolateRecord.county,
+        func.count(AMRIsolateRecord.record_id),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+    )).filter(AMRIsolateRecord.county.isnot(None))
+    cq = cq.group_by(AMRIsolateRecord.county).all()
+    by_county = []
+    for c, n, mdr in cq:
+        coords = centroids.get(c)
+        row = {
+            "county": c,
+            "samples": int(n),
+            "mdr_count": int(mdr or 0),
+            "mdr_rate": round((mdr or 0) / n * 100, 1) if n else 0,
+        }
+        if coords:
+            row["latitude"] = coords[0]
+            row["longitude"] = coords[1]
+        by_county.append(row)
+    by_county.sort(key=lambda x: x["mdr_rate"], reverse=True)
+
+    # ---- Monthly trend ----
+    tq = _apply(db.query(
+        AMRIsolateRecord.sample_month,
+        func.count(AMRIsolateRecord.record_id),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+    ))
+    tq = tq.group_by(AMRIsolateRecord.sample_month).order_by(AMRIsolateRecord.sample_month).all()
+    trend = [
+        {
+            "month": f"M{m}",
+            "month_number": int(m) if m else None,
+            "samples": int(n),
+            "rate": round((mdr or 0) / n * 100, 1) if n else 0,
+        }
+        for m, n, mdr in tq
+    ]
+
+    # ---- Recent isolates ----
+    rq = _apply(db.query(AMRIsolateRecord)).order_by(desc(AMRIsolateRecord.created_at)).limit(20).all()
+    recent = [
+        {
+            "record_id": str(r.record_id),
+            "timestamp": r.created_at.isoformat() if r.created_at else None,
+            "county": r.county or "",
+            "sub_county": r.sub_county or "",
+            "specimen_type": r.specimen_type or "",
+            "sector": r.sector or "",
+            "antibiotic_class": r.antibiotic_class or "",
+            "mdr_flag": bool(r.mdr_flag),
+            "mdr_probability": float(r.mdr_probability) if r.mdr_probability is not None else 0,
+            "anomaly_flag": bool(r.anomaly_flag),
+        }
+        for r in rq
+    ]
+
+    return {
+        "code": pathogen_code,
+        "summary": {
+            "samples": total,
+            "mdr_count": mdr_total,
+            "mdr_rate": mdr_rate,
+            "ci_low": ci_low,
+            "ci_high": ci_high,
+            "previous_rate": prev_rate,
+            "change": change,
+        },
+        "by_class": by_class,
+        "by_antibiotic": by_antibiotic,
+        "by_specimen": by_specimen,
+        "by_sector": by_sector,
+        "by_county": by_county,
+        "trend": trend,
+        "recent": recent,
+    }
+
+
+@analytics_router.get("/pathogens-compare")
+async def pathogen_compare(
+    a: str,
+    b: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    county: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    def build(code):
+        q = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.pathogen_code == code)
+        if start_date:
+            try:
+                q = q.filter(AMRIsolateRecord.sample_collection_date >= date.fromisoformat(start_date))
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                q = q.filter(AMRIsolateRecord.sample_collection_date <= date.fromisoformat(end_date))
+            except ValueError:
+                pass
+        if county:
+            q = q.filter(AMRIsolateRecord.county == county)
+        records = q.all()
+        total = len(records)
+        mdr_total = sum(1 for r in records if r.mdr_flag)
+        rate = round((mdr_total / total * 100) if total else 0, 1)
+        lo, hi = _wilson_ci(mdr_total, total)
+
+        class_q = db.query(
+            AMRIsolateRecord.antibiotic_class,
+            func.count(AMRIsolateRecord.record_id),
+            func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+        ).filter(AMRIsolateRecord.pathogen_code == code)
+        if start_date:
+            try:
+                class_q = class_q.filter(AMRIsolateRecord.sample_collection_date >= date.fromisoformat(start_date))
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                class_q = class_q.filter(AMRIsolateRecord.sample_collection_date <= date.fromisoformat(end_date))
+            except ValueError:
+                pass
+        if county:
+            class_q = class_q.filter(AMRIsolateRecord.county == county)
+        class_q = class_q.filter(AMRIsolateRecord.antibiotic_class.isnot(None))
+        rows = class_q.group_by(AMRIsolateRecord.antibiotic_class).all()
+
+        by_class = [
+            {
+                "antibiotic_class": c,
+                "samples": int(n),
+                "mdr_rate": round((mdr or 0) / n * 100, 1) if n else 0,
+            }
+            for c, n, mdr in rows
+        ]
+        by_class.sort(key=lambda x: x["mdr_rate"], reverse=True)
+
+        return {
+            "code": code,
+            "summary": {
+                "samples": total,
+                "mdr_count": mdr_total,
+                "mdr_rate": rate,
+                "ci_low": lo,
+                "ci_high": hi,
+            },
+            "by_class": by_class,
+        }
+
+    return {"a": build(a), "b": build(b)}
+
+
+# =============================================================
+# Dashboard endpoints (National + County)
+# =============================================================
+
+def _period_summary(db, sd, ed, county=None, pathogen=None, sector=None):
+    q = db.query(AMRIsolateRecord)
+    if sd:
+        q = q.filter(AMRIsolateRecord.sample_collection_date >= sd)
+    if ed:
+        q = q.filter(AMRIsolateRecord.sample_collection_date <= ed)
+    if county:
+        q = q.filter(AMRIsolateRecord.county == county)
+    if pathogen:
+        q = q.filter(AMRIsolateRecord.pathogen_code == pathogen)
+    if sector:
+        q = q.filter(AMRIsolateRecord.sector == sector)
+    records = q.all()
+    total = len(records)
+    mdr = sum(1 for r in records if r.mdr_flag)
+    anom = sum(1 for r in records if r.anomaly_flag)
+    counties = len(set(r.county for r in records if r.county))
+    pathogens = len(set(r.pathogen_code for r in records if r.pathogen_code))
+    facilities = len(set(r.hotspot_id for r in records if r.hotspot_id))
+    return {
+        "total_records": total,
+        "mdr_count": mdr,
+        "mdr_rate": round((mdr / total * 100) if total else 0, 1),
+        "anomaly_count": anom,
+        "active_counties": counties,
+        "pathogen_count": pathogens,
+        "active_facilities": facilities,
+    }
+
+
+def _parse_range(start_date, end_date):
+    sd = None
+    ed = None
+    if start_date:
+        try:
+            sd = date.fromisoformat(start_date)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            ed = date.fromisoformat(end_date)
+        except ValueError:
+            pass
+    return sd, ed
+
+
+@analytics_router.get("/dashboard_summary")
+async def dashboard_summary(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    county: Optional[str] = None,
+    pathogen: Optional[str] = None,
+    sector: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    sd, ed = _parse_range(start_date, end_date)
+    current = _period_summary(db, sd, ed, county, pathogen, sector)
+
+    previous = None
+    if sd and ed:
+        span = (ed - sd).days + 1
+        prev_end = sd - timedelta(days=1)
+        prev_start = prev_end - timedelta(days=span - 1)
+        previous = _period_summary(db, prev_start, prev_end, county, pathogen, sector)
+
+    return {"current": current, "previous": previous}
+
+
+@analytics_router.get("/freshness")
+async def data_freshness(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    latest_created = db.query(func.max(AMRIsolateRecord.created_at)).scalar()
+    latest_sample = db.query(func.max(AMRIsolateRecord.sample_collection_date)).scalar()
+    total = db.query(func.count(AMRIsolateRecord.record_id)).scalar() or 0
+    return {
+        "last_submission": latest_created.isoformat() if latest_created else None,
+        "last_sample_date": latest_sample.isoformat() if latest_sample else None,
+        "total_records": int(total),
+    }
+
+
+@analytics_router.get("/county_rank")
+async def county_rank(
+    county: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    sd, ed = _parse_range(start_date, end_date)
+    q = db.query(
+        AMRIsolateRecord.county,
+        func.count(AMRIsolateRecord.record_id).label("n"),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)).label("mdr"),
+    ).filter(AMRIsolateRecord.county.isnot(None))
+    if sd:
+        q = q.filter(AMRIsolateRecord.sample_collection_date >= sd)
+    if ed:
+        q = q.filter(AMRIsolateRecord.sample_collection_date <= ed)
+    rows = q.group_by(AMRIsolateRecord.county).all()
+
+    ranked = []
+    for c, n, mdr in rows:
+        if n >= 5:
+            ranked.append({
+                "county": c,
+                "samples": int(n),
+                "mdr_rate": round((mdr or 0) / n * 100, 1),
+            })
+    ranked.sort(key=lambda x: x["mdr_rate"], reverse=True)
+
+    position = None
+    target = None
+    for i, r in enumerate(ranked):
+        if r["county"] == county:
+            position = i + 1
+            target = r
+            break
+
+    national_q = db.query(
+        func.count(AMRIsolateRecord.record_id),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+    )
+    if sd:
+        national_q = national_q.filter(AMRIsolateRecord.sample_collection_date >= sd)
+    if ed:
+        national_q = national_q.filter(AMRIsolateRecord.sample_collection_date <= ed)
+    n_total, mdr_total = national_q.first()
+    national_rate = round(((mdr_total or 0) / n_total * 100) if n_total else 0, 1)
+
+    return {
+        "county": county,
+        "position": position,
+        "total_counties": len(ranked),
+        "county_rate": target["mdr_rate"] if target else None,
+        "county_samples": target["samples"] if target else 0,
+        "national_rate": national_rate,
+        "delta_vs_national": round((target["mdr_rate"] - national_rate), 1) if target else None,
+    }
+
+
+@analytics_router.get("/facility_coverage")
+async def facility_coverage(
+    county: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from src.db.models import Hotspot
+
+    hq = db.query(Hotspot).filter(Hotspot.is_active == True)
+    if county:
+        hq = hq.filter(Hotspot.county == county)
+    hotspots = hq.all()
+    total_facilities = len(hotspots)
+
+    if total_facilities == 0:
+        return {
+            "county": county,
+            "reporting": 0,
+            "expected": 0,
+            "coverage_pct": 0,
+            "silent_facilities": [],
+        }
+
+    sd, ed = _parse_range(start_date, end_date)
+    rq = db.query(AMRIsolateRecord.hotspot_id).filter(AMRIsolateRecord.hotspot_id.isnot(None))
+    if sd:
+        rq = rq.filter(AMRIsolateRecord.sample_collection_date >= sd)
+    if ed:
+        rq = rq.filter(AMRIsolateRecord.sample_collection_date <= ed)
+    reporting_ids = set(r[0] for r in rq.distinct().all())
+
+    reporting = sum(1 for h in hotspots if h.id in reporting_ids)
+    silent = [
+        {"id": h.id, "name": h.name, "sub_county": h.sub_county}
+        for h in hotspots if h.id not in reporting_ids
+    ]
+
+    return {
+        "county": county,
+        "reporting": reporting,
+        "expected": total_facilities,
+        "coverage_pct": round((reporting / total_facilities * 100), 1) if total_facilities else 0,
+        "silent_facilities": silent[:20],
+    }
+
+
+@analytics_router.get("/top_counties_with_trend")
+async def top_counties_with_trend(
+    limit: int = 8,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    sd, ed = _parse_range(start_date, end_date)
+
+    def compute(sd_, ed_):
+        q = db.query(
+            AMRIsolateRecord.county,
+            func.count(AMRIsolateRecord.record_id).label("n"),
+            func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)).label("mdr"),
+        ).filter(AMRIsolateRecord.county.isnot(None))
+        if sd_:
+            q = q.filter(AMRIsolateRecord.sample_collection_date >= sd_)
+        if ed_:
+            q = q.filter(AMRIsolateRecord.sample_collection_date <= ed_)
+        rows = q.group_by(AMRIsolateRecord.county).all()
+        out = {}
+        for c, n, mdr in rows:
+            if n >= 5:
+                out[c] = {
+                    "county": c,
+                    "samples": int(n),
+                    "mdr_rate": round((mdr or 0) / n * 100, 1),
+                }
+        return out
+
+    current = compute(sd, ed)
+
+    previous = {}
+    if sd and ed:
+        span = (ed - sd).days + 1
+        prev_end = sd - timedelta(days=1)
+        prev_start = prev_end - timedelta(days=span - 1)
+        previous = compute(prev_start, prev_end)
+
+    rows = []
+    for county, info in current.items():
+        prev = previous.get(county)
+        delta = round(info["mdr_rate"] - prev["mdr_rate"], 1) if prev else None
+        rows.append({**info, "delta": delta})
+
+    rows.sort(key=lambda x: x["mdr_rate"], reverse=True)
+    return rows[:limit]
+
+
+@analytics_router.get("/glass_indicators")
+async def glass_indicators(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    sd, ed = _parse_range(start_date, end_date)
+
+    def scope(q):
+        if sd:
+            q = q.filter(AMRIsolateRecord.sample_collection_date >= sd)
+        if ed:
+            q = q.filter(AMRIsolateRecord.sample_collection_date <= ed)
+        return q
+
+    total = scope(db.query(func.count(AMRIsolateRecord.record_id))).scalar() or 0
+
+    e_coli = scope(db.query(func.count(AMRIsolateRecord.record_id)).filter(
+        AMRIsolateRecord.pathogen_code.like('%E. coli%')
+    )).scalar() or 0
+    e_coli_mdr = scope(db.query(func.count(AMRIsolateRecord.record_id)).filter(
+        AMRIsolateRecord.pathogen_code.like('%E. coli%'),
+        AMRIsolateRecord.mdr_flag == True,
+    )).scalar() or 0
+
+    kpn = scope(db.query(func.count(AMRIsolateRecord.record_id)).filter(
+        AMRIsolateRecord.pathogen_code.like('%Klebsiella%')
+    )).scalar() or 0
+    kpn_mdr = scope(db.query(func.count(AMRIsolateRecord.record_id)).filter(
+        AMRIsolateRecord.pathogen_code.like('%Klebsiella%'),
+        AMRIsolateRecord.mdr_flag == True,
+    )).scalar() or 0
+
+    sau = scope(db.query(func.count(AMRIsolateRecord.record_id)).filter(
+        AMRIsolateRecord.pathogen_code.like('%Staphylococcus%')
+    )).scalar() or 0
+    sau_mdr = scope(db.query(func.count(AMRIsolateRecord.record_id)).filter(
+        AMRIsolateRecord.pathogen_code.like('%Staphylococcus%'),
+        AMRIsolateRecord.mdr_flag == True,
+    )).scalar() or 0
+
+    return {
+        "total_isolates": int(total),
+        "e_coli": {"samples": int(e_coli), "mdr": int(e_coli_mdr), "rate": round(e_coli_mdr / e_coli * 100, 1) if e_coli else 0},
+        "klebsiella": {"samples": int(kpn), "mdr": int(kpn_mdr), "rate": round(kpn_mdr / kpn * 100, 1) if kpn else 0},
+        "staph_aureus": {"samples": int(sau), "mdr": int(sau_mdr), "rate": round(sau_mdr / sau * 100, 1) if sau else 0},
+    }
+
+
+# =============================================================
+# Compare two periods / geographies
+# =============================================================
+
+def _scope_summary(db, sd, ed, county=None, pathogen=None, sector=None):
+    q = db.query(AMRIsolateRecord)
+    if sd:
+        q = q.filter(AMRIsolateRecord.sample_collection_date >= sd)
+    if ed:
+        q = q.filter(AMRIsolateRecord.sample_collection_date <= ed)
+    if county:
+        q = q.filter(AMRIsolateRecord.county == county)
+    if pathogen:
+        q = q.filter(AMRIsolateRecord.pathogen_code == pathogen)
+    if sector:
+        q = q.filter(AMRIsolateRecord.sector == sector)
+    records = q.all()
+    total = len(records)
+    mdr = sum(1 for r in records if r.mdr_flag)
+    anom = sum(1 for r in records if r.anomaly_flag)
+    counties = len(set(r.county for r in records if r.county))
+    return {
+        "total_records": total,
+        "mdr_count": mdr,
+        "mdr_rate": round((mdr / total * 100) if total else 0, 1),
+        "anomaly_count": anom,
+        "active_counties": counties,
+    }
+
+
+def _scope_breakdown(db, sd, ed, county=None, pathogen=None, sector=None):
+    def scope(q):
+        if sd:
+            q = q.filter(AMRIsolateRecord.sample_collection_date >= sd)
+        if ed:
+            q = q.filter(AMRIsolateRecord.sample_collection_date <= ed)
+        if county:
+            q = q.filter(AMRIsolateRecord.county == county)
+        if pathogen:
+            q = q.filter(AMRIsolateRecord.pathogen_code == pathogen)
+        if sector:
+            q = q.filter(AMRIsolateRecord.sector == sector)
+        return q
+
+    # By pathogen
+    pq = scope(db.query(
+        AMRIsolateRecord.pathogen_code,
+        func.count(AMRIsolateRecord.record_id),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+    )).filter(AMRIsolateRecord.pathogen_code.isnot(None))
+    pq = pq.group_by(AMRIsolateRecord.pathogen_code).all()
+    by_pathogen = [
+        {"key": k, "samples": int(n), "mdr_rate": round((m or 0) / n * 100, 1) if n else 0}
+        for k, n, m in pq
+    ]
+
+    # By sector
+    sq = scope(db.query(
+        AMRIsolateRecord.sector,
+        func.count(AMRIsolateRecord.record_id),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+    )).filter(AMRIsolateRecord.sector.isnot(None))
+    sq = sq.group_by(AMRIsolateRecord.sector).all()
+    by_sector = [
+        {"key": k, "samples": int(n), "mdr_rate": round((m or 0) / n * 100, 1) if n else 0}
+        for k, n, m in sq
+    ]
+
+    # By county
+    cq = scope(db.query(
+        AMRIsolateRecord.county,
+        func.count(AMRIsolateRecord.record_id),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+    )).filter(AMRIsolateRecord.county.isnot(None))
+    cq = cq.group_by(AMRIsolateRecord.county).all()
+    by_county = [
+        {"key": k, "samples": int(n), "mdr_rate": round((m or 0) / n * 100, 1) if n else 0}
+        for k, n, m in cq
+    ]
+
+    return {
+        "by_pathogen": by_pathogen,
+        "by_sector": by_sector,
+        "by_county": by_county,
+    }
+
+
+def _scope_trend(db, sd, ed, county=None, pathogen=None, sector=None):
+    q = db.query(
+        AMRIsolateRecord.sample_month,
+        func.count(AMRIsolateRecord.record_id),
+        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+    )
+    if sd:
+        q = q.filter(AMRIsolateRecord.sample_collection_date >= sd)
+    if ed:
+        q = q.filter(AMRIsolateRecord.sample_collection_date <= ed)
+    if county:
+        q = q.filter(AMRIsolateRecord.county == county)
+    if pathogen:
+        q = q.filter(AMRIsolateRecord.pathogen_code == pathogen)
+    if sector:
+        q = q.filter(AMRIsolateRecord.sector == sector)
+    rows = q.group_by(AMRIsolateRecord.sample_month).order_by(AMRIsolateRecord.sample_month).all()
+    return [
+        {
+            "month": int(m) if m else 0,
+            "label": f"M{m}",
+            "samples": int(n),
+            "rate": round((mdr or 0) / n * 100, 1) if n else 0,
+        }
+        for m, n, mdr in rows
+        if m is not None
+    ]
+
+
+@analytics_router.get("/compare_periods")
+async def compare_periods(
+    a_start: Optional[str] = None,
+    a_end: Optional[str] = None,
+    a_county: Optional[str] = None,
+    a_pathogen: Optional[str] = None,
+    a_sector: Optional[str] = None,
+    b_start: Optional[str] = None,
+    b_end: Optional[str] = None,
+    b_county: Optional[str] = None,
+    b_pathogen: Optional[str] = None,
+    b_sector: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    a_sd, a_ed = _parse_range(a_start, a_end)
+    b_sd, b_ed = _parse_range(b_start, b_end)
+
+    side_a = {
+        "summary": _scope_summary(db, a_sd, a_ed, a_county, a_pathogen, a_sector),
+        "trend": _scope_trend(db, a_sd, a_ed, a_county, a_pathogen, a_sector),
+        **_scope_breakdown(db, a_sd, a_ed, a_county, a_pathogen, a_sector),
+    }
+    side_b = {
+        "summary": _scope_summary(db, b_sd, b_ed, b_county, b_pathogen, b_sector),
+        "trend": _scope_trend(db, b_sd, b_ed, b_county, b_pathogen, b_sector),
+        **_scope_breakdown(db, b_sd, b_ed, b_county, b_pathogen, b_sector),
+    }
+
+    # Compute deltas
+    def delta_metric(key):
+        av = side_a["summary"].get(key)
+        bv = side_b["summary"].get(key)
+        if av is None or bv is None:
+            return None
+        return round(bv - av, 1)
+
+    # Delta tables — union of keys
+    def delta_table(a_list, b_list):
+        keys = set(x["key"] for x in a_list) | set(x["key"] for x in b_list)
+        a_map = {x["key"]: x for x in a_list}
+        b_map = {x["key"]: x for x in b_list}
+        rows = []
+        for k in keys:
+            av = a_map.get(k, {"samples": 0, "mdr_rate": 0})
+            bv = b_map.get(k, {"samples": 0, "mdr_rate": 0})
+            rows.append({
+                "key": k,
+                "a_samples": av["samples"],
+                "b_samples": bv["samples"],
+                "a_rate": av["mdr_rate"],
+                "b_rate": bv["mdr_rate"],
+                "delta": round(bv["mdr_rate"] - av["mdr_rate"], 1),
+                "sample_delta": bv["samples"] - av["samples"],
+            })
+        rows.sort(key=lambda r: abs(r["delta"]), reverse=True)
+        return rows
+
+    return {
+        "a": side_a,
+        "b": side_b,
+        "deltas": {
+            "total_records": delta_metric("total_records"),
+            "mdr_rate": delta_metric("mdr_rate"),
+            "anomaly_count": delta_metric("anomaly_count"),
+            "active_counties": delta_metric("active_counties"),
+        },
+        "by_pathogen": delta_table(side_a["by_pathogen"], side_b["by_pathogen"]),
+        "by_sector": delta_table(side_a["by_sector"], side_b["by_sector"]),
+        "by_county": delta_table(side_a["by_county"], side_b["by_county"]),
+    }
+

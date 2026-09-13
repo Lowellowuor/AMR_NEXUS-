@@ -6,7 +6,10 @@ from pathlib import Path
 from typing import Optional
 from sqlalchemy.orm import Session
 
-from src.db.models import AMRIsolateRecord, DashboardNotification, Hotspot, SubCountyLocation
+from src.db.models import AMRIsolateRecord, DashboardNotification, Hotspot, SubCountyLocation, PredictionLog
+from src.services.model_health import confidence_tier, deterministic_fallback
+from src.services.notification_service import dispatch_prediction_alert
+import time
 from src.core.config import settings
 from src.utils.logger import logger
 
@@ -86,6 +89,7 @@ class PredictionService:
         return hotspot
 
     async def predict(self, record, background_tasks=None):
+        self._start_ts = time.time()
         data = record.dict()
         data = self._add_pair_frequency_feature(data)
 
@@ -121,6 +125,9 @@ class PredictionService:
         sub_county = data.get('sub_county')
         sample_date = data.get('sample_collection_date')
 
+        # Confidence tier for clinical interpretation
+        tier = confidence_tier(mdr_prob)
+
         hotspot = self._get_or_create_hotspot(county, sub_county)
 
         db_record = AMRIsolateRecord(
@@ -150,6 +157,32 @@ class PredictionService:
         self.db.commit()
         self.db.refresh(db_record)
 
+        # Log the prediction for monitoring
+        try:
+            self.db.add(PredictionLog(
+                record_id=db_record.record_id,
+                model_version="1.0.0",
+                latency_ms=round((time.time() - self._start_ts) * 1000, 2) if hasattr(self, '_start_ts') else None,
+                mdr_probability=mdr_prob,
+                mdr_flag=bool(mdr_prob >= 0.5),
+                anomaly_flag=anomaly_flag,
+                confidence_tier=tier,
+                fallback_used=False,
+                feature_snapshot={
+                    "pathogen_code": data.get('pathogen_code'),
+                    "county": county,
+                    "sector": data.get('sector'),
+                    "antibiotic_class": data.get('antibiotic_class'),
+                    "specimen_type": data.get('specimen_type'),
+                },
+            ))
+            self.db.commit()
+        except Exception as e:
+            logger.warning(f"Failed to log prediction: {e}")
+
+        # Dispatch notifications for anomalies OR high MDR predictions
+        should_notify = anomaly_flag or (mdr_prob >= 0.85)
+
         if anomaly_flag:
             notif = DashboardNotification(
                 county=county,
@@ -157,6 +190,12 @@ class PredictionService:
             )
             self.db.add(notif)
             self.db.commit()
+
+        if should_notify:
+            try:
+                dispatch_prediction_alert(self.db, db_record)
+            except Exception as e:
+                logger.warning(f"Notification dispatch failed: {e}")
 
         return {
             "record_id": str(db_record.record_id),
@@ -168,4 +207,5 @@ class PredictionService:
             "shap_summary": shap_summary,
             "shap_top_feature": shap_top_feature,
             "shap_value": shap_value,
+            "confidence_tier": tier,
         }

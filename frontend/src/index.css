@@ -1,0 +1,412 @@
+@import 'tailwindcss';
+@import './design-system/tokens.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'tnum' on, 'lnum' on;
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-md);
+    transition: all 0.2s ease;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    letter-spacing: 0.2px;
+  }
+
+  .pill-teal {
+    background: var(--status-info-bg);
+    color: var(--accent-teal);
+    border: 1px solid var(--status-info-border);
+  }
+
+  .pill-red {
+    background: var(--status-critical-bg);
+    color: var(--status-critical);
+    border: 1px solid var(--status-critical-border);
+  }
+
+  .pill-amber {
+    background: var(--status-warning-bg);
+    color: var(--status-warning);
+    border: 1px solid var(--status-warning-border);
+  }
+
+  .pill-slate {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+  }
+
+  .section-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+  }
+
+  .data-number {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1;
+    font-feature-settings: 'tnum' on;
+    color: var(--text-primary);
+  }
+
+  .btn-primary {
+    background: var(--accent-teal);
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: var(--radius-btn);
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-primary:hover {
+    opacity: 0.9;
+  }
+
+  .btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 18px;
+    border-radius: var(--radius-btn);
+    border: 1px solid var(--border-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-strong);
+  }
+
+  .live-pulse {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--accent-green);
+    box-shadow: 0 0 8px var(--accent-green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+}
+
+@layer utilities {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-secondary);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--border-strong);
+  }
+}
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent-teal);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--accent-teal);
+    outline-offset: 2px;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' on, 'lnum' on;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@media print {
+  @page {
+    margin: 16mm;
+    size: A4;
+  }
+
+  html, body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+
+  /* Hide interactive chrome */
+  aside,
+  nav,
+  header,
+  footer,
+  button,
+  [role="dialog"],
+  .no-print {
+    display: none !important;
+  }
+
+  /* Show only print-friendly content */
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Cards stay but lose shadows */
+  .card,
+  [class*="rounded-"] {
+    box-shadow: none !important;
+    border-color: #CCCCCC !important;
+    background: #FFFFFF !important;
+    page-break-inside: avoid;
+  }
+
+  /* Text colors for print */
+  * {
+    color: #000000 !important;
+    text-shadow: none !important;
+  }
+
+  /* Tables */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th, td {
+    border: 1px solid #CCCCCC !important;
+    padding: 6px 8px !important;
+    font-size: 10pt;
+  }
+
+  /* Charts — force light backgrounds */
+  svg,
+  canvas {
+    background: #FFFFFF !important;
+    max-width: 100%;
+    page-break-inside: avoid;
+  }
+
+  /* Links — show URL for context */
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 8pt;
+    color: #666666;
+  }
+
+  /* Status pills */
+  [class*="pill-"],
+  [class*="Badge"] {
+    background: #FFFFFF !important;
+    border: 1px solid #999999 !important;
+    color: #000000 !important;
+  }
+
+  /* Page breaks */
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+}
+
+/* ============================================
+   Mobile utilities
+   ============================================ */
+
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* iOS zoom prevention on focus — keeps 16px base */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+@media (min-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 14px;
+  }
+}
+
+/* Smooth momentum scroll on iOS */
+.overflow-x-auto,
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent horizontal overflow */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Tap targets — WCAG 2.1 minimum */
+button, a, [role="button"] {
+  min-height: 32px;
+}
+
+@media (max-width: 640px) {
+  button, a[role="button"] {
+    min-height: 40px;
+  }
+}
+
+/* Hide scrollbar on mobile while keeping scroll */
+@media (max-width: 640px) {
+  .overflow-x-auto::-webkit-scrollbar {
+    display: none;
+  }
+  .overflow-x-auto {
+    scrollbar-width: none;
+  }
+}
+
+/* Responsive text truncation helpers */
+.truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Mobile-friendly modal scroll */
+@media (max-width: 640px) {
+  [role="dialog"] {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* Print only the result card when the user clicks Print on a prediction */
+@media print {
+  body.printing-result header,
+  body.printing-result aside,
+  body.printing-result nav,
+  body.printing-result footer,
+  body.printing-result .no-print,
+  body.printing-result .no-print-when-printing {
+    display: none !important;
+  }
+
+  body.printing-result [data-print-region="result"] {
+    border: 1px solid #CCCCCC !important;
+    box-shadow: none !important;
+    background: #FFFFFF !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-inside: avoid;
+  }
+
+  body.printing-result main {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+}
+
+
+/* ---- Report print styles ---- */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-page-break {
+    page-break-before: always;
+  }
+  #report-capture {
+    margin: 0;
+    padding: 0;
+  }
+  #report-capture > div {
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+
+
+/* Line clamping for compact UI */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

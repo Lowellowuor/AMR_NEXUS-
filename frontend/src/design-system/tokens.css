@@ -1,0 +1,97 @@
+
+:root {
+  --bg-primary: #F3F2EF;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #E9E5DF;
+  --bg-elevated: #FFFFFF;
+  --bg-subtle: #F8F6F3;
+
+  --border-primary: #E0DFDC;
+  --border-secondary: #CFCCC4;
+  --border-strong: #B8B5AD;
+
+  --text-primary: #191919;
+  --text-secondary: #4D4D4D;
+  --text-muted: #767676;
+  --text-inverse: #FFFFFF;
+
+  --accent-teal: #0A7C77;
+  --accent-teal-hover: #086B66;
+  --accent-cyan: #0891B2;
+  --accent-blue: #0A66C2;
+  --accent-blue-hover: #004182;
+  --accent-green: #057642;
+  --accent-amber: #B45309;
+  --accent-red: #B91C1C;
+
+  --status-critical: #B91C1C;
+  --status-critical-bg: #FEF2F2;
+  --status-critical-border: #FECACA;
+
+  --status-warning: #92400E;
+  --status-warning-bg: #FFFBEB;
+  --status-warning-border: #FDE68A;
+
+  --status-success: #047857;
+  --status-success-bg: #ECFDF5;
+  --status-success-border: #A7F3D0;
+
+  --status-info: #0A66C2;
+  --status-info-bg: #EFF6FF;
+  --status-info-border: #BFDBFE;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+
+  --radius-card: 12px;
+  --radius-btn: 8px;
+  --radius-input: 8px;
+  --radius-pill: 9999px;
+}
+
+.dark {
+  --bg-primary: #0B1120;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1F2937;
+  --bg-elevated: #1F2937;
+  --bg-subtle: #1E293B;
+
+  --border-primary: #334155;
+  --border-secondary: #475569;
+  --border-strong: #64748B;
+
+  --text-primary: #F1F5F9;
+  --text-secondary: #CBD5E1;
+  --text-muted: #94A3B8;
+  --text-inverse: #0B1120;
+
+  --accent-teal: #2DD4BF;
+  --accent-teal-hover: #14B8A6;
+  --accent-cyan: #22D3EE;
+  --accent-blue: #60A5FA;
+  --accent-blue-hover: #93C5FD;
+  --accent-green: #34D399;
+  --accent-amber: #FBBF24;
+  --accent-red: #F87171;
+
+  --status-critical: #FCA5A5;
+  --status-critical-bg: #450A0A;
+  --status-critical-border: #7F1D1D;
+
+  --status-warning: #FCD34D;
+  --status-warning-bg: #451A03;
+  --status-warning-border: #92400E;
+
+  --status-success: #6EE7B7;
+  --status-success-bg: #022C22;
+  --status-success-border: #065F46;
+
+  --status-info: #93C5FD;
+  --status-info-bg: #1E3A8A;
+  --status-info-border: #1E40AF;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
