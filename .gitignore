@@ -48,3 +48,12 @@ logs/
 # Build outputs
 build/
 coverage/
+
+# Session backups and temp scripts
+_bak/
+**/_bak/
+*.bak-*
+_*.py
+_err.txt
+venv.old/
+venv*/

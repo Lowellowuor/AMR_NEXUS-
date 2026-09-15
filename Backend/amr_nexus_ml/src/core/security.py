@@ -1,14 +1,17 @@
 import os
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 import bcrypt
+from dotenv import load_dotenv
 from jose import JWTError, jwt
 from fastapi import HTTPException
 
-SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "dev-only-change-me-4a8f9c2e1b3d5f7a-in-production",
-)
+# Load .env before reading env vars — makes this module import-order-independent.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(_REPO_ROOT / ".env")
+
+SECRET_KEY = os.environ["SECRET_KEY"]   # fail hard if missing, never fall back
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))
 

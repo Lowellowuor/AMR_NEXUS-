@@ -145,6 +145,7 @@ export const getPathogenCompare = (a, b, params = '') => api.getPathogenCompare(
 export const getDashboardSummary = (params = '') => api.getDashboardSummary(params);
 export const getFreshness = () => api.getFreshness();
 export const getCountyRank = (county, params = '') => api.getCountyRank(county, params);
+export const getCountyDetail = (county, params = '') => api.getCountyDetail(county, params);
 export const getFacilityCoverage = (params = '') => api.getFacilityCoverage(params);
 export const getTopCountiesWithTrend = (limit = 8, params = '') => api.getTopCountiesWithTrend(limit, params);
 export const getGlassIndicators = (params = '') => api.getGlassIndicators(params);

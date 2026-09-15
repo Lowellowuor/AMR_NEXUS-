@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useTheme } from './design-system';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import ForcePasswordChange from './components/auth/ForcePasswordChange';
 import Layout from './components/Layout/Layout';
 import Login from './pages/Login';
@@ -22,6 +23,8 @@ import DataQuality from './pages/DataQuality';
 import ModelCard from './pages/ModelCard';
 import Privacy from './pages/Privacy';
 import AuditLog from './pages/AuditLog';
+
+const wrap = (el) => <ErrorBoundary>{el}</ErrorBoundary>;
 
 function AppRoutes() {
   const { user, mustChangePassword } = useAuth();
@@ -55,22 +58,22 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={role === 'national' ? <NationalDashboard /> : <CountyDashboard />} />
-        <Route path="dashboard" element={role === 'national' ? <NationalDashboard /> : <CountyDashboard />} />
-        <Route path="predict" element={<Predict />} />
-        <Route path="analytics" element={<Analytics />} />
-        <Route path="history" element={<History />} />
-        <Route path="alerts" element={<Alerts />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="settings" element={<Settings />} />
-        <Route path="compare" element={<Compare />} />
-        <Route path="pathogen-explorer" element={<PathogenExplorer />} />
-        <Route path="bulk-import" element={<BulkImport />} />
-        <Route path="compare-analytics" element={<CompareAnalytics />} />
-        <Route path="data-quality" element={<DataQuality />} />
-        <Route path="model-card" element={<ModelCard />} />
-        <Route path="privacy" element={<Privacy />} />
-        <Route path="admin/audit" element={<AuditLog />} />
+        <Route index element={wrap(role === 'national' ? <NationalDashboard /> : <CountyDashboard />)} />
+        <Route path="dashboard" element={wrap(role === 'national' ? <NationalDashboard /> : <CountyDashboard />)} />
+        <Route path="predict" element={wrap(<Predict />)} />
+        <Route path="analytics" element={wrap(<Analytics />)} />
+        <Route path="history" element={wrap(<History />)} />
+        <Route path="alerts" element={wrap(<Alerts />)} />
+        <Route path="reports" element={wrap(<Reports />)} />
+        <Route path="settings" element={wrap(<Settings />)} />
+        <Route path="compare" element={wrap(<Compare />)} />
+        <Route path="pathogen-explorer" element={wrap(<PathogenExplorer />)} />
+        <Route path="bulk-import" element={wrap(<BulkImport />)} />
+        <Route path="compare-analytics" element={wrap(<CompareAnalytics />)} />
+        <Route path="data-quality" element={wrap(<DataQuality />)} />
+        <Route path="model-card" element={wrap(<ModelCard />)} />
+        <Route path="privacy" element={wrap(<Privacy />)} />
+        <Route path="admin/audit" element={wrap(<AuditLog />)} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

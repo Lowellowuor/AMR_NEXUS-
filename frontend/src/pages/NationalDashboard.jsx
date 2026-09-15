@@ -8,7 +8,7 @@ import { TrendingUp, TrendingDown, Minus, Globe2, Beaker, AlertTriangle, Activit
 import api from '../api/client';
 import {
   getDashboardSummary, getGlassIndicators, getTopCountiesWithTrend, getMDRTrend,
-  getResistanceByPathogen, fetchAlerts,
+  getResistanceByPathogen, fetchAlerts, getCountyDetail,
 } from '../api/endpoints';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { formatNumber, formatPercent } from '../lib/format';
@@ -18,6 +18,8 @@ import TimeScopeSelector from '../components/dashboard/TimeScopeSelector';
 import FreshnessIndicator from '../components/dashboard/FreshnessIndicator';
 import CountyChoroplethMap from '../components/map/CountyChoroplethMap';
 import MapTimeSlider from '../components/map/MapTimeSlider';
+import NationalCountyDrawer from '../components/geo/drawers/NationalCountyDrawer';
+import { useRegionSelection } from '../components/geo/useRegionSelection';
 import AlertFeedPanel from '../components/alerts/AlertFeedPanel';
 import AlertDetailDrawer from '../components/alerts/AlertsDetailDrawer';
 import AnomalySummary from '../components/trends/AnomalySummary';
@@ -108,6 +110,7 @@ export default function NationalDashboard() {
   const [range, setRange] = useState(defaultRange);
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [selectedCounty, setSelectedCounty] = useState(null);
+  const { select: selectRegion, clear: clearRegion } = useRegionSelection();
 
   const qs = `start_date=${range.start_date}&end_date=${range.end_date}`;
 
@@ -238,10 +241,22 @@ export default function NationalDashboard() {
                 mode="current"
                 startDate={range.start_date}
                 endDate={range.end_date}
-                onCountyClick={(props) => setSelectedCounty(props)}
+                onCountyClick={async (props) => {
+                  setSelectedCounty(props);
+                  selectRegion(props.county);
+                  try {
+                    const detail = await getCountyDetail(props.county, qs);
+                    setSelectedCounty((prev) => ({ ...prev, ...detail }));
+                  } catch (e) { /* keep basic region */ }
+                }}
               />
             </div>
           </div>
+
+          <NationalCountyDrawer
+            region={selectedCounty}
+            onClose={() => { setSelectedCounty(null); clearRegion(); }}
+          />
 
           <MapTimeSlider />
         </div>

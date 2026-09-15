@@ -67,6 +67,7 @@ export const api = {
   getDashboardSummary: (params = '') => authFetch(`${API_BASE}/analytics/dashboard_summary?${params}`).then(handleResponse),
   getFreshness: () => authFetch(`${API_BASE}/analytics/freshness`).then(handleResponse),
   getCountyRank: (county, params = '') => authFetch(`${API_BASE}/analytics/county_rank?county=${encodeURIComponent(county)}&${params}`).then(handleResponse),
+  getCountyDetail: (county, params = '') => authFetch(`${API_BASE}/analytics/county_detail?county=${encodeURIComponent(county)}&${params}`).then(handleResponse),
   getFacilityCoverage: (params = '') => authFetch(`${API_BASE}/analytics/facility_coverage?${params}`).then(handleResponse),
   getTopCountiesWithTrend: (limit = 8, params = '') => authFetch(`${API_BASE}/analytics/top_counties_with_trend?limit=${limit}&${params}`).then(handleResponse),
   getGlassIndicators: (params = '') => authFetch(`${API_BASE}/analytics/glass_indicators?${params}`).then(handleResponse),

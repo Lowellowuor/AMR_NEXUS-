@@ -11,6 +11,7 @@ const TONE = {
 
 export default function PathogenGeographyTab({ data, onCountyClick }) {
   const rows = data.by_county || [];
+  const nationalRate = data.summary?.mdr_rate ?? null;
 
   if (rows.length === 0) {
     return (
@@ -32,7 +33,7 @@ export default function PathogenGeographyTab({ data, onCountyClick }) {
             County distribution
           </h3>
           <span className="text-xs text-[var(--text-muted)]">
-            Sorted by MDR rate · click a row or map marker to filter
+            Sorted by MDR rate · click a row or marker for details
           </span>
         </div>
         <div className="overflow-x-auto">
@@ -44,6 +45,7 @@ export default function PathogenGeographyTab({ data, onCountyClick }) {
                 <th className="text-right px-4 py-2 font-semibold text-[var(--text-secondary)]">Samples</th>
                 <th className="text-right px-4 py-2 font-semibold text-[var(--text-secondary)]">MDR count</th>
                 <th className="text-right px-4 py-2 font-semibold text-[var(--text-secondary)]">MDR rate</th>
+                <th className="text-right px-4 py-2 font-semibold text-[var(--text-secondary)]">vs national</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-primary)]">
@@ -52,7 +54,7 @@ export default function PathogenGeographyTab({ data, onCountyClick }) {
                 return (
                   <tr
                     key={row.county}
-                    onClick={() => onCountyClick?.(row.county)}
+                    onClick={() => onCountyClick?.(row)}
                     className="hover:bg-[var(--bg-tertiary)]/40 cursor-pointer transition"
                   >
                     <td className="px-4 py-2 text-[var(--text-muted)] tabular-nums">{idx + 1}</td>
@@ -67,6 +69,16 @@ export default function PathogenGeographyTab({ data, onCountyClick }) {
                       <span className={`inline-block text-xs font-bold tabular-nums px-2 py-0.5 rounded-full border ${TONE[tone]}`}>
                         {formatPercent(row.mdr_rate)}
                       </span>
+                    </td>
+                    <td className={`px-4 py-2 text-right tabular-nums font-semibold ${
+                      row.mdr_rate == null || nationalRate == null ? 'text-[var(--text-muted)]'
+                      : row.mdr_rate - nationalRate > 5 ? 'text-[var(--status-critical)]'
+                      : row.mdr_rate - nationalRate < -5 ? 'text-[var(--status-success)]'
+                      : 'text-[var(--text-muted)]'
+                    }`}>
+                      {row.mdr_rate == null || nationalRate == null
+                        ? '-'
+                        : ((row.mdr_rate - nationalRate) > 0 ? '+' : '') + (row.mdr_rate - nationalRate).toFixed(1) + ' pts'}
                     </td>
                   </tr>
                 );

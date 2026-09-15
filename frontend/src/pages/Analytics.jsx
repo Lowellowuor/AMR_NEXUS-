@@ -8,7 +8,7 @@ import { formatNumber, formatPercent } from '../lib/format';
 import { chartColors, tooltipStyle, axisTick } from '../lib/chartTheme';
 
 import api from '../api/client';
-import { getOptions, getMonthRange } from '../api/endpoints';
+import { getOptions, getMonthRange, getCountyDetail } from '../api/endpoints';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAnalyticsFilters } from '../hooks/useAnalyticsFilters';
 import { rangeForPreset } from '../lib/analyticsConfig';
@@ -19,6 +19,9 @@ import AnalyticsFilterBar from '../components/analytics/AnalyticsFilterBar';
 import EmptyState from '../components/ui/EmptyState';
 import { Skeleton } from '../components/ui/Skeleton';
 import { BarChart3 } from 'lucide-react';
+import CountyChoroplethMap from '../components/map/CountyChoroplethMap';
+import AnalyticsRegionDrawer from '../components/geo/drawers/AnalyticsRegionDrawer';
+import { useRegionSelection } from '../components/geo/useRegionSelection';
 
 function MetricCard({ label, value, hint, tone = 'default' }) {
   const toneClass = {
@@ -42,6 +45,8 @@ export default function Analytics() {
   usePageTitle('Analytics');
   const { filters, update, queryParams } = useAnalyticsFilters();
   const [compareRecords] = useState([]);
+  const [selectedRegion, setSelectedRegion] = useState(null);
+  const { select: selectRegion, clear: clearRegion } = useRegionSelection();
 
   // Ensure a default range on first load
   useMemo(() => {
@@ -117,11 +122,31 @@ export default function Analytics() {
   };
 
   const summary = summaryQuery.data || {};
+  const counties = topCountiesQuery.data || [];
+
+  const openRegion = async (region) => {
+    const delta = (region.mdr_rate != null && summary.mdr_rate != null)
+      ? +(region.mdr_rate - summary.mdr_rate).toFixed(1)
+      : null;
+    setSelectedRegion({
+      ...region,
+      filter_pathogen: filters.pathogen || null,
+      filter_sector: filters.sector || null,
+      filter_period: filters.start_date && filters.end_date
+        ? filters.start_date + ' to ' + filters.end_date
+        : null,
+      delta_vs_national: delta,
+    });
+    selectRegion(region.county);
+    try {
+      const detail = await getCountyDetail(region.county, queryParams);
+      setSelectedRegion((prev) => prev ? { ...prev, ...detail } : prev);
+    } catch (e) { /* keep basic */ }
+  };
   const trend = trendQuery.data || [];
   const pathogens = pathogenQuery.data || [];
   const sectors = sectorQuery.data || [];
-  const counties = topCountiesQuery.data || [];
-
+  
   const hasActive =
     !!filters.county || !!filters.pathogen || !!filters.sector;
 
@@ -294,35 +319,71 @@ export default function Analytics() {
 
           {filters.tab === 'geography' && (
             <div className="rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] overflow-hidden">
-              <div className="px-4 py-3 border-b border-[var(--border-primary)]">
-                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Top counties by MDR rate</h3>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-primary)]">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Sub-county MDR rate</h3>
+                <span className="text-xs text-[var(--text-muted)]">Click a marker or a row for details</span>
               </div>
-              {counties.length === 0 ? (
-                <EmptyState icon={BarChart3} title="No county data" />
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)]">
-                      <tr>
-                        <th className="text-left px-4 py-2 font-semibold text-[var(--text-secondary)]">#</th>
-                        <th className="text-left px-4 py-2 font-semibold text-[var(--text-secondary)]">County</th>
-                        <th className="text-right px-4 py-2 font-semibold text-[var(--text-secondary)]">MDR rate</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border-primary)]">
-                      {counties.map((c, i) => (
-                        <tr key={c.county} className="hover:bg-[var(--bg-tertiary)]/40">
-                          <td className="px-4 py-2 text-[var(--text-muted)] tabular-nums">{i + 1}</td>
-                          <td className="px-4 py-2 text-[var(--text-primary)] font-medium">{c.county}</td>
-                          <td className="px-4 py-2 text-right tabular-nums font-bold text-[var(--text-primary)]">
-                            {formatPercent(c.rate)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <div className="h-[420px] w-full min-h-0">
+                <CountyChoroplethMap
+                  onCountyClick={(props) => openRegion({ county: props.county, sub_county: props.sub_county, mdr_rate: (props.mdr_rate ?? 0) * 100, samples: props.sample_count })}
+                />
+              </div>
+              <div className="border-t border-[var(--border-primary)]">
+                <div className="px-4 py-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Top counties by MDR rate</h4>
                 </div>
-              )}
+                {counties.length === 0 ? (
+                  <div className="p-8"><EmptyState icon={BarChart3} title="No county data" /></div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)]">
+                        <tr>
+                          <th className="text-left px-4 py-2 font-semibold text-[var(--text-secondary)]">#</th>
+                          <th className="text-left px-4 py-2 font-semibold text-[var(--text-secondary)]">County</th>
+                          <th className="text-right px-4 py-2 font-semibold text-[var(--text-secondary)]">n</th>
+                          <th className="text-right px-4 py-2 font-semibold text-[var(--text-secondary)]">MDR rate</th>
+                          <th className="text-right px-4 py-2 font-semibold text-[var(--text-secondary)]">vs national</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--border-primary)]">
+                        {counties.map((c, i) => {
+                          const delta = (c.rate != null && summary.mdr_rate != null)
+                            ? +(c.rate - summary.mdr_rate).toFixed(1)
+                            : null;
+                          const tone = delta == null ? 'text-[var(--text-muted)]'
+                            : delta > 5 ? 'text-[var(--status-critical)]'
+                            : delta < -5 ? 'text-[var(--status-success)]'
+                            : 'text-[var(--text-muted)]';
+                          return (
+                            <tr
+                              key={c.county}
+                              onClick={() => openRegion({ county: c.county, mdr_rate: c.rate, samples: c.samples })}
+                              className="hover:bg-[var(--bg-tertiary)]/40 cursor-pointer"
+                            >
+                              <td className="px-4 py-2 text-[var(--text-muted)] tabular-nums">{i + 1}</td>
+                              <td className="px-4 py-2 text-[var(--text-primary)] font-medium">{c.county}</td>
+                              <td className="px-4 py-2 text-right tabular-nums text-[var(--text-secondary)]">
+                                {c.samples != null ? formatNumber(c.samples) : '-'}
+                              </td>
+                              <td className="px-4 py-2 text-right tabular-nums font-bold text-[var(--text-primary)]">
+                                {formatPercent(c.rate)}
+                              </td>
+                              <td className={'px-4 py-2 text-right tabular-nums font-semibold ' + tone}>
+                                {delta == null ? '-' : (delta > 0 ? '+' : '') + delta + ' pts'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              <AnalyticsRegionDrawer
+                region={selectedRegion}
+                onClose={() => { setSelectedRegion(null); clearRegion(); }}
+              />
             </div>
           )}
         </div>

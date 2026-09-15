@@ -10,7 +10,7 @@ import {
 
 import api from '../api/client';
 import {
-  getDashboardSummary, getCountyRank, getFacilityCoverage, getMDRTrend, getSubCountyMDR, fetchAlerts,
+  getDashboardSummary, getCountyRank, getFacilityCoverage, getMDRTrend, getSubCountyMDR, fetchAlerts, getCountyDetail,
 } from '../api/endpoints';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { formatNumber, formatPercent, timeAgo } from '../lib/format';
@@ -19,6 +19,8 @@ import { chartColors, tooltipStyle, axisTick } from '../lib/chartTheme';
 import TimeScopeSelector from '../components/dashboard/TimeScopeSelector';
 import FreshnessIndicator from '../components/dashboard/FreshnessIndicator';
 import CountyChoroplethMap from '../components/map/CountyChoroplethMap';
+import CountySubCountyDrawer from '../components/geo/drawers/CountySubCountyDrawer';
+import { useRegionSelection } from '../components/geo/useRegionSelection';
 import AlertFeedPanel from '../components/alerts/AlertFeedPanel';
 import AlertDetailDrawer from '../components/alerts/AlertsDetailDrawer';
 import AnomalySummary from '../components/trends/AnomalySummary';
@@ -77,6 +79,8 @@ export default function CountyDashboard() {
   const { selectedCounty, counties } = useOutletContext();
   const [range, setRange] = useState(defaultRange);
   const [selectedAlert, setSelectedAlert] = useState(null);
+  const [selectedRegion, setSelectedRegion] = useState(null);
+  const { select: selectRegion, clear: clearRegion } = useRegionSelection();
 
   const countyName = counties?.find((c) => c.code === selectedCounty)?.name || selectedCounty || '';
   const qs = `start_date=${range.start_date}&end_date=${range.end_date}`;
@@ -254,10 +258,22 @@ export default function CountyDashboard() {
                 county={selectedCounty}
                 startDate={range.start_date}
                 endDate={range.end_date}
-                onCountyClick={(props) => {}}
+                onCountyClick={async (props) => {
+                  setSelectedRegion(props);
+                  selectRegion(props.sub_county || props.county);
+                  try {
+                    const detail = await getCountyDetail(selectedCounty, qs);
+                    setSelectedRegion((prev) => ({ ...prev, ...detail, sub_county: props.sub_county }));
+                  } catch (e) { /* keep basic */ }
+                }}
               />
             </div>
           </div>
+
+          <CountySubCountyDrawer
+            region={selectedRegion}
+            onClose={() => { setSelectedRegion(null); clearRegion(); }}
+          />
         </div>
 
         <div className="lg:col-span-1 space-y-4">

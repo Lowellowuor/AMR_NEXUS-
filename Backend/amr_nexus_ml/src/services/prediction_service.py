@@ -26,6 +26,7 @@ class PredictionService:
         self.feature_names = None
         self.original_features = None
         self.pair_freq_map = None
+        self.model_available = False
         self._load_models()
 
     def _load_models(self):
@@ -43,11 +44,14 @@ class PredictionService:
             logger.info("All models loaded for prediction service.")
         except Exception as e:
             logger.error(f"Failed to load models: {e}")
-            raise RuntimeError("Model artifacts are missing or corrupted. Please run training first.")
+            self.model_available = False
+            return
+        self.model_available = True
 
     def _add_pair_frequency_feature(self, record: dict) -> dict:
         pair_key = f"{record.get('sector', '')}_{record.get('sub_sector', '')}"
-        record['sector_sub_pair_count'] = self.pair_freq_map.get(pair_key, 0)
+        mapping = self.pair_freq_map or {}
+        record['sector_sub_pair_count'] = mapping.get(pair_key, 0)
         return record
 
     def _get_or_create_hotspot(self, county: str, sub_county: Optional[str]) -> Hotspot:
@@ -93,33 +97,56 @@ class PredictionService:
         data = record.dict()
         data = self._add_pair_frequency_feature(data)
 
-        X = pd.DataFrame([data])[self.original_features]
-        X_processed = self.preprocessor.transform(X)
+        used_fallback = False
+        source = "ml"
+        X_processed = None
 
-        mdr_prob = float(self.model.predict_proba(X_processed)[0][1])
+        if not self.model_available:
+            logger.warning("Model unavailable; using deterministic fallback.")
+            fb = deterministic_fallback(data)
+            mdr_prob = float(fb["mdr_probability"])
+            anomaly_score = 0.0
+            anomaly_flag = False
+            used_fallback = True
+            source = "fallback"
+        else:
+            try:
+                X = pd.DataFrame([data])[self.original_features]
+                X_processed = self.preprocessor.transform(X)
 
-        X_reduced = self.svd_model.transform(X_processed)
-        anomaly_score = float(self.iso_model.score_samples(X_reduced)[0])
-        anomaly_flag = bool(anomaly_score < self.anomaly_threshold)
+                mdr_prob = float(self.model.predict_proba(X_processed)[0][1])
 
-        shap_summary = None
-        shap_top_feature = None
-        shap_value = None
-        try:
-            shap_values = self.shap_explainer.shap_values(X_processed)
-            if isinstance(shap_values, list):
-                shap_values = shap_values[1]
-            shap_values = shap_values[0]
-            top_idx = np.argmax(np.abs(shap_values))
-            shap_top_feature = self.feature_names[top_idx]
-            shap_value = float(shap_values[top_idx])
+                X_reduced = self.svd_model.transform(X_processed)
+                anomaly_score = float(self.iso_model.score_samples(X_reduced)[0])
+                anomaly_flag = bool(anomaly_score < self.anomaly_threshold)
+            except Exception as e:
+                logger.warning(f"ML inference failed, using deterministic fallback: {e}")
+                fb = deterministic_fallback(data)
+                mdr_prob = float(fb["mdr_probability"])
+                anomaly_score = 0.0
+                anomaly_flag = False
+                used_fallback = True
+                source = "fallback"
 
-            direction = "increases" if shap_value > 0 else "decreases"
-            shap_summary = (
-                f"Top feature: {shap_top_feature} ({direction} risk by {abs(shap_value):.3f})."
-            )
-        except Exception as e:
-            logger.warning(f"SHAP computation failed: {e}")
+        shap_summary = "SHAP explanation unavailable (fallback mode)."
+        shap_top_feature = "unavailable"
+        shap_value = 0.0
+        if self.model_available and X_processed is not None:
+            try:
+                shap_values = self.shap_explainer.shap_values(X_processed)
+                if isinstance(shap_values, list):
+                    shap_values = shap_values[1]
+                shap_values = shap_values[0]
+                top_idx = np.argmax(np.abs(shap_values))
+                shap_top_feature = self.feature_names[top_idx]
+                shap_value = float(shap_values[top_idx])
+
+                direction = "increases" if shap_value > 0 else "decreases"
+                shap_summary = (
+                    f"Top feature: {shap_top_feature} ({direction} risk by {abs(shap_value):.3f})."
+                )
+            except Exception as e:
+                logger.warning(f"SHAP computation failed: {e}")
 
         county = data.get('county')
         sub_county = data.get('sub_county')
@@ -167,7 +194,7 @@ class PredictionService:
                 mdr_flag=bool(mdr_prob >= 0.5),
                 anomaly_flag=anomaly_flag,
                 confidence_tier=tier,
-                fallback_used=False,
+                fallback_used=used_fallback,
                 feature_snapshot={
                     "pathogen_code": data.get('pathogen_code'),
                     "county": county,
@@ -208,4 +235,6 @@ class PredictionService:
             "shap_top_feature": shap_top_feature,
             "shap_value": shap_value,
             "confidence_tier": tier,
+            "source": source,
+            "fallback_used": used_fallback,
         }

@@ -33,6 +33,8 @@ class PredictionResponse(BaseModel):
     shap_top_feature: str
     shap_value: float
     shap_summary: str
+    source: str = "ml"
+    fallback_used: bool = False
 
 
 class EmailReportRequest(BaseModel):

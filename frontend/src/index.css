@@ -410,3 +410,68 @@ button, a, [role="button"] {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* ---- Print gap fill: truncation, page breaks, table headers, links ---- */
+@media print {
+  /* Un-truncate anything that was line-clamped */
+  .line-clamp-1,
+  .line-clamp-2,
+  .line-clamp-3,
+  .line-clamp-4 {
+    display: block !important;
+    -webkit-line-clamp: unset !important;
+    -webkit-box-orient: unset !important;
+    overflow: visible !important;
+  }
+
+  /* Keep cards, tables, and figures from splitting mid-content */
+  table,
+  figure,
+  .avoid-break,
+  [class*="rounded-[var(--radius-card)]"] {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Repeat table headers on every printed page */
+  thead {
+    display: table-header-group;
+  }
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* Tables print legibly */
+  table {
+    width: 100% !important;
+    font-size: 10pt;
+  }
+
+  /* Show link targets inline on paper */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    color: #555;
+  }
+
+  /* Preserve status colors (risk badges, tier pills) */
+  .badge,
+  .status-pill,
+  [data-tone],
+  [class*="status-"] {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Charts must fit the page */
+  svg {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Remove hover affordances */
+  .cursor-pointer,
+  [role="button"] {
+    cursor: auto !important;
+  }
+}

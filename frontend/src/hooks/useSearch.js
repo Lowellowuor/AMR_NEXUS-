@@ -16,7 +16,7 @@ export function useSearch() {
         // TODO: Replace with actual backend endpoint: /search?q=term
         // For now, mock results
         const mock = [
-          { type: 'Pathogen', name: term.toUpperCase(), url: `/pathogen-explorer?pathogen=${term}` },
+          { type: 'Pathogen', name: term.toUpperCase(), url: `/pathogen-explorer?pathogen=${encodeURIComponent(term)}` },
           { type: 'County', name: term, url: `/analytics?county=${term}` },
         ];
         setResults(mock);

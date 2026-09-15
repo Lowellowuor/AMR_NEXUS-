@@ -37,15 +37,26 @@ const riskColor = (level) => {
   }
 };
 
-const rateColor = (rate) => {
-  if (rate >= 60) return '#DC2626';
-  if (rate >= 30) return '#D97706';
+const quartileColor = (rate, allRates) => {
+  if (rate == null) return '#6B7280';
+  const sorted = (allRates || []).filter((r) => r != null).sort((a, b) => a - b);
+  if (sorted.length === 0) return '#059669';
+  const q = (p) => sorted[Math.floor((sorted.length - 1) * p)];
+  if (rate >= q(0.75)) return '#DC2626';
+  if (rate >= q(0.50)) return '#D97706';
+  if (rate >= q(0.25)) return '#65A30D';
   return '#059669';
 };
 
 const OSM_TILE = {
   url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+};
+
+const hotspotColor = (rate) => {
+  if (rate >= 50) return '#DC2626';
+  if (rate >= 25) return '#D97706';
+  return '#059669';
 };
 
 const hotspotIcon = (rate) =>
@@ -55,7 +66,7 @@ const hotspotIcon = (rate) =>
       <div style="
         width: 18px;
         height: 18px;
-        background: ${rateColor(rate)};
+        background: ${hotspotColor(rate)};
         border: 2px solid #FFFFFF;
         border-radius: 50%;
         box-shadow: 0 2px 6px rgba(0,0,0,0.4);
@@ -158,20 +169,20 @@ export default function CountyChoroplethMap({
           {features.map((feature, idx) => {
             const props = feature.properties;
             const [lng, lat] = feature.geometry.coordinates;
-            const value = props.mdr_rate ?? 0;
-            const color = riskColor(props.risk_level);
+            const value = (props.mdr_rate ?? 0) * 100;
+            const color = quartileColor(value, features.map((f) => (f.properties?.mdr_rate ?? 0) * 100));
 
             return (
               <CircleMarker
                 key={`circle-${props.county}-${props.sub_county}-${idx}`}
                 center={[lat, lng]}
-                radius={Math.max(14, value * 60)}
+                radius={Math.max(6, Math.min(28, value * 0.35))}
                 pathOptions={{ color, fillColor: color, fillOpacity: 0.35, weight: 1.5 }}
                 eventHandlers={{ click: () => onCountyClick?.(props) }}
               >
                 <Tooltip direction="top" offset={[0, -12]}>
                   <span className="text-xs font-semibold">
-                    {props.sub_county} — {Math.round(value * 100)}%
+                    {props.sub_county} — {value.toFixed(1)}%
                   </span>
                 </Tooltip>
               </CircleMarker>

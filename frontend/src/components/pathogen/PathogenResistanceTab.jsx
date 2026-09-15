@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { formatNumber, formatPercent } from '../../lib/format';
 import { classifyAntibiotic, toneForRate } from '../../lib/pathogenConfig';
@@ -42,7 +42,7 @@ export default function PathogenResistanceTab({ data }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-primary)]">
-              {rows.map((row) => {
+              {rows.map((row, idx) => {
                 const aware = classifyAntibiotic(row.antibiotic_class);
                 const tone = toneForRate(row.resistance);
                 const isOpen = !!expanded[row.antibiotic_class];
@@ -50,9 +50,8 @@ export default function PathogenResistanceTab({ data }) {
                 const hasDetail = details.length > 0;
 
                 return (
-                  <>
+                  <Fragment key={row.antibiotic_class}>
                     <tr
-                      key={row.antibiotic_class}
                       onClick={() => hasDetail && toggle(row.antibiotic_class)}
                       className={`hover:bg-[var(--bg-tertiary)]/40 ${hasDetail ? 'cursor-pointer' : ''}`}
                     >
@@ -117,7 +116,7 @@ export default function PathogenResistanceTab({ data }) {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </tbody>

@@ -83,7 +83,7 @@ export default function PathogenGeographyMap({ data, onCountyClick, height = 420
                 center={[row.latitude, row.longitude]}
                 radius={r}
                 pathOptions={{ color, fillColor: color, fillOpacity: 0.55, weight: 1.5 }}
-                eventHandlers={{ click: () => onCountyClick?.(row.county) }}
+                eventHandlers={{ click: () => onCountyClick?.(row) }}
               >
                 <Tooltip direction="top" offset={[0, -4]}>
                   <div className="text-xs">
