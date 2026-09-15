@@ -2,19 +2,20 @@
 
 **Antimicrobial Resistance Surveillance Platform · Republic of Kenya**
 
-[![Status](https://img.shields.io/badge/status-production--ready-success)]()
+[![Status](https://img.shields.io/badge/status-active--development-yellow)]()
 [![License](https://img.shields.io/badge/license-Proprietary-red)]()
 [![Compliance](https://img.shields.io/badge/DPA%202019-compliant-blue)]()
 [![WHO GLASS](https://img.shields.io/badge/WHO%20GLASS-aligned-green)]()
 
 ---
 
-AMR Nexus is a national surveillance and clinical decision support platform for antimicrobial resistance (AMR) in Kenya. It ingests isolate-level data from health facilities, laboratories, veterinary sites, and environmental surveillance points, and provides early warning, predictive analytics, and Ministry of Health compliant reporting — all under a single, secure, auditable system.
+AMR Nexus is a national surveillance and clinical decision support platform for antimicrobial resistance (AMR) in Kenya. It ingests isolate-level data from health facilities, laboratories, veterinary sites, and environmental surveillance points, and provides early warning, predictive analytics, and Ministry of Health compliant reporting under a single, secure, auditable system.
 
 ---
 
 ## Table of Contents
 
+- [What's Working Today](#whats-working-today)
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Architecture](#architecture)
@@ -26,11 +27,48 @@ AMR Nexus is a national surveillance and clinical decision support platform for 
 - [API Reference](#api-reference)
 - [Machine Learning](#machine-learning)
 - [Security & Compliance](#security--compliance)
-- [Deployment](#deployment)
 - [Development](#development)
-- [Testing](#testing)
+- [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
+
+---
+
+## What's Working Today
+
+This section is kept honest against the code. If a claim here doesn't match the code, that is a documentation bug.
+
+### Backend
+
+- JWT authentication with bcrypt password hashing; `SECRET_KEY` is required at startup and there is **no silent fallback**
+- Role-based access control: `admin`, `analyst`, `clinician`, `viewer`
+- Isolate submission and MDR prediction via XGBoost with SHAP explainability
+- **Deterministic rule-based fallback** when the ML model is unavailable — every prediction is labelled with `source: "ml"` or `source: "fallback"` and `fallback_used: true|false`
+- Alert lifecycle: create, acknowledge, resolve, assign, bulk-acknowledge
+- Multi-channel notification dispatch: in-app, SMTP email, Africa's Talking SMS
+- Analytics: summary, MDR trend, by-pathogen, by-sector, by-county, sub-county GeoJSON, WHO GLASS indicator set
+- `GET /analytics/county_detail` — full per-county medical panel (95% Wilson CI, top pathogens, sector and specimen breakdowns, antibiotic-class resistance, recent isolates, delta vs national) computed under the caller's own filter context
+- Pathogen Explorer: overview, resistance, geography, trends, and recent views
+- Audit trail: every privileged action recorded automatically with actor, IP, and timestamp
+- Data subject rights: export and deletion-request workflows
+- Model health: calibration, feature drift, live accuracy from confirmed outcomes
+- Retraining script at `Backend/amr_nexus_ml/scripts/retrain.py` — reads confirmed laboratory outcomes, trains a new candidate model, writes to `saved_models/candidates/<timestamp>/`, and **does not** overwrite production unless invoked with `--promote`
+
+### Frontend
+
+- React 19 + Vite 8 + Tailwind 4 with light and dark themes
+- Interactive maps on four views — National Dashboard, County Dashboard, Analytics, Pathogen Explorer — sharing a single detail drawer
+- The drawer opens instantly with map data and enriches asynchronously from `/analytics/county_detail`
+- Filter-aware tables with denominators (n), confidence intervals, and delta-vs-national colour coding
+- WCAG AA colour contrast in both themes
+
+### In progress or not yet automated
+
+- Retraining is **manual**. Nothing schedules it; no cron job exists.
+- The model registry table exists but is empty — no promoted model versions yet.
+- Champion/challenger comparison is a **design pattern** (candidate directory + manual `--promote`), not an automated gate.
+- The feedback loop requires clinician confirmation. As of this writing, real confirmed outcomes are sparse.
+- Automated backups are not in the repository; deployment is not containerised yet.
 
 ---
 
@@ -40,13 +78,13 @@ Antimicrobial resistance is one of the most urgent public health threats of the 
 
 AMR Nexus provides the technical infrastructure to support this mission:
 
-- **Surveillance** — aggregate and visualize resistance patterns across all 47 counties and 290+ sub-counties
-- **Prediction** — machine-learning based estimation of multidrug resistance (MDR) with explainability
+- **Surveillance** — aggregate and visualise resistance patterns across all 47 counties and 290+ sub-counties
+- **Prediction** — machine-learning based estimation of multidrug resistance (MDR) with per-prediction explainability
 - **Early warning** — real-time detection of anomalies and high-risk isolates with configurable alerting
-- **Reporting** — Ministry of Health compliant PDF and CSV reports aligned with GLASS indicators
+- **Reporting** — Ministry of Health compliant reports aligned with GLASS indicators
 - **Governance** — full audit trail and Data Protection Act 2019 compliant data subject rights
 
-The platform is designed for **self-hosted, on-premise deployment** within Kenya, in line with data sovereignty requirements.
+The platform is designed for self-hosted, on-premise deployment within Kenya, in line with data sovereignty requirements.
 
 ---
 
@@ -56,19 +94,19 @@ The platform is designed for **self-hosted, on-premise deployment** within Kenya
 
 - **MDR prediction** with SHAP explainability — every prediction shows *why* it was made
 - **Confidence tiers** — High / Moderate / Borderline with calibration-aware messaging
-- **Antimicrobial stewardship tips** — WHO AWaRe classification (Access / Watch / Reserve)
-- **Similar past cases** — automatic lookup of related isolates
-- **Laboratory confirmation loop** — clinicians confirm outcomes; model self-calibrates over time
+- **Antimicrobial stewardship** — WHO AWaRe classification (Access / Watch / Reserve) surfaced per antibiotic class
+- **Laboratory confirmation loop** — clinicians confirm outcomes; confirmed records feed calibration metrics and retraining
+- **Graceful degradation** — if the ML model cannot load or inference fails, a deterministic rule-based score is returned and labelled as fallback
 - **Clinical guidance** — deterministic narrative generation from surveillance data
 
 ### Surveillance
 
-- **Interactive choropleth map** — sub-county MDR rates with drill-down
-- **Facility-level hotspots** — aggregated by reporting site with detailed panel
+- **Interactive maps** — clickable markers on four views with a shared detail drawer
+- **Per-county medical panel** — isolates, MDR rate with 95% CI, top pathogens, sector split, specimen split, antibiotic-class resistance, recent isolates, delta vs national baseline
 - **Time slider** — animated month-by-month evolution of resistance
-- **Pathogen explorer** — 5-tab deep dive with geographic, resistance, trend, and recent views
+- **Pathogen Explorer** — five-tab deep dive with geographic, resistance, trend, and recent views
 - **Period comparison** — side-by-side delta across any two date ranges or scopes
-- **GLASS indicator strip** — E. coli, Klebsiella pneumoniae, Staphylococcus aureus
+- **WHO GLASS indicator strip** — *E. coli*, *Klebsiella pneumoniae*, *Staphylococcus aureus*
 
 ### Alerts & Notifications
 
@@ -82,12 +120,12 @@ The platform is designed for **self-hosted, on-premise deployment** within Kenya
 
 ### Machine Learning Operations
 
-- **Model registry** — version tracking with metrics, algorithm, and activation state
 - **Prediction log** — every inference recorded with features, latency, and outcome
-- **Calibration curve** — predicted vs lab-confirmed outcomes
-- **Feature drift detection** — symmetric total variation across 5 dimensions
+- **Calibration curve** — predicted vs laboratory-confirmed outcomes
+- **Feature drift detection** — symmetric total variation across five dimensions
 - **Live performance** — accuracy, sensitivity, specificity, PPV, NPV computed from confirmed outcomes
-- **Fallback logic** — deterministic rule-based risk score if model unavailable
+- **Fallback logic** — deterministic rule-based risk score if the model is unavailable, labelled in the response and in the prediction log
+- **Manual retraining** — `scripts/retrain.py` produces a candidate without touching production; `--promote` swaps it in with a backup
 
 ### Administration
 
@@ -100,49 +138,59 @@ The platform is designed for **self-hosted, on-premise deployment** within Kenya
 
 ### Design & UX
 
-- **Light mode** — LinkedIn-inspired neutral palette, calm and readable
+- **Light mode** — neutral palette, calm and readable
 - **Dark mode** — deep navy medical-grade theme, WCAG AA compliant
-- **Responsive** — mobile-first, tested from 375 px to 4K
+- **Responsive** — mobile-first from 375 px up
 - **Keyboard shortcuts** — `/`, `g` sequences, `r`, `e`, `c`
-- **Print & PDF** — clean print stylesheets for every report and record
+- **Print & PDF** — print stylesheets on report and prediction views
 - **Accessibility** — semantic HTML, ARIA labels, focus rings, tabular numerals
 
 ---
 
 ## Architecture
 
+The platform is a single-process ASGI application. FastAPI serves HTTP routes and Socket.IO is mounted alongside it as a combined ASGI app.
+
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                     PRESENTATION (React 19)                        │
-│      Web · PWA · Light + Dark · Responsive · Offline-capable       │
-└────────────────────────────┬─────────────────────────────────────┘
-                             │ HTTPS + JWT
-┌────────────────────────────▼─────────────────────────────────────┐
-│                     API GATEWAY (FastAPI)                          │
-│         Auth · RBAC · Rate limit · Audit · CORS                    │
-└────────────────────────────┬─────────────────────────────────────┘
-                             │
-        ┌────────────────────┼────────────────────┐
-        │                    │                     │
-  ┌─────▼─────┐        ┌─────▼─────┐        ┌──────▼─────┐
-  │ Analytics │        │ Prediction │        │   Alerts   │
-  │  Service  │        │  Service   │        │  Service   │
-  └─────┬─────┘        └─────┬──────┘        └──────┬─────┘
-        │                    │                       │
-        └────────────────────┼───────────────────────┘
-                             │
-┌────────────────────────────▼─────────────────────────────────────┐
-│                DATA LAYER (SQLite / PostgreSQL)                    │
-│      Encrypted at rest · Row-level scope · Immutable audit tables  │
-└────────────────────────────┬─────────────────────────────────────┘
-                             │
-        ┌────────────────────┼────────────────────┐
-        │                    │                     │
-  ┌─────▼─────┐        ┌─────▼─────┐        ┌──────▼─────┐
-  │ML Pipeline│        │ FHIR/HL7  │        │   DHIS2    │
-  │ (XGBoost) │        │  Bridge   │        │ Connector  │
-  └───────────┘        └───────────┘        └────────────┘
++------------------------------------------------------------------+
+|                     PRESENTATION (React 19)                       |
+|      Web · Light + Dark · Responsive · Keyboard shortcuts         |
++----------------------------+---------------------------------------+
+                             | HTTPS + JWT
++----------------------------v---------------------------------------+
+|               ASGI GATEWAY (FastAPI + Socket.IO)                   |
+|          Auth · RBAC · Audit middleware · CORS                     |
++----------------------------+---------------------------------------+
+                             |
+          +------------------+------------------+
+          |                  |                   |
+    +-----v-----+      +-----v------+      +-----v------+
+    | Analytics |      | Prediction |      |   Alerts   |
+    |  Service  |      |  Service   |      |  Service   |
+    +-----+-----+      +-----+------+      +-----+------+
+          |                  |                   |
+          +------------------+-------------------+
+                             |
++----------------------------v---------------------------------------+
+|                 DATA LAYER (SQLite / PostgreSQL)                   |
+|          Row-level scope · Immutable audit tables                  |
++----------------------------+---------------------------------------+
+                             |
+          +------------------+------------------+
+          |                  |                   |
+    +-----v-----+      +-----v------+      +-----v------+
+    |ML Pipeline|      |Notification|      |   Report   |
+    | (XGBoost) |      |  Dispatch  |      |  Builder   |
+    +-----------+      +------------+      +------------+
 ```
+
+The ASGI wrapper is defined in `Backend/amr_nexus_ml/src/main.py`:
+
+```python
+combined_app = socketio.ASGIApp(socketio_server=sio, other_asgi_app=app)
+```
+
+This is what `uvicorn` is pointed at. It serves both HTTP and WebSocket traffic on the same port.
 
 ---
 
@@ -152,39 +200,29 @@ The platform is designed for **self-hosted, on-premise deployment** within Kenya
 
 | Component | Technology |
 |---|---|
-| Framework | FastAPI 0.115+ |
+| Framework | FastAPI |
 | Language | Python 3.11 |
 | ORM | SQLAlchemy 2.x |
 | Database | SQLite (dev) · PostgreSQL (prod) |
 | Auth | JWT (python-jose) + bcrypt |
 | Realtime | Socket.IO (python-socketio) |
 | ML | XGBoost, scikit-learn, SHAP |
-| ML Registry | MLflow |
-| Server | Gunicorn + Uvicorn workers |
+| ML Registry | MLflow (local tracking) |
+| Server | Uvicorn (ASGI) |
 
 ### Frontend
 
-| Component | Technology |
+| Component | Version |
 |---|---|
-| Framework | React 19 |
-| Build | Vite 8 |
-| Styling | Tailwind CSS 4 + CSS variables |
-| State | TanStack Query + Zustand |
+| React | 19.2 |
+| Vite | 8.0 |
+| Tailwind CSS | 4.3 |
+| TanStack Query | 5.102 |
+| React Router | 7.x |
 | Maps | React Leaflet + OpenStreetMap |
 | Charts | Recharts |
 | Forms | React Hook Form + Zod |
-| Icons | Heroicons + Lucide |
-| Export | jsPDF, html2canvas, SheetJS |
-
-### Infrastructure
-
-| Component | Technology |
-|---|---|
-| Container | Docker + Docker Compose |
-| Web server | Nginx |
-| Reverse proxy | Caddy (HTTPS) |
-| Backups | SQLite hot copy + gzip |
-| Monitoring | Structured logging + audit trail |
+| Export | jsPDF, html2canvas |
 
 ---
 
@@ -194,8 +232,6 @@ The platform is designed for **self-hosted, on-premise deployment** within Kenya
 
 - Python 3.11 or newer
 - Node.js 20 or newer
-- Docker 24+ (for containerised deployment)
-- 4 vCPU, 8 GB RAM, 40 GB SSD (minimum)
 
 ### Backend
 
@@ -210,19 +246,23 @@ venv\Scripts\activate
 source venv/bin/activate
 
 pip install -r requirements.txt
-python -m src.main
+
+# Create the .env file (see Configuration below)
+cp .env.example .env
+# Edit .env and set SECRET_KEY
+
+# Start the ASGI server
+uvicorn src.main:combined_app --host 0.0.0.0 --port 8000
 ```
 
-Backend serves at `http://localhost:8000`.
-
-The first launch creates the database, loads ML artifacts, and seeds a default admin:
+The backend serves at `http://localhost:8000`. The first launch creates the SQLite database, loads ML artifacts, and seeds a default admin:
 
 ```
 Email:    admin@amrnexus.com
 Password: ChangeMe123!
 ```
 
-> Change this password immediately. The system will force a change on first login if configured to do so.
+> Change this password immediately after first login.
 
 ### Frontend
 
@@ -232,51 +272,42 @@ npm install
 npm run dev
 ```
 
-Frontend serves at `http://localhost:5173`.
-
-### Production (Docker)
-
-```bash
-cp .env.example .env
-# Edit .env and set SECRET_KEY (see Configuration below)
-docker compose up -d --build
-```
-
-Full deployment guide: [`README-DEPLOY.md`](./README-DEPLOY.md)
+The frontend serves at `http://localhost:5173`.
 
 ---
 
 ## Configuration
 
-All configuration lives in `.env` at the repository root. Copy `.env.example` and edit:
+All configuration lives in `.env` at the backend root (`Backend/amr_nexus_ml/.env`). Copy `.env.example` and edit:
 
 ```bash
-cp .env.example .env
+cp Backend/amr_nexus_ml/.env.example Backend/amr_nexus_ml/.env
 ```
 
 ### Required
 
 | Variable | Description |
 |---|---|
-| `SECRET_KEY` | Long random string used for JWT signing. Generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
-| `DATABASE_URL` | `sqlite:////data/amr_data.db` (container) or `postgresql://user:pass@host/db` (production) |
+| `SECRET_KEY` | Long random string used for JWT signing. Generate with `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `DATABASE_URL` | `sqlite:///./amr_data.db` (dev) or `postgresql://user:pass@host/db` (production) |
 | `CORS_ORIGINS` | JSON list of allowed frontend origins |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token lifetime in minutes (default: `480` = 8 hours) |
+
+> The backend will not start without `SECRET_KEY`. This is intentional — no fallback value exists in the source.
 
 ### Optional — Notifications
 
 | Variable | Description |
 |---|---|
-| `SMTP_HOST` | SMTP server hostname (e.g., `smtp.gmail.com`) |
-| `SMTP_PORT` | SMTP port (default: `587`) |
+| `SMTP_HOST` | SMTP server hostname |
+| `SMTP_PORT` | SMTP port (default `587`) |
 | `SMTP_USER` | SMTP username |
-| `SMTP_PASSWORD` | SMTP password or App Password |
+| `SMTP_PASS` | SMTP password or app password |
 | `SMTP_FROM` | Sender address |
 | `AFRICASTALKING_USERNAME` | Africa's Talking username |
 | `AFRICASTALKING_API_KEY` | Africa's Talking API key |
-| `AFRICASTALKING_SENDER_ID` | Registered sender ID (e.g., `AMR_NEXUS`) |
+| `AT_SENDER_ID` | Registered sender ID |
 
-> When SMTP or Africa's Talking credentials are missing, the notification dispatcher records the attempt with status `skipped` rather than failing — the platform remains fully functional.
+> When SMTP or Africa's Talking credentials are missing, the notification dispatcher records the attempt with status `skipped` rather than failing — the platform stays functional.
 
 ---
 
@@ -288,84 +319,90 @@ amr-nexus/
 │   └── amr_nexus_ml/
 │       ├── src/
 │       │   ├── api/
-│       │   │   ├── deps.py                 # Dependencies (auth, db)
-│       │   │   └── routers/                # Feature routers
-│       │   │       ├── auth.py             # Login, token verification
-│       │   │       ├── predictions.py      # Predict, history, outcomes
-│       │   │       ├── analytics.py        # All analytics endpoints
-│       │   │       ├── hotspots.py         # Facility-level aggregation
-│       │   │       ├── alerts.py           # Alert CRUD + acknowledgment
-│       │   │       ├── reports.py          # MoH report generation
-│       │   │       ├── audit.py            # Audit log
-│       │   │       ├── admin_users.py      # User management
-│       │   │       ├── user_actions.py     # Password, export, delete
-│       │   │       ├── analyst.py          # Medical Analyst Q&A
-│       │   │       ├── notifications.py    # Notification dispatch + log
-│       │   │       └── model_health.py     # ML metrics
+│       │   │   ├── deps.py                  # Auth and DB dependencies
+│       │   │   ├── schemas.py               # Pydantic request/response models
+│       │   │   └── routers/                 # Feature routers
+│       │   │       ├── auth.py
+│       │   │       ├── predictions.py
+│       │   │       ├── analytics.py
+│       │   │       ├── hotspots.py
+│       │   │       ├── alerts.py
+│       │   │       ├── reports.py
+│       │   │       ├── audit.py
+│       │   │       ├── admin_users.py
+│       │   │       ├── user_actions.py
+│       │   │       ├── analyst.py
+│       │   │       ├── notifications.py
+│       │   │       ├── guidance.py
+│       │   │       ├── search.py
+│       │   │       ├── ews.py
+│       │   │       └── model_health.py
 │       │   ├── core/
-│       │   │   ├── config.py               # Settings
-│       │   │   ├── security.py             # JWT + bcrypt
-│       │   │   └── audit_middleware.py     # Automatic audit trail
+│       │   │   ├── config.py                # Settings (Pydantic BaseSettings)
+│       │   │   ├── security.py              # JWT + bcrypt; loads .env at import
+│       │   │   ├── ml.py                    # Shared ML artifact loader
+│       │   │   └── audit_middleware.py      # Automatic audit trail
 │       │   ├── db/
-│       │   │   └── models.py               # SQLAlchemy models
+│       │   │   └── models.py                # SQLAlchemy models
 │       │   ├── services/
-│       │   │   ├── prediction_service.py   # ML inference
-│       │   │   ├── shap_service.py         # Explainability
-│       │   │   ├── notification_service.py # Multi-channel dispatch
-│       │   │   ├── email_service.py        # SMTP
-│       │   │   ├── sms_service.py          # Africa's Talking
-│       │   │   ├── model_health.py         # Calibration, drift
-│       │   │   └── forecast_utils.py       # Time-series
-│       │   ├── database.py                 # Engine + session
-│       │   └── main.py                     # FastAPI app
-│       ├── models/                         # ML artifacts (.pkl)
-│       ├── data/                           # Training data
-│       ├── Dockerfile
-│       └── requirements.txt
+│       │   │   ├── prediction_service.py    # ML inference + fallback
+│       │   │   ├── shap_service.py          # Explainability
+│       │   │   ├── notification_service.py  # Multi-channel dispatch
+│       │   │   ├── email_service.py
+│       │   │   ├── sms_service.py
+│       │   │   ├── model_health.py          # Calibration, drift, fallback
+│       │   │   ├── forecast_service.py
+│       │   │   ├── forecast_utils.py
+│       │   │   ├── geospatial_service.py
+│       │   │   └── llm_service.py
+│       │   ├── features/
+│       │   │   └── preprocessing.py
+│       │   ├── database.py
+│       │   └── main.py                      # FastAPI + Socket.IO combined app
+│       ├── scripts/
+│       │   └── retrain.py                   # Manual retraining entry point
+│       ├── saved_models/                    # ML artifacts (.pkl)
+│       │   └── candidates/                  # Retrain candidates (not auto-promoted)
+│       ├── requirements.txt
+│       └── .env.example
 ├── frontend/
 │   ├── src/
 │   │   ├── api/
-│   │   │   ├── client.js                   # Fetch wrapper
-│   │   │   └── endpoints.js                # Named API functions
+│   │   │   ├── client.js
+│   │   │   └── endpoints.js
 │   │   ├── components/
-│   │   │   ├── alerts/                     # Alert UI
-│   │   │   ├── analytics/                  # Analytics UI
-│   │   │   ├── auth/                       # Login, force password
-│   │   │   ├── compare/                    # Comparison UI
-│   │   │   ├── dashboard/                  # Dashboard widgets
-│   │   │   ├── history/                    # History UI
-│   │   │   ├── Layout/                     # Shell (Header, Sidebar)
-│   │   │   ├── map/                        # Maps and hotspots
-│   │   │   ├── pathogen/                   # Pathogen Explorer
-│   │   │   ├── predictions/                # Prediction forms
-│   │   │   ├── reports/                    # Report UI
-│   │   │   ├── settings/                   # Settings sections
-│   │   │   └── ui/                         # Primitives
+│   │   │   ├── alerts/                      # Live alert components
+│   │   │   ├── analytics/                   # Live analytics components
+│   │   │   ├── auth/                        # Login, force password
+│   │   │   ├── compare/
+│   │   │   ├── dashboard/
+│   │   │   ├── geo/                         # RegionDetailDrawer + per-page drawers
+│   │   │   │   └── drawers/
+│   │   │   ├── history/
+│   │   │   ├── Layout/
+│   │   │   ├── map/                         # Leaflet map components
+│   │   │   ├── pathogen/
+│   │   │   ├── predictions/
+│   │   │   ├── reports/
+│   │   │   ├── settings/
+│   │   │   └── ui/
 │   │   ├── contexts/
-│   │   │   └── AuthContext.jsx             # Auth provider
+│   │   │   └── AuthContext.jsx
 │   │   ├── design-system/
-│   │   │   ├── tokens.css                  # Light + dark tokens
-│   │   │   ├── ThemeProvider.jsx           # Theme context
-│   │   │   └── primitives/                 # Button, Card, etc.
-│   │   ├── hooks/                          # Shared hooks
-│   │   ├── lib/                            # Utilities, config
-│   │   ├── pages/                          # Top-level pages
-│   │   ├── App.jsx                         # Routes
-│   │   └── main.jsx                        # Entry point
-│   ├── public/
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   └── package.json
-├── scripts/
-│   ├── backup-db.sh
-│   ├── backup-db.ps1
-│   ├── smoke-test.sh
-│   └── smoke-test.ps1
-├── docker-compose.yml
+│   │   │   ├── tokens.css
+│   │   │   ├── ThemeProvider.jsx
+│   │   │   └── primitives/
+│   │   ├── hooks/
+│   │   ├── lib/
+│   │   ├── pages/
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   ├── package.json
+│   └── vite.config.js
+├── .editorconfig
 ├── .env.example
 ├── .gitignore
-├── README.md
-└── README-DEPLOY.md
+└── README.md
 ```
 
 ---
@@ -375,33 +412,35 @@ amr-nexus/
 ### Authentication
 
 - JWT-based with bcrypt password hashing
-- Token version field invalidates all existing tokens when:
-  - Password changes
-  - Role changes
-  - Account disabled
+- Token version field invalidates all existing tokens when password changes, role changes, or account is disabled
 - Force password change on first login and after admin reset
-- Session tracking via audit log
+- `SECRET_KEY` is loaded from `.env` at import time inside `core/security.py`; if missing, the app refuses to start
 
 ### Prediction
 
 Every isolate submission flows through:
 
 ```
-Input → Validation → Feature engineering → XGBoost inference
-     → SHAP explanation → Anomaly detection → Confidence tier
-     → Database record → Prediction log → Notification dispatch
+Input -> Pydantic validation -> Feature engineering -> XGBoost inference
+     -> SHAP explanation -> Anomaly detection -> Confidence tier
+     -> Database record -> Prediction log -> Notification dispatch
 ```
 
-- **Fallback:** if the ML model is unavailable, a deterministic rule-based scorer runs so the platform never crashes
-- **Feedback loop:** clinicians confirm lab outcomes; the model self-calibrates
+The response carries two fields that make the execution path explicit:
+
+- `source`: `"ml"` or `"fallback"`
+- `fallback_used`: boolean
+
+If the ML model is unavailable, a deterministic rule-based scorer runs. It is based on WHO-published risk factors (pathogen type, prior antibiotic exposure, sector, ward type) and is logged with `fallback_used: true`.
 
 ### Analytics
 
 - Summary with previous-period comparison
 - MDR trend (monthly)
 - By pathogen, sector, county
-- Geographic distribution (sub-county GeoJSON)
-- Month range derivation from live data
+- Sub-county MDR GeoJSON with coordinates
+- `county_detail` endpoint: 95% Wilson CI, top pathogens, sector and specimen breakdowns, antibiotic-class resistance, recent isolates, delta vs national baseline
+- Month range derived from live data
 
 ### Alerts
 
@@ -409,19 +448,11 @@ Input → Validation → Feature engineering → XGBoost inference
 - Age-based escalation
 - Real-time stream via Socket.IO
 - Bulk acknowledge with confirmation
-- Per-alert assignment, comments, resolution notes
+- Per-alert assignment, comments, and resolution notes
 
 ### Reports
 
-Three built-in report types:
-
-| Report | Audience | Default scope |
-|---|---|---|
-| Weekly Epidemiological Summary | County health officer | National, 7 days |
-| Monthly County AMR Report | County Director of Health | County, 30 days |
-| Quarterly National AMR Report | Ministry of Health, WHO GLASS | National, 90 days |
-
-Each report includes a standard MoH header, structured sections, and a decision-support disclaimer.
+Report generation produces Ministry of Health formatted output suitable for county and national distribution. Report types, layouts, and scheduling are documented on the Reports page in the app.
 
 ### Notifications
 
@@ -437,7 +468,7 @@ Every attempt is logged with recipient, status, error, and timestamp.
 ### Compliance
 
 - Audit trail — every privileged action recorded
-- Data subject export — CSV with records + audit events for the requesting user
+- Data subject export — CSV containing records and audit events for the requesting user
 - Deletion request — logged and routed to admin review
 - Privacy notice — DPA 2019 compliant
 
@@ -445,7 +476,7 @@ Every attempt is logged with recipient, status, error, and timestamp.
 
 ## API Reference
 
-Complete interactive documentation: `http://localhost:8000/docs` (Swagger UI)
+Interactive documentation: `http://localhost:8000/docs` (Swagger UI).
 
 ### Authentication
 
@@ -461,11 +492,11 @@ Complete interactive documentation: `http://localhost:8000/docs` (Swagger UI)
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/predict` | Submit isolate, get MDR prediction |
+| `POST` | `/predict` | Submit isolate, get MDR prediction (`source`, `fallback_used` included) |
 | `GET` | `/predictions` | Paginated history with filters |
 | `GET` | `/predictions/stats` | Summary statistics |
 | `GET` | `/predictions/{id}` | Full record detail |
-| `PATCH` | `/predictions/{id}/outcome` | Confirm lab outcome |
+| `PATCH` | `/predictions/{id}/outcome` | Confirm laboratory outcome |
 | `GET` | `/predictions/confirmed-stats` | Accuracy from confirmed outcomes |
 | `DELETE` | `/predictions/{id}` | Delete record (admin) |
 
@@ -480,6 +511,7 @@ Complete interactive documentation: `http://localhost:8000/docs` (Swagger UI)
 | `GET` | `/analytics/county_mdr` | County-level rates |
 | `GET` | `/analytics/sub_county_mdr` | Sub-county GeoJSON |
 | `GET` | `/analytics/dashboard_summary` | With previous period |
+| `GET` | `/analytics/county_detail` | Per-county medical panel under filters |
 | `GET` | `/analytics/pathogens` | Pathogen list |
 | `GET` | `/analytics/pathogens/{code}` | Pathogen detail |
 | `GET` | `/analytics/compare_periods` | Two-period comparison |
@@ -503,7 +535,7 @@ Complete interactive documentation: `http://localhost:8000/docs` (Swagger UI)
 | `GET` | `/ml/model-card` | Model card metadata |
 | `GET` | `/ml/registry` | Version history |
 | `GET` | `/ml/active` | Active model |
-| `GET` | `/ml/performance` | Live metrics |
+| `GET` | `/ml/performance` | Live metrics from confirmed outcomes |
 | `GET` | `/ml/calibration` | Calibration curve |
 | `GET` | `/ml/drift` | Feature drift |
 | `GET` | `/ml/recent-predictions` | Prediction log |
@@ -537,39 +569,46 @@ Complete interactive documentation: `http://localhost:8000/docs` (Swagger UI)
 ### Model
 
 - **Algorithm:** XGBoost gradient boosted trees
-- **Task:** Binary classification — multidrug resistance
-- **Output:** Probability between 0 and 1
+- **Task:** Binary classification of multidrug resistance
+- **Output:** Probability between 0 and 1, plus a confidence tier
 - **Explainability:** SHAP values per prediction
 - **Anomaly detection:** Isolation Forest on SVD-reduced features
 
-### Performance (v1.0.0)
+### Response contract
 
-| Metric | Value |
-|---|---|
-| AUC-ROC | 0.86 |
-| Sensitivity | 0.79 |
-| Specificity | 0.81 |
-| Precision | 0.77 |
-| F1 score | 0.78 |
-| Calibration error | 0.04 |
+Every prediction carries:
 
-Full details: `/model-card` page or `GET /ml/model-card`
+- `mdr_probability`: float
+- `mdr_flag`: boolean (threshold 0.5)
+- `confidence_tier`: string
+- `shap_top_feature`, `shap_value`, `shap_summary`
+- `source`: `"ml"` or `"fallback"`
+- `fallback_used`: boolean
 
-### Feedback Loop
+When the model cannot be loaded or inference fails, the fallback scorer returns a value between 0.15 and 0.95 and the response is clearly labelled.
 
-Every prediction is logged. When a clinician confirms the actual laboratory outcome, that record becomes a training signal:
+### Feedback loop
 
-1. Model predicts MDR probability
-2. Clinician confirms actual lab result
-3. Confirmed outcome feeds calibration metrics
-4. Accumulated confirmations trigger retraining
-5. New model version registered
-6. Champion / challenger comparison
-7. Promotion on improvement
+Every prediction is logged. When a clinician confirms the actual laboratory outcome through `PATCH /predictions/{id}/outcome`, that record becomes a training signal. Calibration and live-performance metrics are computed from the confirmed subset.
 
-### Fallback
+Automated retraining is not scheduled. To retrain manually:
 
-If the ML model is unavailable, a deterministic rule-based scorer provides a graceful degradation. This score is based on WHO-published risk factors (pathogen type, prior antibiotic exposure, sector, ward type) and is clearly labelled as fallback in the prediction log.
+```bash
+cd Backend/amr_nexus_ml
+python scripts/retrain.py --dry-run     # report confirmed count and class balance
+python scripts/retrain.py --min-rows 50 # write candidate if enough confirmed rows
+python scripts/retrain.py --promote     # swap candidate into production (with backup)
+```
+
+Candidates are written to `saved_models/candidates/<timestamp>/`. Production artifacts at `saved_models/*.pkl` are only replaced when `--promote` is passed, at which point the previous artifacts are copied to `saved_models/backup/<timestamp>/`.
+
+### Model performance
+
+Live performance metrics are exposed at `GET /ml/performance` and rendered on the Model Health page. Those values are computed from confirmed outcomes and reflect the current data, not a snapshot recorded in this document.
+
+### Champion / challenger
+
+The candidate-directory pattern provides a manual champion/challenger workflow: a new model is trained and written to a candidate directory; after comparing validation metrics, the operator promotes it with `--promote` or discards it. An automated promotion gate is not implemented.
 
 ---
 
@@ -583,54 +622,28 @@ If the ML model is unavailable, a deterministic rule-based scorer provides a gra
 | Pseudonymisation | Records keyed by random UUID, not patient identifiers |
 | Right to access | Settings → Privacy & Data → Download my data |
 | Right to erasure | Settings → Privacy & Data → Request account deletion |
-| Privacy notice | `/privacy` page, DPA-compliant |
+| Privacy notice | `/privacy` page |
 | Audit trail | Every privileged action logged with actor, IP, timestamp |
 | Breach response | Structured 72-hour notification workflow |
 | ODPC registration | Deploying organisation must register as data controller |
 
-### Security Controls
+### Security controls
 
 - **Authentication:** JWT with bcrypt password hashing
 - **Authorisation:** Role-based access control (admin, analyst, clinician, viewer)
-- **Session management:** Token versioning invalidates all tokens on password change, role change, or disable
-- **Transport:** TLS 1.3 in production (Caddy or nginx)
-- **Storage:** Encrypted at rest (recommended for production PostgreSQL)
+- **Session management:** Token versioning invalidates all tokens on password change, role change, or account disable
+- **Secrets:** Environment variables only; `.env` is excluded from version control; the app fails hard if `SECRET_KEY` is missing
 - **Input validation:** Pydantic strict mode on all endpoints
-- **Rate limiting:** Recommended via reverse proxy
 - **CORS:** Restricted to specific frontend origins
 - **Audit:** Every mutation logged automatically
-- **Secrets:** Environment variables only, `.env` excluded from version control
+- **Transport:** TLS in production (recommended at the reverse proxy)
 
-### Medical Safety
+### Medical safety
 
 - Every prediction carries a "Decision support only — not a diagnosis" disclaimer
 - Confidence tiers clearly flag borderline predictions
-- Fallback predictions are labelled distinctly
-- Model card documents intended use, limitations, and fairness
-
----
-
-## Deployment
-
-See [`README-DEPLOY.md`](./README-DEPLOY.md) for the complete on-premise deployment guide, covering:
-
-- Ubuntu 22.04 server setup
-- Docker and Docker Compose installation
-- HTTPS via Caddy with Let's Encrypt
-- Database backup scheduling
-- Security hardening checklist
-- DPA 2019 registration steps
-- Troubleshooting guide
-
-### Deployment targets
-
-- **Self-hosted on-premise** — Ministry of Health data centre
-- **Kenya-hosted cloud** — Safaricom Cloud, iWayAfrica, or similar
-- **Hybrid** — Primary on-premise, warm standby in Kenyan cloud
-
-### Data sovereignty
-
-All data must remain within the Republic of Kenya. The platform does not transmit data to any external service unless explicitly configured (SMTP, Africa's Talking).
+- Fallback predictions are labelled distinctly and logged with `fallback_used: true`
+- The model card documents intended use, limitations, and fairness considerations
 
 ---
 
@@ -642,12 +655,12 @@ All data must remain within the Republic of Kenya. The platform does not transmi
 # Backend
 cd Backend/amr_nexus_ml
 python -m venv venv
-venv\Scripts\activate       # Windows
-source venv/bin/activate    # macOS / Linux
+venv\Scripts\activate          # Windows
+source venv/bin/activate       # macOS / Linux
 pip install -r requirements.txt
-python -m src.main
+uvicorn src.main:combined_app --host 0.0.0.0 --port 8000 --log-level info
 
-# Frontend (in a separate terminal)
+# Frontend (separate terminal)
 cd frontend
 npm install
 npm run dev
@@ -656,46 +669,30 @@ npm run dev
 ### Code style
 
 - **Backend:** PEP 8, type hints on public functions, docstrings on modules
-- **Frontend:** ES2023, functional components with hooks, no class components
+- **Frontend:** Functional components with hooks; no class components
 - **Commits:** Present tense, imperative mood ("Add user management" not "Added")
 
 ### Branching
 
-- `main` — stable, deployable
+- `main` — stable
 - `feature/<name>` — new features
 - `fix/<name>` — bug fixes
 - `hotfix/<name>` — production fixes
 
 ---
 
-## Testing
+## Roadmap
 
-### Smoke test
+The following items are designed but not yet built or automated:
 
-```bash
-# Windows
-.\scripts\smoke-test.ps1
-
-# macOS / Linux
-./scripts/smoke-test.sh
-```
-
-Verifies: health, login, summary, dashboard, pathogens, alerts, audit, model card.
-
-### Manual test paths
-
-| Path | Expected |
-|---|---|
-| Sign in with wrong password | 401 error message |
-| Sign in with correct password | Dashboard loads |
-| Create user from admin | Temp password returned |
-| Login with temp password | Force password change modal |
-| Change password | Redirect to login |
-| Login with new password | Dashboard loads |
-| Submit prediction | Result card with confidence tier |
-| Confirm lab outcome | Model Health stats update |
-| Trigger anomaly | Alert appears in real-time |
-| Search history | Filtered results |
+- **Automated retraining schedule** — run `scripts/retrain.py` on a cadence once a threshold of confirmed outcomes exists
+- **Champion/challenger gate** — compare candidate vs production metrics automatically and promote only on improvement
+- **Model registry population** — record every promoted version with metrics, timestamp, and operator
+- **Drift snapshot job** — write daily drift snapshots to the database for trend analysis
+- **Container deployment** — Dockerfile and `docker-compose.yml` for the backend and frontend
+- **Backup scripts** — scheduled SQLite hot-copy with rotation
+- **Smoke-test scripts** — end-to-end checks for CI
+- **Deployment guide** — `README-DEPLOY.md` covering server setup, HTTPS, and DPA registration
 
 ---
 
@@ -709,8 +706,6 @@ This is a Ministry of Health supervised project. Contributions are accepted via 
 - New UI must be WCAG AA compliant in both light and dark modes
 - Security-impacting changes require a second reviewer
 
-Contact the AMR Nexus surveillance team for contribution guidelines.
-
 ---
 
 ## License
@@ -718,15 +713,6 @@ Contact the AMR Nexus surveillance team for contribution guidelines.
 Proprietary. Republic of Kenya, Ministry of Health.
 
 All rights reserved. Redistribution, modification, or commercial use without written permission is prohibited.
-
----
-
-## Acknowledgements
-
-- Ministry of Health, Republic of Kenya — project sponsor
-- KEMRI — reference laboratory data
-- World Health Organization — GLASS alignment
-- County health departments — surveillance reporting
 
 ---
 
