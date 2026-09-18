@@ -368,7 +368,22 @@ export default function CountyDashboard() {
                     .map((p) => {
                       const rate = (p.mdr_rate ?? 0) * 100;
                       return (
-                        <tr key={`${p.county}-${p.sub_county}`} className="hover:bg-[var(--bg-tertiary)]/40">
+                        <tr
+                          key={`${p.county}-${p.sub_county}`}
+                          onClick={async () => {
+                            setSelectedRegion({
+                              county: p.county,
+                              sub_county: p.sub_county,
+                              mdr_rate: rate,
+                              samples: p.sample_count,
+                            });
+                            try {
+                              const detail = await getCountyDetail(p.county, qs);
+                              setSelectedRegion((prev) => prev ? { ...prev, ...detail, sub_county: p.sub_county } : prev);
+                            } catch (e) { /* keep basic */ }
+                          }}
+                          className="hover:bg-[var(--bg-tertiary)]/40 cursor-pointer"
+                        >
                           <td className="px-5 py-2 text-[var(--text-primary)]">{p.sub_county}</td>
                           <td className={`px-5 py-2 text-right tabular-nums font-bold ${
                             rate >= 60 ? 'text-[var(--status-critical)]'

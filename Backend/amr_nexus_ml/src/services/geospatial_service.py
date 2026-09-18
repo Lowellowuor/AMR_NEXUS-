@@ -15,7 +15,7 @@ def _get_coordinates_lookup(db: Session) -> Dict[Tuple[str, str], Tuple[float, f
     return {(row.county, row.sub_county): (float(row.longitude), float(row.latitude)) for row in rows}
 
 
-def get_sub_county_mdr(db: Session, start_date: str = None, end_date: str = None) -> List[Dict[str, Any]]:
+def get_sub_county_mdr(db: Session, start_date: str = None, end_date: str = None, county: str = None) -> List[Dict[str, Any]]:
     query = db.query(
         AMRIsolateRecord.county,
         AMRIsolateRecord.sub_county,
@@ -26,6 +26,8 @@ def get_sub_county_mdr(db: Session, start_date: str = None, end_date: str = None
         query = query.filter(AMRIsolateRecord.sample_collection_date >= start_date)
     if end_date:
         query = query.filter(AMRIsolateRecord.sample_collection_date <= end_date)
+    if county:
+        query = query.filter(AMRIsolateRecord.county == county)
     query = query.group_by(AMRIsolateRecord.county, AMRIsolateRecord.sub_county)
     rows = query.all()
 

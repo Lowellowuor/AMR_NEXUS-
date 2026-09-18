@@ -287,9 +287,10 @@ async def get_form_options(
 async def sub_county_mdr(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    county: Optional[str] = None,
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
-    features = get_sub_county_mdr(db, start_date, end_date)
+    features = get_sub_county_mdr(db, start_date, end_date, county)
     return {"type": "FeatureCollection", "features": features}
 
 

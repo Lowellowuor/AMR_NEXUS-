@@ -8,7 +8,7 @@ import { formatNumber, formatPercent } from '../lib/format';
 import { chartColors, tooltipStyle, axisTick } from '../lib/chartTheme';
 
 import api from '../api/client';
-import { getOptions, getMonthRange, getCountyDetail } from '../api/endpoints';
+import { getOptions, getMonthRange, getCountyDetail, getSubCountyMDR } from '../api/endpoints';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAnalyticsFilters } from '../hooks/useAnalyticsFilters';
 import { rangeForPreset } from '../lib/analyticsConfig';
@@ -104,6 +104,37 @@ export default function Analytics() {
     staleTime: 60_000,
   });
 
+  const subCountyParams = (() => {
+    if (!filters.county) return '';
+    const p = new URLSearchParams();
+    p.set('county', filters.county);
+    if (filters.start_date) p.set('start_date', filters.start_date);
+    if (filters.end_date) p.set('end_date', filters.end_date);
+    return p.toString();
+  })();
+
+  const subCountyWideParams = (() => {
+    if (!filters.county) return '';
+    return 'county=' + encodeURIComponent(filters.county);
+  })();
+
+  const subCountyQuery = useQuery({
+    queryKey: ['analytics-sub-counties', subCountyParams],
+    queryFn: () => getSubCountyMDR(subCountyParams),
+    enabled: !!filters.county && filters.tab === 'geography',
+    staleTime: 60_000,
+  });
+
+  const subCountyFallbackQuery = useQuery({
+    queryKey: ['analytics-sub-counties-alltime', subCountyWideParams],
+    queryFn: () => getSubCountyMDR(subCountyWideParams),
+    enabled: !!filters.county
+      && filters.tab === 'geography'
+      && !subCountyQuery.isLoading
+      && (subCountyQuery.data?.features || []).length === 0,
+    staleTime: 60_000,
+  });
+
   const isFetching =
     summaryQuery.isFetching ||
     trendQuery.isFetching ||
@@ -124,23 +155,82 @@ export default function Analytics() {
   const summary = summaryQuery.data || {};
   const counties = topCountiesQuery.data || [];
 
+  const isCountySelected = !!filters.county;
+  const primaryFeatures = subCountyQuery.data?.features || [];
+  const fallbackFeatures = subCountyFallbackQuery.data?.features || [];
+  const subCountyFeatures = primaryFeatures.length > 0 ? primaryFeatures : fallbackFeatures;
+  const usingWideFallback = primaryFeatures.length === 0 && fallbackFeatures.length > 0;
+  const subCounties = subCountyFeatures.map((f) => {
+    const props = f.properties || {};
+    return {
+      county: props.county,
+      sub_county: props.sub_county,
+      rate: (props.mdr_rate ?? 0) * 100,
+      samples: props.sample_count,
+      displayName: props.sub_county,
+    };
+  });
+  const tableRows = isCountySelected ? subCounties : counties;
+  const tableTitle = isCountySelected
+    ? filters.county + ' sub-counties' + (usingWideFallback ? ' (all-time)' : '')
+    : 'Top counties by MDR rate';
+
   const openRegion = async (region) => {
     const delta = (region.mdr_rate != null && summary.mdr_rate != null)
       ? +(region.mdr_rate - summary.mdr_rate).toFixed(1)
       : null;
-    setSelectedRegion({
-      ...region,
+    const baseContext = {
       filter_pathogen: filters.pathogen || null,
       filter_sector: filters.sector || null,
       filter_period: filters.start_date && filters.end_date
         ? filters.start_date + ' to ' + filters.end_date
         : null,
       delta_vs_national: delta,
-    });
+    };
+    setSelectedRegion({ ...region, ...baseContext });
     selectRegion(region.county);
+
+    const apply = (payload) => setSelectedRegion((prev) => prev ? { ...prev, ...payload } : prev);
+
     try {
       const detail = await getCountyDetail(region.county, queryParams);
-      setSelectedRegion((prev) => prev ? { ...prev, ...detail } : prev);
+      if (detail.samples > 0) {
+        apply(detail);
+        return;
+      }
+
+      if (filters.pathogen || filters.sector) {
+        const t2 = new URLSearchParams();
+        if (filters.start_date) t2.set('start_date', filters.start_date);
+        if (filters.end_date) t2.set('end_date', filters.end_date);
+        const r2 = await getCountyDetail(region.county, t2.toString());
+        if (r2.samples > 0) {
+          apply({
+            ...r2,
+            filter_pathogen: null,
+            filter_sector: null,
+            fallback_note: 'No isolates matched the current pathogen/sector filter. Showing all isolates in the same period.',
+          });
+          return;
+        }
+      }
+
+      const r3 = await getCountyDetail(region.county, '');
+      if (r3.samples > 0) {
+        apply({
+          ...r3,
+          filter_pathogen: null,
+          filter_sector: null,
+          filter_period: null,
+          fallback_note: 'No isolates in the selected period for this county. Showing the most recent data available instead.',
+        });
+        return;
+      }
+
+      apply({
+        ...detail,
+        fallback_note: 'No isolates recorded for this county under any filter.',
+      });
     } catch (e) { /* keep basic */ }
   };
   const trend = trendQuery.data || [];
@@ -325,15 +415,18 @@ export default function Analytics() {
               </div>
               <div className="h-[420px] w-full min-h-0">
                 <CountyChoroplethMap
+                  county={filters.county || undefined}
+                  startDate={filters.start_date}
+                  endDate={filters.end_date}
                   onCountyClick={(props) => openRegion({ county: props.county, sub_county: props.sub_county, mdr_rate: (props.mdr_rate ?? 0) * 100, samples: props.sample_count })}
                 />
               </div>
               <div className="border-t border-[var(--border-primary)]">
                 <div className="px-4 py-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Top counties by MDR rate</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{tableTitle}</h4>
                 </div>
-                {counties.length === 0 ? (
-                  <div className="p-8"><EmptyState icon={BarChart3} title="No county data" /></div>
+                {tableRows.length === 0 ? (
+                  <div className="p-8"><EmptyState icon={BarChart3} title={isCountySelected ? "No sub-county data" : "No county data"} /></div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -347,7 +440,7 @@ export default function Analytics() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--border-primary)]">
-                        {counties.map((c, i) => {
+                        {tableRows.map((c, i) => {
                           const delta = (c.rate != null && summary.mdr_rate != null)
                             ? +(c.rate - summary.mdr_rate).toFixed(1)
                             : null;
@@ -357,12 +450,12 @@ export default function Analytics() {
                             : 'text-[var(--text-muted)]';
                           return (
                             <tr
-                              key={c.county}
-                              onClick={() => openRegion({ county: c.county, mdr_rate: c.rate, samples: c.samples })}
+                              key={`${c.county}-${c.sub_county || "row"}`}
+                              onClick={() => openRegion({ county: c.county, sub_county: c.sub_county, mdr_rate: c.rate, samples: c.samples })}
                               className="hover:bg-[var(--bg-tertiary)]/40 cursor-pointer"
                             >
                               <td className="px-4 py-2 text-[var(--text-muted)] tabular-nums">{i + 1}</td>
-                              <td className="px-4 py-2 text-[var(--text-primary)] font-medium">{c.county}</td>
+                              <td className="px-4 py-2 text-[var(--text-primary)] font-medium">{c.displayName || c.county}</td>
                               <td className="px-4 py-2 text-right tabular-nums text-[var(--text-secondary)]">
                                 {c.samples != null ? formatNumber(c.samples) : '-'}
                               </td>

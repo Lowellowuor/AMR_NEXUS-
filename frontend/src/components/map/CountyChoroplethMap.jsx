@@ -14,6 +14,38 @@ import { Loader2 } from 'lucide-react';
 import { fetchSubCountyMDR, fetchMDRDifference, fetchHotspots } from '../../api/endpoints';
 import HotspotDetailPanel from './HotspotDetailPanel';
 
+function MapFocus({ county, features }) {
+  const map = useMap();
+  const lastFocusedRef = useRef(null);
+
+  useEffect(() => {
+    if (!map) return;
+
+    if (!county) {
+      if (lastFocusedRef.current !== null) {
+        map.setView([-0.5, 37.0], 6);
+        lastFocusedRef.current = null;
+      }
+      return;
+    }
+
+    if (lastFocusedRef.current === county) return;
+    if (!Array.isArray(features) || features.length === 0) return;
+
+    const points = features
+      .map((f) => f.geometry && f.geometry.coordinates)
+      .filter((c) => Array.isArray(c) && c.length === 2 && (c[0] !== 0 || c[1] !== 0))
+      .map(([lng, lat]) => [lat, lng]);
+
+    if (points.length === 0) return;
+
+    map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 11 });
+    lastFocusedRef.current = county;
+  }, [county, features, map]);
+
+  return null;
+}
+
 function MapResizer() {
   const map = useMap();
   useEffect(() => {
@@ -90,9 +122,21 @@ export default function CountyChoroplethMap({
   const [mapReady, setMapReady] = useState(false);
   const [selectedHotspot, setSelectedHotspot] = useState(null);
 
+  const subCountyParams = (() => {
+    const p = new URLSearchParams();
+    if (county) p.set('county', county);
+    if (startDate) p.set('start_date', startDate);
+    if (endDate) p.set('end_date', endDate);
+    return p.toString();
+  })();
+
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: mode === 'difference' ? ['mdr-difference', startMonth, endMonth] : ['sub-county-mdr'],
-    queryFn: mode === 'difference' ? () => fetchMDRDifference(startMonth, endMonth) : fetchSubCountyMDR,
+    queryKey: mode === 'difference'
+      ? ['mdr-difference', startMonth, endMonth]
+      : ['sub-county-mdr', subCountyParams],
+    queryFn: mode === 'difference'
+      ? () => fetchMDRDifference(startMonth, endMonth)
+      : () => fetchSubCountyMDR(subCountyParams),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -164,6 +208,7 @@ export default function CountyChoroplethMap({
           scrollWheelZoom={false}
         >
           <MapResizer />
+          <MapFocus county={county} features={features} />
           <TileLayer url={OSM_TILE.url} attribution={OSM_TILE.attribution} />
 
           {features.map((feature, idx) => {

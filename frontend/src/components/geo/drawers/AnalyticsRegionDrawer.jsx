@@ -15,6 +15,11 @@ export default function AnalyticsRegionDrawer({ region, onClose }) {
       title={region.county || region.sub_county || 'Region'}
       subtitle={region.sub_county || ''}
     >
+      {region.fallback_note && (
+        <div className="rounded-[var(--radius-card)] border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-3 py-2 text-xs text-[var(--status-warning)]">
+          {region.fallback_note}
+        </div>
+      )}
       <MetricGroup title="Filter context">
         <Metric label="Pathogen" value={region.filter_pathogen || 'Any'} />
         <Metric label="Sector" value={region.filter_sector || 'Any'} />
