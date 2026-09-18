@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useSearch } from '../../hooks/useSearch';
 import { Link } from 'react-router-dom';
@@ -29,7 +29,7 @@ export default function SearchBar({ onFocus }) {
           onChange={e => setQuery(e.target.value)}
           onFocus={handleFocus}
           onBlur={() => setTimeout(() => setOpen(false), 200)}
-          placeholder="Search patients, isolates, reports... (âŒ˜K)"
+          placeholder="Search patients, isolates, reports... (Ctrl+K)"
           className="pl-9 pr-4 py-2 w-80 rounded-full border-0 bg-[var(--bg-tertiary)]/70 focus:bg-[var(--bg-secondary)] focus:ring-2 focus:ring-primary-500/30 text-sm transition-all"
         />
       </div>

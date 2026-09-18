@@ -1,8 +1,8 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CommandLineIcon } from '@heroicons/react/24/outline';
 
 const shortcuts = [
-  { keys: ['Ctrl+K', 'âŒ˜K'], action: 'Focus search' },
+  { keys: ['Ctrl+K', 'Cmd+K'], action: 'Focus search' },
   { keys: ['?'], action: 'Show shortcuts' },
   { keys: ['G', 'D'], action: 'Go to Dashboard' },
   { keys: ['G', 'P'], action: 'Go to Predict' },

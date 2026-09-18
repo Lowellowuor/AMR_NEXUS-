@@ -1,4 +1,4 @@
-﻿// src/components/predictions/SHAPExplanation.jsx
+// src/components/predictions/SHAPExplanation.jsx
 import Card from '../ui/Card';
 
 export default function SHAPExplanation({ shapTopFeature, shapValue, probability }) {
@@ -9,7 +9,7 @@ export default function SHAPExplanation({ shapTopFeature, shapValue, probability
 
   return (
     <Card className="mt-4">
-      <h4 className="text-md font-semibold mb-2">ðŸ" SHAP Explanation</h4>
+   <h4 className="text-md font-semibold mb-2">SHAP Explanation</h4>
       <p className="text-sm text-[var(--text-secondary)]">
         The most influential factor for this prediction is:
       </p>
@@ -23,7 +23,7 @@ export default function SHAPExplanation({ shapTopFeature, shapValue, probability
         </p>
       </div>
       <p className="text-xs text-[var(--text-muted)] mt-2">
-        SHAP values show how each feature pushes the prediction from the base probability (â‰ˆ{((1-probability)*100).toFixed(1)}%) to the final {((probability)*100).toFixed(1)}%.
+        SHAP values show how each feature pushes the prediction from the base probability (approx. {((1-probability)*100).toFixed(1)}%) to the final {((probability)*100).toFixed(1)}%.
       </p>
     </Card>
   );

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BellAlertIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import api from '../../api/client';
 import { timeAgo } from '../../lib/format';
@@ -172,7 +172,7 @@ export default function AnomaliesFeed({
       {activeAlerts.length > 0 && (
         <div className="mt-3 text-right">
           <a href="/alerts" className="text-xs text-[var(--accent-teal)] hover:underline">
-            View all â†'
+            View all >
           </a>
         </div>
       )}

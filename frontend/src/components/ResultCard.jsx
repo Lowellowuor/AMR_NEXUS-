@@ -1,4 +1,4 @@
-﻿export default function ResultCard({ result }) {   // â† "export default" here
+export default function ResultCard({ result }) {
   if (!result) return null;
 
   const { mdr_flag, mdr_probability, anomaly_detected, anomaly_score, shap_top_feature, shap_value } = result;

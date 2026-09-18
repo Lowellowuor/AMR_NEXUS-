@@ -11,7 +11,7 @@ export default function Footer() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             {/* Left: Brand & Copyright */}
             <div className="text-sm text-[var(--text-muted)]">
-              Â© {currentYear} AMR'Nexus One Health. All rights reserved.
+              © {currentYear} AMR'Nexus One Health. All rights reserved.
             </div>
 
             {/* Center: Quick links " pill shaped */}
