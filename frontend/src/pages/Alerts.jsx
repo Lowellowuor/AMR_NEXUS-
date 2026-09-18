@@ -117,7 +117,7 @@ export default function Alerts() {
     return () => clearTimeout(t);
   }, [newIds]);
 
-  // Real-time stream — invalidate queries when the backend emits
+  // Real-time stream - invalidate queries when the backend emits
   const { connected } = useAlertStream({
     onAlert: useCallback(
       (payload) => {
@@ -128,14 +128,14 @@ export default function Alerts() {
         const county = payload?.county || 'unknown county';
         const isCritical = payload?.anomaly_detected && payload?.mdr_probability >= 0.85;
 
-        notify(`${isCritical ? 'CRITICAL alert' : 'New alert'} — ${pathogen}`, {
-          body: `${county} · ${isCritical ? 'High MDR probability' : 'Unusual pattern'}`,
+        notify(`${isCritical ? 'CRITICAL alert' : 'New alert'} - ${pathogen}`, {
+          body: `${county}  -  ${isCritical ? 'High MDR probability' : 'Unusual pattern'}`,
           tag: 'amr-alert',
           requireInteraction: isCritical,
         });
 
         if (isCritical) {
-          toast.error(`${pathogen} in ${county} — critical alert`, { duration: 6000 });
+          toast.error(`${pathogen} in ${county} - critical alert`, { duration: 6000 });
         }
       },
       [notify, qc],
@@ -332,7 +332,7 @@ export default function Alerts() {
           title={
             hasActiveFilters
               ? 'No alerts match your filters'
-              : 'No alerts — system is stable'
+              : 'No alerts - system is stable'
           }
           description={
             hasActiveFilters

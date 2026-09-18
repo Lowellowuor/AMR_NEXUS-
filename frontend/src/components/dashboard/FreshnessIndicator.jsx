@@ -32,7 +32,7 @@ export default function FreshnessIndicator() {
           <>
             Last submission {timeAgo(data.last_submission)}
             <span className="text-[var(--text-muted)] ml-2">
-              · {formatNumber(data.total_records)} total
+               -  {formatNumber(data.total_records)} total
             </span>
           </>
         ) : (

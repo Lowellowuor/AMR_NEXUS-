@@ -10,7 +10,7 @@
       {/* MDR Flag */}
       <div className={`p-4 rounded-lg ${mdr_flag ? 'bg-[var(--status-critical-bg)] border border-[var(--status-critical-border)]' : 'bg-[var(--status-success-bg)] border border-green-200'}`}>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Multiâ€‘Drug Resistance (MDR)</span>
+          <span className="text-sm font-medium">Multi'Drug Resistance (MDR)</span>
           <span className={`text-xl font-bold ${mdr_flag ? 'text-[var(--status-critical)]' : 'text-[var(--status-success)]'}`}>
             {mdr_flag ? 'POSITIVE' : 'NEGATIVE'}
           </span>

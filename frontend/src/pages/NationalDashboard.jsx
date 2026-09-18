@@ -45,7 +45,7 @@ function defaultRange() {
 }
 
 function DeltaBadge({ value, suffix = ' pts' }) {
-  if (value == null) return <span className="text-xs text-[var(--text-muted)]">—</span>;
+  if (value == null) return <span className="text-xs text-[var(--text-muted)]">-</span>;
   const positive = value > 0;
   const negative = value < 0;
   const Icon = positive ? TrendingUp : negative ? TrendingDown : Minus;
@@ -175,7 +175,7 @@ export default function NationalDashboard() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">National AMR Surveillance</h1>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">
-            Republic of Kenya · population-level resistance overview
+            Republic of Kenya  -  population-level resistance overview
           </p>
         </div>
         <FreshnessIndicator />

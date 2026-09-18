@@ -9,7 +9,7 @@ export default function SHAPExplanation({ shapTopFeature, shapValue, probability
 
   return (
     <Card className="mt-4">
-      <h4 className="text-md font-semibold mb-2">ðŸ” SHAP Explanation</h4>
+      <h4 className="text-md font-semibold mb-2">ðŸ" SHAP Explanation</h4>
       <p className="text-sm text-[var(--text-secondary)]">
         The most influential factor for this prediction is:
       </p>

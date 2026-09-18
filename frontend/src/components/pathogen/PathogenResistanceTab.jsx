@@ -71,7 +71,7 @@ export default function PathogenResistanceTab({ data }) {
                             {aware.label}
                           </span>
                         ) : (
-                          <span className="text-[var(--text-muted)] text-xs">—</span>
+                          <span className="text-[var(--text-muted)] text-xs">-</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-[var(--text-secondary)]">
@@ -84,7 +84,7 @@ export default function PathogenResistanceTab({ data }) {
                         {formatPercent(row.resistance)}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-xs text-[var(--text-muted)]">
-                        {row.ci_low}–{row.ci_high}%
+                        {row.ci_low}-{row.ci_high}%
                       </td>
                     </tr>
 
@@ -104,11 +104,11 @@ export default function PathogenResistanceTab({ data }) {
                                   <span className="font-mono font-semibold text-[var(--text-primary)]">
                                     {d.sir_result}
                                   </span>
-                                  {' · '}
+                                  {'  -  '}
                                   {d.test_method}
                                 </span>
                                 <span className="tabular-nums text-[var(--text-muted)]">
-                                  {formatNumber(d.samples)} samples · {formatPercent(d.mdr_rate)} MDR
+                                  {formatNumber(d.samples)} samples  -  {formatPercent(d.mdr_rate)} MDR
                                 </span>
                               </div>
                             ))}

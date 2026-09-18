@@ -111,7 +111,7 @@ export default function ModelCard() {
           <div>
             <h1 className="text-2xl font-bold text-[var(--text-primary)]">Model Card</h1>
             <p className="text-sm text-[var(--text-muted)] mt-0.5">
-              {model.name} · v{model.version}
+              {model.name}  -  v{model.version}
             </p>
           </div>
         </div>
@@ -202,7 +202,7 @@ export default function ModelCard() {
         id="performance"
       >
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          <Metric label="AUC‑ROC" value={performance.auc_roc.toFixed(2)} tone="good" />
+          <Metric label="AUC-ROC" value={performance.auc_roc.toFixed(2)} tone="good" />
           <Metric label="Sensitivity" value={performance.sensitivity.toFixed(2)} />
           <Metric label="Specificity" value={performance.specificity.toFixed(2)} />
           <Metric label="Precision" value={performance.precision.toFixed(2)} />

@@ -1,7 +1,7 @@
 ﻿// src/components/dashboard/SystemHealth.jsx
 import { ServerIcon, CubeIcon, ClockIcon } from '@heroicons/react/24/outline';
 
-export default function SystemHealth({ health, lastPrediction }) {  // âœ… default export
+export default function SystemHealth({ health, lastPrediction }) {  // âœ... default export
   const isOnline = health && health.status === 'ok';
   const lastPredictionDate = lastPrediction ? new Date(lastPrediction).toLocaleString() : 'Never';
 

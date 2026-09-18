@@ -34,7 +34,7 @@ export default function SimilarCasesPanel({ pathogen, county, excludeRecordId, o
           Similar past cases
         </h3>
         <span className="text-xs text-[var(--text-muted)] ml-auto">
-          {pathogen || 'any pathogen'} · {county || 'any county'}
+          {pathogen || 'any pathogen'}  -  {county || 'any county'}
         </span>
       </div>
 
@@ -61,12 +61,12 @@ export default function SimilarCasesPanel({ pathogen, county, excludeRecordId, o
                   )}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                  <span className="truncate">{r.county || '—'}</span>
-                  <span>·</span>
+                  <span className="truncate">{r.county || '-'}</span>
+                  <span> - </span>
                   <span className="tabular-nums flex-shrink-0">
                     {formatPercent((r.mdr_probability ?? 0) * 100)}
                   </span>
-                  <span>·</span>
+                  <span> - </span>
                   <span className="flex-shrink-0">{timeAgo(r.timestamp)}</span>
                 </div>
               </div>

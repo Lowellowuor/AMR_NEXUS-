@@ -41,7 +41,7 @@ function defaultRange() {
 }
 
 function DeltaBadge({ value, suffix = ' pts' }) {
-  if (value == null) return <span className="text-xs text-[var(--text-muted)]">—</span>;
+  if (value == null) return <span className="text-xs text-[var(--text-muted)]">-</span>;
   const Icon = value > 0 ? TrendingUp : value < 0 ? TrendingDown : Minus;
   const tone = value > 0 ? 'text-[var(--status-critical)]' : value < 0 ? 'text-[var(--status-success)]' : 'text-[var(--text-muted)]';
   return (
@@ -174,7 +174,7 @@ export default function CountyDashboard() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">{countyName} County</h1>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">
-            County-level AMR surveillance · One Health
+            County-level AMR surveillance  -  One Health
           </p>
         </div>
         <FreshnessIndicator />
@@ -198,7 +198,7 @@ export default function CountyDashboard() {
       {!isLoading && summaryQuery.data && rank && (
         <LLMInsight
           context={`county summary ${countyName}`}
-          title={`Interpretation — ${countyName}`}
+          title={`Interpretation - ${countyName}`}
           data={{
             current,
             previous,
@@ -335,7 +335,7 @@ export default function CountyDashboard() {
                   </p>
                   <ul className="space-y-0.5 max-h-32 overflow-y-auto">
                     {coverage.silent_facilities.slice(0, 8).map((f) => (
-                      <li key={f.id} className="text-xs text-[var(--text-secondary)] truncate">· {f.name}</li>
+                      <li key={f.id} className="text-xs text-[var(--text-secondary)] truncate"> -  {f.name}</li>
                     ))}
                   </ul>
                 </div>
@@ -409,7 +409,7 @@ export default function CountyDashboard() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-[var(--text-muted)]">{r.sub_county || '—'} · {timeAgo(r.timestamp)}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{r.sub_county || '-'}  -  {timeAgo(r.timestamp)}</p>
                     </div>
                     <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition flex-shrink-0" />
                   </Link>

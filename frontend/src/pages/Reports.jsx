@@ -166,7 +166,7 @@ export default function Reports() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-btn)] bg-[var(--accent-teal)] hover:bg-[var(--accent-teal-hover)] text-white text-sm font-medium transition disabled:opacity-60"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Generating…' : 'Generate report'}
+            {loading ? 'Generating...' : 'Generate report'}
           </button>
           {report && (
             <>
@@ -183,7 +183,7 @@ export default function Reports() {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-btn)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] text-sm font-medium hover:bg-[var(--bg-tertiary)] transition disabled:opacity-60"
               >
                 <Download className="w-4 h-4" />
-                {exportingPdf ? 'Exporting…' : 'Download PDF'}
+                {exportingPdf ? 'Exporting...' : 'Download PDF'}
               </button>
             </>
           )}

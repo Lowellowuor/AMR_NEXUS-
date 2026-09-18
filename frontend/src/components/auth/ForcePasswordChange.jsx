@@ -147,7 +147,7 @@ export default function ForcePasswordChange() {
         </div>
 
         <p className="text-xs text-[var(--text-muted)] text-center mt-4">
-          Data Protection Act 2019 · Republic of Kenya
+          Data Protection Act 2019  -  Republic of Kenya
         </p>
       </div>
     </div>

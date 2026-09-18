@@ -36,10 +36,10 @@ export default function PathogenRecentTab({ data }) {
             {rows.map((r) => (
               <tr key={r.record_id} className="hover:bg-[var(--bg-tertiary)]/40 transition">
                 <td className="px-4 py-2 text-xs text-[var(--text-muted)]" title={formatDateTime(r.timestamp)}>{timeAgo(r.timestamp)}</td>
-                <td className="px-4 py-2 text-[var(--text-secondary)]">{r.county || '—'}</td>
-                <td className="px-4 py-2 text-[var(--text-secondary)] capitalize">{r.specimen_type || '—'}</td>
-                <td className="px-4 py-2 text-[var(--text-secondary)] capitalize">{r.sector || '—'}</td>
-                <td className="px-4 py-2 text-[var(--text-secondary)]">{r.antibiotic_class || '—'}</td>
+                <td className="px-4 py-2 text-[var(--text-secondary)]">{r.county || '-'}</td>
+                <td className="px-4 py-2 text-[var(--text-secondary)] capitalize">{r.specimen_type || '-'}</td>
+                <td className="px-4 py-2 text-[var(--text-secondary)] capitalize">{r.sector || '-'}</td>
+                <td className="px-4 py-2 text-[var(--text-secondary)]">{r.antibiotic_class || '-'}</td>
                 <td className="px-4 py-2">
                   {r.mdr_flag ? (
                     <span className="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--status-critical-bg)] text-[var(--status-critical)] border border-[var(--status-critical-border)]">

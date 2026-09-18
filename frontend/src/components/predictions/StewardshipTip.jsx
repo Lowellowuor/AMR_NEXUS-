@@ -49,11 +49,11 @@ export default function StewardshipTip({ result, antibioticClass }) {
           <div className={`rounded-lg border px-3 py-2 ${toneClass}`}>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] font-bold uppercase tracking-wider">
-                WHO AWaRe · {aware.label}
+                WHO AWaRe  -  {aware.label}
               </span>
             </div>
             <p className="text-xs leading-relaxed opacity-90">
-              <strong>{antibioticClass}</strong> — {aware.description}
+              <strong>{antibioticClass}</strong> - {aware.description}
             </p>
           </div>
         )}

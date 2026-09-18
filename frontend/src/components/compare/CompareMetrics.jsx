@@ -2,7 +2,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { formatNumber, formatPercent } from '../../lib/format';
 
 function DeltaIndicator({ value, suffix = '', higherIsBetter = false }) {
-  if (value == null) return <span className="text-xs text-[var(--text-muted)]">—</span>;
+  if (value == null) return <span className="text-xs text-[var(--text-muted)]">-</span>;
   const positive = value > 0;
   const negative = value < 0;
   const Icon = positive ? TrendingUp : negative ? TrendingDown : Minus;

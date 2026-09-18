@@ -10,7 +10,7 @@ import { useLLMInsight } from '../../hooks/useLLMInsight';
  *   context       short string describing what the data is ("national summary")
  *   data          object sent to the LLM
  *   title         optional header (defaults to "AI summary")
- *   autoLoad      if true, loads on mount (defaults false — user clicks)
+ *   autoLoad      if true, loads on mount (defaults false - user clicks)
  *   cacheKey      optional override
  *   className     extra class names
  */
@@ -95,7 +95,7 @@ export default function LLMInsight({
         {mutation.isPending && (
           <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] py-2">
             <Loader2 className="w-4 h-4 animate-spin text-[var(--accent-teal)]" />
-            Generating interpretation…
+            Generating interpretation...
           </div>
         )}
 

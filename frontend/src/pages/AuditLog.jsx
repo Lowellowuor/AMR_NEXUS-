@@ -132,7 +132,7 @@ export default function AuditLog() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-btn)] bg-[var(--accent-teal)] hover:bg-[var(--accent-teal-hover)] text-white text-sm font-medium transition disabled:opacity-60"
           >
             <Download className="w-4 h-4" />
-            {exporting ? 'Exporting…' : 'Export CSV'}
+            {exporting ? 'Exporting...' : 'Export CSV'}
           </button>
         </div>
       </div>
@@ -158,7 +158,7 @@ export default function AuditLog() {
             <input
               ref={searchRef}
               type="text"
-              placeholder="Search path, resource ID, or actor email…"
+              placeholder="Search path, resource ID, or actor email..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-full rounded-[var(--radius-input)] border border-[var(--border-primary)] bg-[var(--bg-primary)] pl-9 pr-9 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-teal)]"
@@ -283,7 +283,7 @@ export default function AuditLog() {
                         {e.resource}
                         {e.resource_id && (
                           <span className="ml-1 text-[10px] font-mono text-[var(--text-muted)]">
-                            {String(e.resource_id).slice(0, 8)}…
+                            {String(e.resource_id).slice(0, 8)}...
                           </span>
                         )}
                       </td>
@@ -294,7 +294,7 @@ export default function AuditLog() {
                         {e.status_code} {e.result}
                       </td>
                       <td className="px-3 py-2 text-xs font-mono text-[var(--text-muted)]">
-                        {e.ip_address || '—'}
+                        {e.ip_address || '-'}
                       </td>
                     </tr>
                   ))}
@@ -304,7 +304,7 @@ export default function AuditLog() {
 
             <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-primary)] text-sm">
               <span className="text-[var(--text-muted)]">
-                Showing {filters.page * PAGE_SIZE + 1}–{Math.min((filters.page + 1) * PAGE_SIZE, total)} of {formatNumber(total)}
+                Showing {filters.page * PAGE_SIZE + 1}-{Math.min((filters.page + 1) * PAGE_SIZE, total)} of {formatNumber(total)}
               </span>
               <div className="flex gap-2 items-center">
                 <button

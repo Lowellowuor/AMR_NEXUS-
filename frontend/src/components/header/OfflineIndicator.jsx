@@ -22,7 +22,7 @@ export default function OfflineIndicator() {
       <CloudArrowDownIcon className="h-5 w-5 text-[var(--text-muted)]" />
       <span className="absolute -top-1 -right-1 h-2 w-2 bg-[var(--status-warning)] rounded-full"></span>
       <div className="hidden group-hover:block absolute top-full right-0 mt-1 w-48 bg-gray-800 text-white text-xs rounded p-2 z-50">
-        Offline â€“ working with saved drafts. Will sync when back online.
+        Offline " working with saved drafts. Will sync when back online.
       </div>
     </div>
   );

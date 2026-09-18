@@ -65,7 +65,7 @@ export default function NotificationsSection() {
       <div className="rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-5">
         <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
           <Loader2 className="w-4 h-4 animate-spin" />
-          Loading preferences…
+          Loading preferences...
         </div>
       </div>
     );

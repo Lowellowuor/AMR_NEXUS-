@@ -55,7 +55,7 @@ export default function PathogenGeographyMap({ data, onCountyClick, height = 420
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#D97706]" />
-            <span className="text-[var(--text-muted)]">30–59%</span>
+            <span className="text-[var(--text-muted)]">30-59%</span>
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#DC2626]" />
@@ -89,7 +89,7 @@ export default function PathogenGeographyMap({ data, onCountyClick, height = 420
                   <div className="text-xs">
                     <strong>{row.county}</strong>
                     <br />
-                    MDR {row.mdr_rate}% · n={row.samples}
+                    MDR {row.mdr_rate}%  -  n={row.samples}
                   </div>
                 </Tooltip>
               </CircleMarker>

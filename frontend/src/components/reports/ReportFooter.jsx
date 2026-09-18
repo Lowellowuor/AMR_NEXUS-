@@ -14,7 +14,7 @@ export default function ReportFooter({ meta }) {
       </div>
       <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
         <span className="font-mono">{meta.report_id}</span>
-        <span>AMR Nexus · v{meta.version} · Generated {new Date(meta.generated_at).toLocaleDateString('en-KE')}</span>
+        <span>AMR Nexus  -  v{meta.version}  -  Generated {new Date(meta.generated_at).toLocaleDateString('en-KE')}</span>
       </div>
     </footer>
   );

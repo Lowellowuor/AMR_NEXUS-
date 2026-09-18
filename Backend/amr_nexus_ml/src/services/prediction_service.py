@@ -1,4 +1,5 @@
 import hashlib
+import json
 import joblib
 import pandas as pd
 import numpy as np
@@ -6,12 +7,28 @@ from pathlib import Path
 from typing import Optional
 from sqlalchemy.orm import Session
 
-from src.db.models import AMRIsolateRecord, DashboardNotification, Hotspot, SubCountyLocation, PredictionLog
+from src.db.models import (
+    AMRIsolateRecord,
+    DashboardNotification,
+    Hotspot,
+    SubCountyLocation,
+    PredictionLog,
+)
 from src.services.model_health import confidence_tier, deterministic_fallback
 from src.services.notification_service import dispatch_prediction_alert
 import time
 from src.core.config import settings
 from src.utils.logger import logger
+
+DEFAULT_MODEL_VERSION = "1.0.0"
+STERILE_SITES = {"blood", "csf", "sterile_fluid"}
+
+
+def _strip_transform_prefix(name: str) -> str:
+    for prefix in ("num__", "cat__"):
+        if name.startswith(prefix):
+            return name[len(prefix):]
+    return name
 
 
 class PredictionService:
@@ -26,52 +43,89 @@ class PredictionService:
         self.feature_names = None
         self.original_features = None
         self.pair_freq_map = None
+        self.calibrator = None
+        self.model_version = DEFAULT_MODEL_VERSION
         self.model_available = False
         self._load_models()
 
     def _load_models(self):
         model_dir = Path(settings.MODEL_DIR)
         try:
-            self.model = joblib.load(model_dir / 'mdr_model.pkl')
-            self.preprocessor = joblib.load(model_dir / 'preprocessor.pkl')
-            self.iso_model = joblib.load(model_dir / 'anomaly_iso.pkl')
-            self.svd_model = joblib.load(model_dir / 'svd.pkl')
-            self.shap_explainer = joblib.load(model_dir / 'shap_explainer.pkl')
-            self.anomaly_threshold = joblib.load(model_dir / 'anomaly_threshold.pkl')
-            self.feature_names = joblib.load(model_dir / 'feature_names.pkl')
-            self.original_features = joblib.load(model_dir / 'original_feature_names.pkl')
-            self.pair_freq_map = joblib.load(model_dir / 'pair_freq_map.pkl')
-            logger.info("All models loaded for prediction service.")
+            self.model = joblib.load(model_dir / "mdr_model.pkl")
+            self.preprocessor = joblib.load(model_dir / "preprocessor.pkl")
+            self.iso_model = joblib.load(model_dir / "anomaly_iso.pkl")
+            self.svd_model = joblib.load(model_dir / "svd.pkl")
+            self.shap_explainer = joblib.load(model_dir / "shap_explainer.pkl")
+            self.anomaly_threshold = joblib.load(model_dir / "anomaly_threshold.pkl")
+            self.feature_names = joblib.load(model_dir / "feature_names.pkl")
+            self.original_features = joblib.load(model_dir / "original_feature_names.pkl")
+            self.pair_freq_map = joblib.load(model_dir / "pair_freq_map.pkl")
+
+            calibrator_path = model_dir / "calibrator.pkl"
+            if calibrator_path.exists():
+                self.calibrator = joblib.load(calibrator_path)
+
+            version_path = model_dir / "model_version.json"
+            if version_path.exists():
+                try:
+                    meta = json.loads(version_path.read_text(encoding="utf-8"))
+                    self.model_version = meta.get("model_version", DEFAULT_MODEL_VERSION)
+                except Exception as e:
+                    logger.warning(f"Could not read model_version.json: {e}")
+
+            logger.info(
+                f"Prediction service loaded. version={self.model_version} "
+                f"calibrator={'yes' if self.calibrator else 'no'}"
+            )
         except Exception as e:
             logger.error(f"Failed to load models: {e}")
             self.model_available = False
             return
         self.model_available = True
 
+    def _validate_features(self, data: dict) -> Optional[str]:
+        if not self.original_features:
+            return None
+        missing = [f for f in self.original_features if f not in data]
+        if missing:
+            return f"Missing required features: {missing}"
+        return None
+
+    def _apply_calibrator(self, proba: float) -> float:
+        if self.calibrator is None:
+            return proba
+        try:
+            calibrated = float(self.calibrator.predict([proba])[0])
+            return float(np.clip(calibrated, 0.0, 1.0))
+        except Exception as e:
+            logger.warning(f"Calibrator failed, returning raw probability: {e}")
+            return proba
+
     def _add_pair_frequency_feature(self, record: dict) -> dict:
         pair_key = f"{record.get('sector', '')}_{record.get('sub_sector', '')}"
         mapping = self.pair_freq_map or {}
-        record['sector_sub_pair_count'] = mapping.get(pair_key, 0)
+        record["sector_sub_pair_count"] = mapping.get(pair_key, 0)
+        specimen = str(record.get("specimen_type", "")).lower()
+        record["is_sterile_site"] = 1 if specimen in STERILE_SITES else 0
         return record
 
     def _get_or_create_hotspot(self, county: str, sub_county: Optional[str]) -> Hotspot:
         hotspot = self.db.query(Hotspot).filter(
             Hotspot.county == county,
-            Hotspot.sub_county == sub_county
+            Hotspot.sub_county == sub_county,
         ).first()
         if hotspot:
             return hotspot
 
         loc = self.db.query(SubCountyLocation).filter(
             SubCountyLocation.county == county,
-            SubCountyLocation.sub_county == sub_county
+            SubCountyLocation.sub_county == sub_county,
         ).first()
 
         if loc:
             lat = float(loc.latitude)
             lon = float(loc.longitude)
         else:
-            # Deterministic pseudo‑coordinates within Kenya
             name_str = f"{county}_{sub_county or ''}"
             hash_val = int(hashlib.md5(name_str.encode()).hexdigest(), 16)
             lat = -4.5 + (hash_val % 900) / 100.0
@@ -84,7 +138,7 @@ class PredictionService:
             longitude=lon,
             county=county,
             sub_county=sub_county,
-            is_active=True
+            is_active=True,
         )
         self.db.add(hotspot)
         self.db.commit()
@@ -100,6 +154,7 @@ class PredictionService:
         used_fallback = False
         source = "ml"
         X_processed = None
+        calibration_applied = False
 
         if not self.model_available:
             logger.warning("Model unavailable; using deterministic fallback.")
@@ -110,23 +165,35 @@ class PredictionService:
             used_fallback = True
             source = "fallback"
         else:
-            try:
-                X = pd.DataFrame([data])[self.original_features]
-                X_processed = self.preprocessor.transform(X)
-
-                mdr_prob = float(self.model.predict_proba(X_processed)[0][1])
-
-                X_reduced = self.svd_model.transform(X_processed)
-                anomaly_score = float(self.iso_model.score_samples(X_reduced)[0])
-                anomaly_flag = bool(anomaly_score < self.anomaly_threshold)
-            except Exception as e:
-                logger.warning(f"ML inference failed, using deterministic fallback: {e}")
+            feature_error = self._validate_features(data)
+            if feature_error:
+                logger.warning(f"Feature validation failed: {feature_error}")
                 fb = deterministic_fallback(data)
                 mdr_prob = float(fb["mdr_probability"])
                 anomaly_score = 0.0
                 anomaly_flag = False
                 used_fallback = True
                 source = "fallback"
+            else:
+                try:
+                    X = pd.DataFrame([data])[self.original_features]
+                    X_processed = self.preprocessor.transform(X)
+
+                    raw_prob = float(self.model.predict_proba(X_processed)[0][1])
+                    mdr_prob = self._apply_calibrator(raw_prob)
+                    calibration_applied = self.calibrator is not None
+
+                    X_reduced = self.svd_model.transform(X_processed)
+                    anomaly_score = float(self.iso_model.score_samples(X_reduced)[0])
+                    anomaly_flag = bool(anomaly_score < self.anomaly_threshold)
+                except Exception as e:
+                    logger.warning(f"ML inference failed, using deterministic fallback: {e}")
+                    fb = deterministic_fallback(data)
+                    mdr_prob = float(fb["mdr_probability"])
+                    anomaly_score = 0.0
+                    anomaly_flag = False
+                    used_fallback = True
+                    source = "fallback"
 
         shap_summary = "SHAP explanation unavailable (fallback mode)."
         shap_top_feature = "unavailable"
@@ -137,43 +204,44 @@ class PredictionService:
                 if isinstance(shap_values, list):
                     shap_values = shap_values[1]
                 shap_values = shap_values[0]
-                top_idx = np.argmax(np.abs(shap_values))
-                shap_top_feature = self.feature_names[top_idx]
+                top_idx = int(np.argmax(np.abs(shap_values)))
+                raw_name = str(self.feature_names[top_idx])
+                shap_top_feature = _strip_transform_prefix(raw_name)
                 shap_value = float(shap_values[top_idx])
 
                 direction = "increases" if shap_value > 0 else "decreases"
                 shap_summary = (
-                    f"Top feature: {shap_top_feature} ({direction} risk by {abs(shap_value):.3f})."
+                    f"{shap_top_feature} {direction} risk "
+                    f"by {abs(shap_value):.3f}."
                 )
             except Exception as e:
                 logger.warning(f"SHAP computation failed: {e}")
 
-        county = data.get('county')
-        sub_county = data.get('sub_county')
-        sample_date = data.get('sample_collection_date')
+        county = data.get("county")
+        sub_county = data.get("sub_county")
+        sample_date = data.get("sample_collection_date")
 
-        # Confidence tier for clinical interpretation
         tier = confidence_tier(mdr_prob)
 
         hotspot = self._get_or_create_hotspot(county, sub_county)
 
         db_record = AMRIsolateRecord(
             submission_type="REAL",
-            pathogen_code=data.get('pathogen_code'),
+            pathogen_code=data.get("pathogen_code"),
             mdr_flag=bool(mdr_prob >= 0.5),
-            antibiotic_class=data.get('antibiotic_class'),
-            test_method=data.get('test_method'),
-            sector=data.get('sector'),
-            sub_sector=data.get('sub_sector'),
-            specimen_type=data.get('specimen_type'),
+            antibiotic_class=data.get("antibiotic_class"),
+            test_method=data.get("test_method"),
+            sector=data.get("sector"),
+            sub_sector=data.get("sub_sector"),
+            specimen_type=data.get("specimen_type"),
             county=county,
             sub_county=sub_county,
             sample_collection_date=sample_date,
-            sample_month=data.get('sample_month'),
-            prior_antibiotic_exposure=bool(data.get('prior_antibiotic_exposure')),
+            sample_month=data.get("sample_month"),
+            prior_antibiotic_exposure=bool(data.get("prior_antibiotic_exposure")),
             anomaly_score=anomaly_score,
             anomaly_flag=anomaly_flag,
-            model_version="1.0.0",
+            model_version=self.model_version,
             mdr_probability=mdr_prob,
             shap_top_feature=shap_top_feature,
             shap_value=shap_value,
@@ -184,30 +252,28 @@ class PredictionService:
         self.db.commit()
         self.db.refresh(db_record)
 
-        # Log the prediction for monitoring
         try:
             self.db.add(PredictionLog(
                 record_id=db_record.record_id,
-                model_version="1.0.0",
-                latency_ms=round((time.time() - self._start_ts) * 1000, 2) if hasattr(self, '_start_ts') else None,
+                model_version=self.model_version,
+                latency_ms=round((time.time() - self._start_ts) * 1000, 2) if hasattr(self, "_start_ts") else None,
                 mdr_probability=mdr_prob,
                 mdr_flag=bool(mdr_prob >= 0.5),
                 anomaly_flag=anomaly_flag,
                 confidence_tier=tier,
                 fallback_used=used_fallback,
                 feature_snapshot={
-                    "pathogen_code": data.get('pathogen_code'),
+                    "pathogen_code": data.get("pathogen_code"),
                     "county": county,
-                    "sector": data.get('sector'),
-                    "antibiotic_class": data.get('antibiotic_class'),
-                    "specimen_type": data.get('specimen_type'),
+                    "sector": data.get("sector"),
+                    "antibiotic_class": data.get("antibiotic_class"),
+                    "specimen_type": data.get("specimen_type"),
                 },
             ))
             self.db.commit()
         except Exception as e:
             logger.warning(f"Failed to log prediction: {e}")
 
-        # Dispatch notifications for anomalies OR high MDR predictions
         should_notify = anomaly_flag or (mdr_prob >= 0.85)
 
         if anomaly_flag:
@@ -237,4 +303,6 @@ class PredictionService:
             "confidence_tier": tier,
             "source": source,
             "fallback_used": used_fallback,
+            "calibration_applied": calibration_applied,
+            "model_version": self.model_version,
         }

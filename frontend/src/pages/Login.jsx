@@ -96,7 +96,7 @@ export default function Login() {
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Signing in…
+                Signing in...
               </>
             ) : (
               'Sign in'
@@ -105,7 +105,7 @@ export default function Login() {
         </form>
 
         <p className="text-xs text-[var(--text-muted)] text-center mt-6">
-          Data Protection Act 2019 compliant · Republic of Kenya
+          Data Protection Act 2019 compliant  -  Republic of Kenya
         </p>
       </div>
     </div>

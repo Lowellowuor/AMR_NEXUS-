@@ -88,12 +88,12 @@ export default function HistoryTable({
               </td>
               {columns.pathogen_code && (
                 <td className={`px-3 ${rowPadding} font-medium text-[var(--text-primary)]`}>
-                  {r.pathogen_code || '—'}
+                  {r.pathogen_code || '-'}
                 </td>
               )}
               {columns.county && (
                 <td className={`px-3 ${rowPadding} text-[var(--text-secondary)]`}>
-                  {r.county || '—'}
+                  {r.county || '-'}
                 </td>
               )}
               {columns.mdr_flag && (
@@ -119,7 +119,7 @@ export default function HistoryTable({
                   {r.anomaly_detected ? (
                     <span className="text-[var(--status-warning)] font-semibold text-xs">Flagged</span>
                   ) : (
-                    <span className="text-[var(--text-muted)] text-xs">—</span>
+                    <span className="text-[var(--text-muted)] text-xs">-</span>
                   )}
                 </td>
               )}

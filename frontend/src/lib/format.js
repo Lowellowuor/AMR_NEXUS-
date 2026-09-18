@@ -1,24 +1,24 @@
 export const formatPercent = (value, decimals = 1) => {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '-';
   return `${Number(value).toFixed(decimals)}%`;
 };
 
 export const formatNumber = (value) => {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '-';
   return Number(value).toLocaleString('en-KE');
 };
 
 export const formatDecimal = (value, decimals = 2) => {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '-';
   return Number(value).toFixed(decimals);
 };
 
 const NAIROBI_TZ = 'Africa/Nairobi';
 
 export const formatDate = (value) => {
-  if (!value) return '—';
+  if (!value) return '-';
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   return d.toLocaleDateString('en-KE', {
     timeZone: NAIROBI_TZ,
     day: '2-digit',
@@ -28,9 +28,9 @@ export const formatDate = (value) => {
 };
 
 export const formatDateTime = (value) => {
-  if (!value) return '—';
+  if (!value) return '-';
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   return d.toLocaleString('en-KE', {
     timeZone: NAIROBI_TZ,
     day: '2-digit',
@@ -42,9 +42,9 @@ export const formatDateTime = (value) => {
 };
 
 export const formatTime = (value) => {
-  if (!value) return '—';
+  if (!value) return '-';
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   return d.toLocaleTimeString('en-KE', {
     timeZone: NAIROBI_TZ,
     hour: '2-digit',
@@ -53,9 +53,9 @@ export const formatTime = (value) => {
 };
 
 export const timeAgo = (value) => {
-  if (!value) return '—';
+  if (!value) return '-';
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
 
   const seconds = Math.floor((Date.now() - d.getTime()) / 1000);
   if (seconds < 60) return 'Just now';
@@ -70,7 +70,7 @@ export const timeAgo = (value) => {
 };
 
 export const formatMonth = (value) => {
-  if (!value) return '—';
+  if (!value) return '-';
   const [y, m] = value.split('-').map(Number);
   if (!y || !m) return value;
   return new Date(y, m - 1, 1).toLocaleDateString('en-KE', {

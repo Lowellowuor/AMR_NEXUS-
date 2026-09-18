@@ -176,10 +176,10 @@ function AnomalyList({ data }) {
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--status-warning)] mt-2 flex-shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-medium text-[var(--text-primary)]">
-              {a.pathogen} · {a.county}
+              {a.pathogen}  -  {a.county}
             </p>
             <p className="text-[10px] text-[var(--text-muted)]">
-              Score {a.anomaly_score.toFixed(3)} · {a.date ? new Date(a.date).toLocaleDateString('en-KE') : '—'}
+              Score {a.anomaly_score.toFixed(3)}  -  {a.date ? new Date(a.date).toLocaleDateString('en-KE') : '-'}
             </p>
           </div>
         </li>

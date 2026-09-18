@@ -278,7 +278,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
           </div>
 
           <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-            {showAdvanced ? 'âˆ’ Hide advanced' : '+ Show advanced'}
+            {showAdvanced ? 'Hide advanced' : 'Show advanced'}
           </button>
 
           {showAdvanced && (

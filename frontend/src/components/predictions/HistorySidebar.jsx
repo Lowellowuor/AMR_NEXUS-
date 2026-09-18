@@ -55,8 +55,8 @@ export default function HistorySidebar({ onSelect }) {
                       )}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                      <span className="truncate">{p.county || '—'}</span>
-                      <span>·</span>
+                      <span className="truncate">{p.county || '-'}</span>
+                      <span> - </span>
                       <span className="flex-shrink-0">{timeAgo(p.timestamp)}</span>
                     </div>
                   </div>

@@ -134,17 +134,17 @@ export default function AlertsList({
                         {age.label}
                       </span>
                     )}
-                    <span>·</span>
-                    <span className="capitalize">{alert.sector || '—'}</span>
+                    <span> - </span>
+                    <span className="capitalize">{alert.sector || '-'}</span>
                     {alert.sub_county && (
                       <>
-                        <span>·</span>
+                        <span> - </span>
                         <span>{alert.sub_county}</span>
                       </>
                     )}
                     {alert.mdr_probability > 0 && (
                       <>
-                        <span>·</span>
+                        <span> - </span>
                         <span className="tabular-nums">MDR {formatPercent(alert.mdr_probability * 100)}</span>
                       </>
                     )}

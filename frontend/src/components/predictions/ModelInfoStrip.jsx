@@ -16,7 +16,7 @@ export default function ModelInfoStrip() {
             About this model
           </span>
           <span className="text-xs text-[var(--text-muted)] hidden sm:inline">
-            v1.0.0 · XGBoost · decision support only
+            v1.0.0  -  XGBoost  -  decision support only
           </span>
         </div>
         {open ? (
@@ -53,7 +53,7 @@ export default function ModelInfoStrip() {
               </p>
               <dl className="text-sm text-[var(--text-secondary)] space-y-0.5">
                 <div className="flex justify-between">
-                  <dt>AUC‑ROC</dt>
+                  <dt>AUC-ROC</dt>
                   <dd className="tabular-nums font-medium text-[var(--text-primary)]">0.86</dd>
                 </div>
                 <div className="flex justify-between">

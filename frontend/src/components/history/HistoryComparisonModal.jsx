@@ -77,7 +77,7 @@ export default function HistoryComparisonModal({ records, open, onClose }) {
                       <span className="truncate">{r.pathogen_code || 'Unnamed'}</span>
                     </div>
                     <p className="text-[10px] font-normal text-[var(--text-muted)] font-mono truncate">
-                      {r.record_id?.slice(0, 12)}…
+                      {r.record_id?.slice(0, 12)}...
                     </p>
                   </th>
                 ))}
@@ -153,7 +153,7 @@ export default function HistoryComparisonModal({ records, open, onClose }) {
                       key={r.record_id}
                       className="px-4 py-3 border-l border-[var(--border-primary)] text-[var(--text-primary)]"
                     >
-                      {r[key] || '—'}
+                      {r[key] || '-'}
                     </td>
                   ))}
                 </tr>
@@ -168,7 +168,7 @@ export default function HistoryComparisonModal({ records, open, onClose }) {
                     key={r.record_id}
                     className="px-4 py-3 border-l border-[var(--border-primary)] text-[var(--text-primary)]"
                   >
-                    {r.sample_collection_date || '—'}
+                    {r.sample_collection_date || '-'}
                   </td>
                 ))}
               </tr>
@@ -197,7 +197,7 @@ export default function HistoryComparisonModal({ records, open, onClose }) {
                     key={r.record_id}
                     className="px-4 py-3 border-l border-[var(--border-primary)] text-xs text-[var(--text-secondary)] leading-relaxed max-w-xs"
                   >
-                    {r.shap_summary || '—'}
+                    {r.shap_summary || '-'}
                   </td>
                 ))}
               </tr>

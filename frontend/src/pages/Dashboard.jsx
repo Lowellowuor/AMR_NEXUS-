@@ -54,14 +54,14 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">AMRâ€‘Nexus Command Centre</h1>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">AMR'Nexus Command Centre</h1>
         <QuickActions />
       </div>
 
       {/* Key metrics row */}
       <MetricsCards summary={summary} anomalyCount={anomalies.length} />
 
-      {/* Twoâ€‘column layout */}
+      {/* Two'column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <MDRTrendMini trend={trend} />
         <TopCounties counties={topCounties} />

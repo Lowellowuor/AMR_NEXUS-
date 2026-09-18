@@ -107,7 +107,7 @@ export default function AlertFeedPanel({ alerts = [], onAlertClick, maxItems = 6
                       <span className={`text-[10px] font-bold uppercase tracking-wider ${cfg.accent}`}>
                         {cfg.label}
                       </span>
-                      <span className="text-[10px] text-[var(--text-muted)]">·</span>
+                      <span className="text-[10px] text-[var(--text-muted)]"> - </span>
                       <span className="text-[10px] text-[var(--text-muted)] tabular-nums">
                         {timeAgo(alert.timestamp)}
                       </span>
@@ -118,8 +118,8 @@ export default function AlertFeedPanel({ alerts = [], onAlertClick, maxItems = 6
                     {(alert.county || alert.sector) && (
                       <p className="text-[10px] text-[var(--text-muted)] mt-1 truncate">
                         {alert.county}
-                        {alert.sub_county ? ` · ${alert.sub_county}` : ''}
-                        {alert.sector ? ` · ${alert.sector}` : ''}
+                        {alert.sub_county ? `  -  ${alert.sub_county}` : ''}
+                        {alert.sector ? `  -  ${alert.sector}` : ''}
                       </p>
                     )}
                   </div>

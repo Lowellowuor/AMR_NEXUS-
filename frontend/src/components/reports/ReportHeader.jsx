@@ -12,7 +12,7 @@ export default function ReportHeader({ meta }) {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              Republic of Kenya · Ministry of Health
+              Republic of Kenya  -  Ministry of Health
             </p>
             <h1 className="text-xl font-bold text-[var(--text-primary)] mt-0.5">
               {meta.title}

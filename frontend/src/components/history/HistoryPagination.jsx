@@ -7,7 +7,7 @@ export default function HistoryPagination({ page, totalPages, total, pageSize, o
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-primary)] text-sm">
       <span className="text-[var(--text-muted)]">
-        Showing {from}–{to} of {formatNumber(total)}
+        Showing {from}-{to} of {formatNumber(total)}
       </span>
       <div className="flex gap-2 items-center">
         <button

@@ -1,111 +1,118 @@
-
-import sys
 import os
 import glob
-import joblib
 import json
+import joblib
+import datetime
 from pathlib import Path
-import pandas as pd
+from typing import Optional, Tuple, List, Dict, Any
+
 import numpy as np
+import pandas as pd
 import click
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, roc_auc_score
+import warnings
+warnings.filterwarnings("ignore")
+
+from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.metrics import (
+    roc_auc_score, precision_score, recall_score, f1_score, brier_score_loss,
+)
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.decomposition import TruncatedSVD
-import xgboost as xgb
 from sklearn.ensemble import IsolationForest
+from sklearn.isotonic import IsotonicRegression
+import xgboost as xgb
 import shap
-import warnings
-warnings.filterwarnings('ignore')
 
 from src.core.config import settings
 from src.utils.logger import logger
 
+MODEL_VERSION = "1.1.0"
+CV_FOLDS = 5
+HOLDOUT_SIZE = 0.20
+RANDOM_STATE = 42
+STERILE_SITES = {"blood", "csf", "sterile_fluid"}
+
 FRONTEND_FEATURES = [
-    'sector', 'sub_sector', 'pathogen_code', 'specimen_type',
-    'county', 'antibiotic_class', 'test_method', 'sample_month',
-    'prior_antibiotic_exposure'
+    "sector", "sub_sector", "pathogen_code", "specimen_type",
+    "county", "antibiotic_class", "test_method", "sample_month",
+    "prior_antibiotic_exposure",
 ]
 
 COLUMN_MAPPING = {
-    'pathogen': 'pathogen_code',
-    'antibiotic': 'antibiotic_class',
-    'prior_antibiotic_use': 'prior_antibiotic_exposure',
-    'facility': 'facility',
-    'sample_type': 'specimen_type',
-    'month': 'sample_month',
+    "pathogen": "pathogen_code",
+    "antibiotic": "antibiotic_class",
+    "prior_antibiotic_use": "prior_antibiotic_exposure",
+    "sample_type": "specimen_type",
+    "month": "sample_month",
 }
+
 
 class DataLoader:
     @staticmethod
-    def _expand_paths(path_str):
+    def expand_paths(path_str: str) -> List[str]:
         if not path_str:
             return []
-        paths = [p.strip() for p in path_str.split(',') if p.strip()]
-        files = []
+        paths = [p.strip() for p in path_str.split(",") if p.strip()]
+        files: List[str] = []
         for p in paths:
             if os.path.isdir(p):
-                files.extend(sorted(glob.glob(os.path.join(p, '*.csv'))))
-                files.extend(sorted(glob.glob(os.path.join(p, '*.xlsx'))))
+                files.extend(sorted(glob.glob(os.path.join(p, "*.csv"))))
+                files.extend(sorted(glob.glob(os.path.join(p, "*.xlsx"))))
             else:
                 files.append(p)
         return files
 
     @staticmethod
-    def _read_file(file_path, encoding='utf-8'):
-        try:
-            if file_path.endswith('.xlsx'):
-                return pd.read_excel(file_path, engine='openpyxl')
-            else:
-                for enc in [encoding, 'latin-1', 'cp1252', 'utf-8-sig']:
-                    for delim in [',', ';', '\t', '|']:
-                        try:
-                            return pd.read_csv(file_path, encoding=enc, delimiter=delim)
-                        except (UnicodeDecodeError, pd.errors.ParserError):
-                            continue
-                raise ValueError(f"Could not read CSV: {file_path}")
-        except Exception as e:
-            logger.error(f"Failed to read {file_path}: {e}")
-            raise
+    def read_file(file_path: str, encoding: str = "utf-8") -> pd.DataFrame:
+        if file_path.endswith(".xlsx"):
+            return pd.read_excel(file_path, engine="openpyxl")
+        for enc in [encoding, "latin-1", "cp1252", "utf-8-sig"]:
+            for delim in [",", ";", "\t", "|"]:
+                try:
+                    return pd.read_csv(file_path, encoding=enc, delimiter=delim)
+                except (UnicodeDecodeError, pd.errors.ParserError):
+                    continue
+        raise ValueError(f"Could not read file: {file_path}")
 
     @staticmethod
-    def from_path(path_str, target_col=None, threshold=None, limit=None, encoding=None):
-        files = DataLoader._expand_paths(path_str)
+    def from_path(
+        path_str: str,
+        target_col: Optional[str] = None,
+        threshold: Optional[float] = None,
+        limit: Optional[int] = None,
+        encoding: Optional[str] = None,
+    ) -> Tuple[pd.DataFrame, pd.Series, List[str]]:
+        files = DataLoader.expand_paths(path_str)
         if not files:
             raise ValueError(f"No files found at {path_str}")
 
-        df_list = []
-        for f in files:
-            logger.info(f"Loading file: {f}")
-            df = DataLoader._read_file(f, encoding)
-            df_list.append(df)
-
-        df = pd.concat(df_list, ignore_index=True)
-        logger.info(f"Combined {len(df)} records from {len(files)} file(s).")
-
+        frames = [DataLoader.read_file(f, encoding or "utf-8") for f in files]
+        df = pd.concat(frames, ignore_index=True)
         df.rename(columns=COLUMN_MAPPING, inplace=True)
 
         if limit:
             df = df.head(limit)
 
         if target_col is None:
-            for candidate in ['mdr_flag', 'classification', 'resistance_percent']:
+            for candidate in ["mdr_flag", "classification", "resistance_percent"]:
                 if candidate in df.columns:
                     target_col = candidate
                     break
-            else:
+            if target_col is None:
                 raise KeyError("No suitable target column found.")
 
-        if df[target_col].dtype == 'object':
-            positive = ['resistant', 'mdr', 'positive', 'yes', '1']
-            df[target_col] = df[target_col].astype(str).str.lower().map(lambda x: 1 if x in positive else 0)
+        if df[target_col].dtype == object:
+            positive = {"resistant", "mdr", "positive", "yes", "1", "r"}
+            df[target_col] = (
+                df[target_col].astype(str).str.lower()
+                .map(lambda x: 1 if x in positive else 0)
+            )
         else:
             unique_vals = set(df[target_col].dropna().unique())
-            is_binary = unique_vals.issubset({0, 1, 0.0, 1.0})
-            if is_binary:
+            if unique_vals.issubset({0, 1, 0.0, 1.0}):
                 df[target_col] = df[target_col].astype(int)
             else:
                 if threshold is None:
@@ -117,170 +124,283 @@ class DataLoader:
         y = df[target_col].astype(int)
         return X, y, features
 
+
+def add_sterile_flag(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    if "specimen_type" in df.columns:
+        df["is_sterile_site"] = (
+            df["specimen_type"].astype(str).str.lower()
+            .isin(STERILE_SITES).astype(int)
+        )
+    else:
+        df["is_sterile_site"] = 0
+    return df
+
+
+def compute_pair_freq(df: pd.DataFrame) -> Dict[str, int]:
+    counts = df.groupby(["sector", "sub_sector"]).size().to_dict()
+    return {f"{k[0]}_{k[1]}": v for k, v in counts.items()}
+
+
+def apply_pair_freq(df: pd.DataFrame, pair_freq_map: Dict[str, int]) -> pd.DataFrame:
+    df = df.copy()
+    df["sector_sub_pair_count"] = df.apply(
+        lambda r: pair_freq_map.get(
+            f"{r.get('sector', '')}_{r.get('sub_sector', '')}", 0
+        ),
+        axis=1,
+    )
+    return df
+
+
 class PreprocessorBuilder:
     @staticmethod
-    def build(X):
+    def build(X: pd.DataFrame) -> ColumnTransformer:
         numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
-        categorical_cols = X.select_dtypes(include=['object', 'category']).columns.tolist()
+        categorical_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
 
         numeric_pipe = Pipeline([
-            ('imputer', SimpleImputer(strategy='median')),
-            ('scaler', StandardScaler())
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
         ])
         categorical_pipe = Pipeline([
-            ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
-            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
+            ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
+            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
         ])
-
         return ColumnTransformer([
-            ('num', numeric_pipe, numeric_cols),
-            ('cat', categorical_pipe, categorical_cols)
+            ("num", numeric_pipe, numeric_cols),
+            ("cat", categorical_pipe, categorical_cols),
         ])
 
-class Trainer:
-    @staticmethod
-    def train_xgb(X_train, y_train, X_val, y_val, scale_pos_weight):
-        model = xgb.XGBClassifier(
-            n_estimators=settings.XGB_N_ESTIMATORS,
-            max_depth=settings.XGB_MAX_DEPTH,
-            learning_rate=settings.XGB_LEARNING_RATE,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            scale_pos_weight=scale_pos_weight,
-            early_stopping_rounds=10,
-            eval_metric='logloss',
-            random_state=settings.XGB_RANDOM_STATE,
-            n_jobs=-1
-        )
-        model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
-        return model
 
-    @staticmethod
-    def train_isolation_forest(X_reduced):
-        iso = IsolationForest(
-            contamination=settings.ANOMALY_CONTAMINATION,
-            random_state=42
-        )
-        iso.fit(X_reduced)
-        return iso
+def build_xgb(scale_pos_weight: float) -> xgb.XGBClassifier:
+    return xgb.XGBClassifier(
+        n_estimators=settings.XGB_N_ESTIMATORS,
+        max_depth=settings.XGB_MAX_DEPTH,
+        learning_rate=settings.XGB_LEARNING_RATE,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        scale_pos_weight=scale_pos_weight,
+        eval_metric="logloss",
+        random_state=settings.XGB_RANDOM_STATE,
+        n_jobs=-1,
+    )
 
-    @staticmethod
-    def build_shap(model, X_sample):
-        return shap.TreeExplainer(model, X_sample)
 
-def save_artifacts(model, iso_model, preprocessor, shap_explainer, feature_names, X_sample, threshold, svd_model, svd_components, pair_freq_map, original_features):
-    model_dir = Path(settings.MODEL_DIR)
+def binary_metrics(y_true, y_proba, threshold: float = 0.5) -> Dict[str, float]:
+    y_pred = (y_proba >= threshold).astype(int)
+    return {
+        "auc": float(roc_auc_score(y_true, y_proba)),
+        "brier": float(brier_score_loss(y_true, y_proba)),
+        "precision": float(precision_score(y_true, y_pred, zero_division=0)),
+        "recall": float(recall_score(y_true, y_pred, zero_division=0)),
+        "f1": float(f1_score(y_true, y_pred, zero_division=0)),
+    }
+
+
+def subgroup_metrics(
+    y_true: pd.Series,
+    y_proba: np.ndarray,
+    groups: pd.Series,
+    name: str,
+    min_n: int = 10,
+    top_n: int = 8,
+) -> Dict[str, Dict[str, Dict[str, float]]]:
+    out: Dict[str, Dict[str, float]] = {}
+    for value, idx in groups.groupby(groups).groups.items():
+        idx_list = list(idx)
+        if len(idx_list) < min_n:
+            continue
+        yt = y_true.iloc[idx_list]
+        if len(set(yt)) < 2:
+            continue
+        yp = y_proba[idx_list]
+        try:
+            out[str(value)] = {"n": len(idx_list), "auc": float(roc_auc_score(yt, yp))}
+        except Exception:
+            continue
+    ordered = sorted(out.items(), key=lambda kv: -kv[1]["n"])[:top_n]
+    return {name: dict(ordered)}
+
+
+def cross_validate(X_base: pd.DataFrame, y: pd.Series) -> Tuple[List[float], List[float], np.ndarray]:
+    skf = StratifiedKFold(n_splits=CV_FOLDS, shuffle=True, random_state=RANDOM_STATE)
+    aucs: List[float] = []
+    briers: List[float] = []
+    oof_proba = np.zeros(len(X_base))
+
+    for fold, (train_idx, val_idx) in enumerate(skf.split(X_base, y), 1):
+        X_tr = X_base.iloc[train_idx].copy()
+        X_va = X_base.iloc[val_idx].copy()
+        y_tr = y.iloc[train_idx]
+        y_va = y.iloc[val_idx]
+
+        pf = compute_pair_freq(X_tr)
+        X_tr = apply_pair_freq(X_tr, pf)
+        X_va = apply_pair_freq(X_va, pf)
+
+        pre = PreprocessorBuilder.build(X_tr)
+        X_tr_p = pre.fit_transform(X_tr)
+        X_va_p = pre.transform(X_va)
+
+        spw = float((y_tr == 0).sum() / max((y_tr == 1).sum(), 1))
+        model = build_xgb(spw)
+        model.fit(X_tr_p, y_tr, verbose=False)
+
+        proba = model.predict_proba(X_va_p)[:, 1]
+        oof_proba[val_idx] = proba
+        aucs.append(roc_auc_score(y_va, proba))
+        briers.append(brier_score_loss(y_va, proba))
+        logger.info(f"fold {fold}: AUC={aucs[-1]:.4f} Brier={briers[-1]:.4f}")
+
+    return aucs, briers, oof_proba
+
+
+def save_artifacts(
+    model, preprocessor, iso_model, svd, shap_explainer,
+    anomaly_threshold, feature_names, original_features,
+    pair_freq_map, calibrator, X_sample, model_dir: Path,
+):
     model_dir.mkdir(parents=True, exist_ok=True)
 
-    joblib.dump(model, model_dir / 'mdr_model.pkl')
-    joblib.dump(iso_model, model_dir / 'anomaly_iso.pkl')
-    joblib.dump(preprocessor, model_dir / 'preprocessor.pkl')
-    joblib.dump(feature_names, model_dir / 'feature_names.pkl')
-    joblib.dump(shap_explainer, model_dir / 'shap_explainer.pkl')
-    joblib.dump(threshold, model_dir / 'anomaly_threshold.pkl')
-    joblib.dump(svd_model, model_dir / 'svd.pkl')
-    joblib.dump(svd_components, model_dir / 'svd_components.pkl')
-    joblib.dump(pair_freq_map, model_dir / 'pair_freq_map.pkl')
-    joblib.dump(original_features, model_dir / 'original_feature_names.pkl')
+    joblib.dump(model, model_dir / "mdr_model.pkl")
+    joblib.dump(preprocessor, model_dir / "preprocessor.pkl")
+    joblib.dump(iso_model, model_dir / "anomaly_iso.pkl")
+    joblib.dump(svd, model_dir / "svd.pkl")
+    joblib.dump(shap_explainer, model_dir / "shap_explainer.pkl")
+    joblib.dump(anomaly_threshold, model_dir / "anomaly_threshold.pkl")
+    joblib.dump(feature_names, model_dir / "feature_names.pkl")
+    joblib.dump(list(original_features), model_dir / "original_feature_names.pkl")
+    joblib.dump(pair_freq_map, model_dir / "pair_freq_map.pkl")
+    joblib.dump(calibrator, model_dir / "calibrator.pkl")
 
-    pd.DataFrame(X_sample, columns=feature_names).to_parquet(model_dir / 'shap_background.parquet', index=False)
-    logger.info(f"Artifacts saved to {model_dir}")
+    joblib.dump(model, model_dir / "mdr_xgb.pkl")
+    joblib.dump(len(feature_names), model_dir / "numeric_indices.pkl")
+    joblib.dump(svd.n_components, model_dir / "svd_components.pkl")
 
-def main(csv_path, target_col, threshold, limit, split_by_time, encoding):
-    X, y, _ = DataLoader.from_path(csv_path, target_col, threshold, limit, encoding)
-
-    anomaly_path = settings.ANOMALY_FILE_PATH
-    anomaly_ratio = settings.ANOMALY_RATIO
-
-    if anomaly_path and anomaly_ratio > 0:
-        X_anom, y_anom, _ = DataLoader.from_path(anomaly_path, target_col, threshold, None, encoding)
-        n_anom = int(len(X) * anomaly_ratio)
-        if n_anom > 0:
-            if len(X_anom) > n_anom:
-                sample_idx = X_anom.sample(n=n_anom, random_state=42).index
-                X_anom_sampled = X_anom.loc[sample_idx]
-                y_anom_sampled = y_anom.loc[sample_idx]
-            else:
-                X_anom_sampled = X_anom
-                y_anom_sampled = y_anom
-
-            X = pd.concat([X, X_anom_sampled], ignore_index=True)
-            y = pd.concat([y, y_anom_sampled], ignore_index=True)
-            logger.info(f"Added {len(X_anom_sampled)} anomaly records for training.")
-
-    pair_counts = X.groupby(['sector', 'sub_sector']).size().to_dict()
-    X['sector_sub_pair_count'] = X.apply(
-        lambda row: pair_counts.get((row['sector'], row['sub_sector']), 0), axis=1
-    )
-    pair_freq_map = {f"{k[0]}_{k[1]}": v for k, v in pair_counts.items()}
-
-    original_features = X.columns.tolist()
-
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
+    pd.DataFrame(X_sample, columns=feature_names).to_parquet(
+        model_dir / "shap_background.parquet", index=False
     )
 
-    preprocessor = PreprocessorBuilder.build(X_train)
-    X_train_processed = preprocessor.fit_transform(X_train)
-    X_val_processed = preprocessor.transform(X_val)
 
-    pos_count = (y_train == 1).sum()
-    neg_count = (y_train == 0).sum()
-    scale_pos_weight = (neg_count / pos_count) if pos_count > 0 else 1.0
-    logger.info(f"scale_pos_weight: {scale_pos_weight:.2f}")
+def main(csv_path, target_col, threshold, limit, encoding, dry_run, model_dir_override):
+    logger.info(f"Model version: {MODEL_VERSION}")
 
-    xgb_model = Trainer.train_xgb(X_train_processed, y_train, X_val_processed, y_val, scale_pos_weight)
+    X_raw, y, features = DataLoader.from_path(csv_path, target_col, threshold, limit, encoding)
+    X_base = add_sterile_flag(X_raw)
 
-    y_pred = xgb_model.predict(X_val_processed)
-    y_proba = xgb_model.predict_proba(X_val_processed)[:, 1]
-    roc_auc = roc_auc_score(y_val, y_proba)
-    logger.info(f"ROC-AUC: {roc_auc:.4f}")
-    logger.info(classification_report(y_val, y_pred))
+    n_pos = int((y == 1).sum())
+    n_neg = int((y == 0).sum())
+    logger.info(f"rows={len(X_base)} features={len(features)} pos={n_pos} neg={n_neg}")
 
-    n_components = min(10, X_train_processed.shape[1] - 1)
-    svd = TruncatedSVD(n_components=n_components, random_state=42)
-    X_train_reduced = svd.fit_transform(X_train_processed)
+    aucs, briers, oof_proba = cross_validate(X_base, y)
+    cv_auc_mean = float(np.mean(aucs))
+    cv_auc_std = float(np.std(aucs))
+    cv_brier_mean = float(np.mean(briers))
+    logger.info(f"CV AUC: {cv_auc_mean:.4f} +/- {cv_auc_std:.4f}")
+    logger.info(f"CV Brier: {cv_brier_mean:.4f}")
 
-    iso_model = Trainer.train_isolation_forest(X_train_reduced)
+    subgroups: Dict[str, Any] = {}
+    for col in ["sector", "specimen_type", "county"]:
+        if col in X_base.columns:
+            subgroups.update(subgroup_metrics(y, oof_proba, X_base[col], col))
 
-    scores = iso_model.score_samples(X_train_reduced)
-    anomaly_threshold = np.percentile(scores, 5)
-    logger.info(f"Anomaly threshold: {anomaly_threshold:.4f}")
+    if dry_run:
+        logger.info("Dry run - no artifacts written.")
+        return
 
-    X_sample = X_train_processed[:100]
-    shap_explainer = Trainer.build_shap(xgb_model, X_sample)
+    X_tr_all, X_ho, y_tr_all, y_ho = train_test_split(
+        X_base, y, test_size=HOLDOUT_SIZE, random_state=RANDOM_STATE, stratify=y
+    )
 
-    feature_names = preprocessor.get_feature_names_out()
+    pf_final = compute_pair_freq(X_tr_all)
+    X_tr_all = apply_pair_freq(X_tr_all, pf_final)
+    X_ho = apply_pair_freq(X_ho, pf_final)
+
+    pre_final = PreprocessorBuilder.build(X_tr_all)
+    X_tr_all_p = pre_final.fit_transform(X_tr_all)
+    X_ho_p = pre_final.transform(X_ho)
+
+    spw_final = float((y_tr_all == 0).sum() / max((y_tr_all == 1).sum(), 1))
+    final_model = build_xgb(spw_final)
+    final_model.fit(X_tr_all_p, y_tr_all, verbose=False)
+
+    ho_raw = final_model.predict_proba(X_ho_p)[:, 1]
+    holdout_metrics = binary_metrics(y_ho, ho_raw)
+    logger.info(f"Holdout uncalibrated: {holdout_metrics}")
+
+    calibrator = IsotonicRegression(out_of_bounds="clip")
+    calibrator.fit(ho_raw, y_ho.values)
+    ho_cal = calibrator.predict(ho_raw)
+    calibrated_metrics = binary_metrics(y_ho, ho_cal)
+    logger.info(f"Holdout calibrated:   {calibrated_metrics}")
+
+    n_components = min(10, X_tr_all_p.shape[1] - 1)
+    svd = TruncatedSVD(n_components=n_components, random_state=RANDOM_STATE)
+    X_tr_reduced = svd.fit_transform(X_tr_all_p)
+
+    iso_model = IsolationForest(
+        contamination=settings.ANOMALY_CONTAMINATION, random_state=RANDOM_STATE
+    )
+    iso_model.fit(X_tr_reduced)
+    anomaly_threshold = float(np.percentile(iso_model.score_samples(X_tr_reduced), 5))
+
+    X_sample = X_tr_all_p[:100]
+    shap_explainer = shap.TreeExplainer(final_model, X_sample)
+
+    feature_names = pre_final.get_feature_names_out()
+
+    model_dir = Path(model_dir_override or settings.MODEL_DIR)
     save_artifacts(
-        xgb_model, iso_model, preprocessor, shap_explainer,
-        feature_names, X_sample, anomaly_threshold,
-        svd, n_components, pair_freq_map, original_features
+        final_model, pre_final, iso_model, svd, shap_explainer,
+        anomaly_threshold, feature_names, X_tr_all.columns,
+        pf_final, calibrator, X_sample, model_dir,
     )
 
-    logger.info("Training completed.")
+    metrics = {
+        "model_version": MODEL_VERSION,
+        "trained_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "training_rows": int(len(X_tr_all)),
+        "holdout_rows": int(len(X_ho)),
+        "cv_folds": CV_FOLDS,
+        "cv_auc_mean": cv_auc_mean,
+        "cv_auc_std": cv_auc_std,
+        "cv_brier_mean": cv_brier_mean,
+        "holdout": holdout_metrics,
+        "holdout_calibrated": calibrated_metrics,
+        "subgroups": subgroups,
+        "features": list(X_tr_all.columns),
+        "class_balance": {"positive": n_pos, "negative": n_neg},
+    }
+    (model_dir / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+    (model_dir / "model_version.json").write_text(
+        json.dumps({"model_version": MODEL_VERSION, "trained_at": metrics["trained_at"]}, indent=2),
+        encoding="utf-8",
+    )
+
+    logger.info(f"Artifacts written to {model_dir}")
+    logger.info("Training complete.")
+
 
 @click.command()
-@click.option('--csv-path', default=None, help='CSV/Excel file, comma-separated list, or directory. Defaults to DATA_FILE_PATH.')
-@click.option('--target-col', default=None, help='Target column name. Defaults to TARGET_COL.')
-@click.option('--threshold', default=None, type=float, help='Threshold for numeric target.')
-@click.option('--limit', default=None, type=int, help='Limit records for debugging.')
-@click.option('--split-by-time', is_flag=True, help='Split by time if applicable.')
-@click.option('--encoding', default='utf-8', help='CSV encoding.')
-def cli(csv_path, target_col, threshold, limit, split_by_time, encoding):
-    if csv_path is None:
-        csv_path = settings.DATA_FILE_PATH
-    if target_col is None:
-        target_col = settings.TARGET_COL
-    if threshold is None:
-        threshold = settings.MDR_THRESHOLD
-    if limit is None:
-        limit = settings.LIMIT
-    if not split_by_time:
-        split_by_time = settings.SPLIT_BY_TIME
-    if encoding == 'utf-8':
-        encoding = settings.CSV_ENCODING
+@click.option("--csv-path", default=None)
+@click.option("--target-col", default=None)
+@click.option("--threshold", default=None, type=float)
+@click.option("--limit", default=None, type=int)
+@click.option("--encoding", default="utf-8")
+@click.option("--dry-run", is_flag=True)
+@click.option("--model-dir", default=None)
+def cli(csv_path, target_col, threshold, limit, encoding, dry_run, model_dir):
+    main(
+        csv_path or settings.DATA_FILE_PATH,
+        target_col or settings.TARGET_COL,
+        threshold if threshold is not None else settings.MDR_THRESHOLD,
+        limit if limit is not None else settings.LIMIT,
+        encoding if encoding != "utf-8" else settings.CSV_ENCODING,
+        dry_run,
+        model_dir,
+    )
 
-    main(csv_path, target_col, threshold, limit, split_by_time, encoding)
 
 if __name__ == "__main__":
     cli()

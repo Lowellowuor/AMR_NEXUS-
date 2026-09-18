@@ -27,7 +27,7 @@ export default function HistoryFilterBar({
           <input
             ref={searchRef}
             type="text"
-            placeholder="Search pathogen, county, sub-county… (/)"
+            placeholder="Search pathogen, county, sub-county... (/)"
             value={searchInput}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full rounded-[var(--radius-input)] border border-[var(--border-primary)] bg-[var(--bg-primary)] pl-9 pr-9 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-teal)]"

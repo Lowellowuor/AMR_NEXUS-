@@ -40,7 +40,7 @@ export default function CompareTrendChart({ a, b, labelA, labelB }) {
           <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
           <XAxis dataKey="label" tick={axisTick} />
           <YAxis unit="%" domain={[0, 100]} tick={axisTick} />
-          <Tooltip formatter={(v) => v == null ? '—' : `${v}%`} contentStyle={tooltipStyle} />
+          <Tooltip formatter={(v) => v == null ? '-' : `${v}%`} contentStyle={tooltipStyle} />
           <Line type="monotone" dataKey="a" stroke={chartColors.blue} strokeWidth={2} dot={{ r: 3 }} connectNulls />
           <Line type="monotone" dataKey="b" stroke={chartColors.amber} strokeWidth={2} dot={{ r: 3 }} connectNulls />
         </LineChart>

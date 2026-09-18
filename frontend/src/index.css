@@ -230,7 +230,7 @@
     font-size: 10pt;
   }
 
-  /* Charts — force light backgrounds */
+  /* Charts - force light backgrounds */
   svg,
   canvas {
     background: #FFFFFF !important;
@@ -238,7 +238,7 @@
     page-break-inside: avoid;
   }
 
-  /* Links — show URL for context */
+  /* Links - show URL for context */
   a[href]:after {
     content: " (" attr(href) ")";
     font-size: 8pt;
@@ -274,7 +274,7 @@
   }
 }
 
-/* iOS zoom prevention on focus — keeps 16px base */
+/* iOS zoom prevention on focus - keeps 16px base */
 input,
 select,
 textarea {
@@ -301,7 +301,7 @@ html, body {
   max-width: 100vw;
 }
 
-/* Tap targets — WCAG 2.1 minimum */
+/* Tap targets - WCAG 2.1 minimum */
 button, a, [role="button"] {
   min-height: 32px;
 }

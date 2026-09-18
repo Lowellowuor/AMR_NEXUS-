@@ -14,10 +14,10 @@ export default function PathogenSelector({ pathogens, filters, onChange, onClear
             className="rounded-[var(--radius-input)] border border-[var(--border-primary)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)]"
             disabled={loading}
           >
-            <option value="">Select a pathogen…</option>
+            <option value="">Select a pathogen...</option>
             {pathogens.map((p) => (
               <option key={p.code} value={p.code}>
-                {p.name} — {p.samples} samples · {p.mdr_rate}% MDR
+                {p.name} - {p.samples} samples  -  {p.mdr_rate}% MDR
               </option>
             ))}
           </select>

@@ -31,14 +31,14 @@ export default function PathogenPageHeader({ summary, pathogen, isFetching, onRe
           <span>
             <strong className="text-[var(--text-primary)] tabular-nums">{formatNumber(summary.samples)}</strong> samples
           </span>
-          <span>·</span>
+          <span> - </span>
           <span>
             MDR <strong className={`tabular-nums ${toneClass}`}>{formatPercent(summary.mdr_rate)}</strong>{' '}
-            <span className="text-[var(--text-muted)]">(95% CI {summary.ci_low}–{summary.ci_high}%)</span>
+            <span className="text-[var(--text-muted)]">(95% CI {summary.ci_low}-{summary.ci_high}%)</span>
           </span>
           {summary.change != null && (
             <>
-              <span>·</span>
+              <span> - </span>
               <span className={summary.change > 0 ? 'text-[var(--status-critical)] font-semibold' : summary.change < 0 ? 'text-[var(--status-success)] font-semibold' : 'text-[var(--text-muted)]'}>
                 {summary.change > 0 ? '+' : ''}{summary.change} pts vs previous
               </span>

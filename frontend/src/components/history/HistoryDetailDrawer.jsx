@@ -48,7 +48,7 @@ function Field({ label, value, mono = false }) {
         {label}
       </p>
       <p className={`text-sm text-[var(--text-primary)] ${mono ? 'font-mono text-xs break-all' : ''}`}>
-        {value || '—'}
+        {value || '-'}
       </p>
     </div>
   );
@@ -169,7 +169,7 @@ export default function HistoryDetailDrawer({ recordId, isAdmin, onClose, onDele
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <Beaker className="w-4 h-4 text-[var(--accent-teal)] flex-shrink-0" />
               <h2 className="text-base font-bold text-[var(--text-primary)] truncate">
-                {data?.pathogen_code || 'Loading…'}
+                {data?.pathogen_code || 'Loading...'}
               </h2>
               {data?.mdr_flag && <Badge tone="critical">MDR</Badge>}
               {data?.anomaly_detected && (
@@ -182,8 +182,8 @@ export default function HistoryDetailDrawer({ recordId, isAdmin, onClose, onDele
             {data && (
               <p className="text-xs text-[var(--text-muted)]">
                 {data.county}
-                {data.sub_county ? ` · ${data.sub_county}` : ''}
-                {' · '}
+                {data.sub_county ? `  -  ${data.sub_county}` : ''}
+                {'  -  '}
                 <span title={formatDateTime(data.timestamp)}>{timeAgo(data.timestamp)}</span>
               </p>
             )}
@@ -216,7 +216,7 @@ export default function HistoryDetailDrawer({ recordId, isAdmin, onClose, onDele
                   <Field label="Anomaly score" value={formatNumber(data.anomaly_score, 3)} />
                   <Field label="Model version" value={data.model_version} />
                   <Field label="Sample month" value={data.sample_month} />
-                  <Field label="Sample date" value={data.sample_collection_date || '—'} />
+                  <Field label="Sample date" value={data.sample_collection_date || '-'} />
                 </div>
               </div>
 
@@ -261,7 +261,7 @@ export default function HistoryDetailDrawer({ recordId, isAdmin, onClose, onDele
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-medium text-[var(--text-primary)] font-mono truncate pr-2">
-                        {data.shap_top_feature || '—'}
+                        {data.shap_top_feature || '-'}
                       </span>
                       <span
                         className={`text-xs font-semibold tabular-nums flex-shrink-0 ${
@@ -312,7 +312,7 @@ export default function HistoryDetailDrawer({ recordId, isAdmin, onClose, onDele
                       type="text"
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
-                      placeholder="Add a clinical note…"
+                      placeholder="Add a clinical note..."
                       className="flex-1 rounded-[var(--radius-input)] border border-[var(--border-primary)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-teal)]"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && comment.trim()) {
@@ -375,7 +375,7 @@ export default function HistoryDetailDrawer({ recordId, isAdmin, onClose, onDele
                     </div>
                     <div className="text-xs text-[var(--text-muted)] space-y-0.5 mb-2">
                       <p>Confirmed by {data.outcome_confirmed_by || 'unknown'}</p>
-                      <p>{data.outcome_confirmed_at ? formatDateTime(data.outcome_confirmed_at) : '—'}</p>
+                      <p>{data.outcome_confirmed_at ? formatDateTime(data.outcome_confirmed_at) : '-'}</p>
                     </div>
                     <div
                       className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${

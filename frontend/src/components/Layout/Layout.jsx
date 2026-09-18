@@ -79,7 +79,7 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
               <div className="h-8 w-8 bg-[var(--accent-teal)] rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">A</span>
               </div>
-              <span className="text-lg font-semibold text-[var(--text-primary)]">AMRâ€‘Nexus</span>
+              <span className="text-lg font-semibold text-[var(--text-primary)]">AMR'Nexus</span>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -101,12 +101,12 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
                 <div className="h-8 w-8 bg-[var(--accent-teal)] rounded-xl flex items-center justify-center shadow-sm">
                   <span className="text-white font-bold text-lg">A</span>
                 </div>
-                <span className="text-lg font-semibold text-[var(--text-primary)]">AMRâ€‘Nexus</span>
+                <span className="text-lg font-semibold text-[var(--text-primary)]">AMR'Nexus</span>
               </div>
             </div>
             <Sidebar role={role} />
             <div className="p-4 text-xs text-center text-[var(--text-muted)] border-t border-[var(--border-primary)]">
-              v1.0 â€¢ Secure
+              v1.0 ?¢ Secure
             </div>
           </div>
         </div>

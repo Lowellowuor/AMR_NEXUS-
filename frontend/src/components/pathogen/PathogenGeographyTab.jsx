@@ -33,7 +33,7 @@ export default function PathogenGeographyTab({ data, onCountyClick }) {
             County distribution
           </h3>
           <span className="text-xs text-[var(--text-muted)]">
-            Sorted by MDR rate · click a row or marker for details
+            Sorted by MDR rate  -  click a row or marker for details
           </span>
         </div>
         <div className="overflow-x-auto">

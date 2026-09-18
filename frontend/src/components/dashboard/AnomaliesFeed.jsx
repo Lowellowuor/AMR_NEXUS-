@@ -151,7 +151,7 @@ export default function AnomaliesFeed({
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <p className="text-sm font-medium text-[var(--text-primary)]">
-                  {alert.county} â€“ {alert.message}
+                  {alert.county} " {alert.message}
                 </p>
                 <p className="text-xs text-[var(--text-muted)]">
                   {timeAgo(alert.created_at || alert.timestamp)}
@@ -172,7 +172,7 @@ export default function AnomaliesFeed({
       {activeAlerts.length > 0 && (
         <div className="mt-3 text-right">
           <a href="/alerts" className="text-xs text-[var(--accent-teal)] hover:underline">
-            View all â†’
+            View all â†'
           </a>
         </div>
       )}

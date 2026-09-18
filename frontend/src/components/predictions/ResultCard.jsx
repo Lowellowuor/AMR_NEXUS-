@@ -20,7 +20,7 @@ function ConfidenceBadge({ probability }) {
   } else {
     tier = 'borderline';
     tone = 'warning';
-    text = 'Borderline — interpret with caution';
+    text = 'Borderline - interpret with caution';
   }
 
   const toneClass = {
@@ -39,17 +39,17 @@ function ConfidenceBadge({ probability }) {
 function buildSummaryText(result) {
   const p = (result.mdr_probability ?? 0) * 100;
   const lines = [
-    'AMR Nexus — Prediction Summary',
+    'AMR Nexus - Prediction Summary',
     '─'.repeat(40),
-    `Record ID:       ${result.record_id || '—'}`,
+    `Record ID:       ${result.record_id || '-'}`,
     `MDR probability: ${p.toFixed(1)}%`,
     `MDR status:      ${result.mdr_flag ? 'Likely MDR' : 'Likely susceptible'}`,
     `Anomaly:         ${result.anomaly_detected ? `Flagged (score ${(result.anomaly_score ?? 0).toFixed(3)})` : 'Normal'}`,
-    `Top feature:     ${result.shap_top_feature || '—'}`,
+    `Top feature:     ${result.shap_top_feature || '-'}`,
     `SHAP value:      ${(result.shap_value ?? 0).toFixed(3)}`,
     '',
     'Interpretation:',
-    result.shap_summary || '—',
+    result.shap_summary || '-',
     '',
     '⚠ Decision support only. Not a diagnosis.',
     'Confirm with laboratory culture and susceptibility results.',
@@ -170,7 +170,7 @@ export default function ResultCard({ result }) {
             Record ID
           </p>
           <p className="text-xs font-mono text-[var(--text-primary)] break-all">
-            {result.record_id || '—'}
+            {result.record_id || '-'}
           </p>
         </div>
       </div>

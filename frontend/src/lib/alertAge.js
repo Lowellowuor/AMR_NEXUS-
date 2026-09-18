@@ -1,7 +1,7 @@
 const HOUR = 60 * 60 * 1000;
 
 export function classifyAge(timestamp) {
-  if (!timestamp) return { tier: 'unknown', hours: 0, label: '—', tone: 'muted' };
+  if (!timestamp) return { tier: 'unknown', hours: 0, label: '-', tone: 'muted' };
   const ageMs = Date.now() - new Date(timestamp).getTime();
   const hours = ageMs / HOUR;
 

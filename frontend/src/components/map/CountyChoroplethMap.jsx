@@ -153,7 +153,7 @@ export default function CountyChoroplethMap({
     <div ref={containerRef} className="h-full w-full relative" style={{ minHeight: 400 }}>
       {!mapReady && (
         <div className="h-full w-full flex items-center justify-center text-[var(--text-muted)] text-sm">
-          Loading map…
+          Loading map...
         </div>
       )}
       {mapReady && (
@@ -182,7 +182,7 @@ export default function CountyChoroplethMap({
               >
                 <Tooltip direction="top" offset={[0, -12]}>
                   <span className="text-xs font-semibold">
-                    {props.sub_county} — {value.toFixed(1)}%
+                    {props.sub_county} - {value.toFixed(1)}%
                   </span>
                 </Tooltip>
               </CircleMarker>
@@ -198,7 +198,7 @@ export default function CountyChoroplethMap({
             >
               <Tooltip direction="top" offset={[0, -10]}>
                 <span className="text-xs font-semibold">
-                  {hotspot.name} — {(hotspot.resistance_rate ?? 0).toFixed(0)}%
+                  {hotspot.name} - {(hotspot.resistance_rate ?? 0).toFixed(0)}%
                 </span>
               </Tooltip>
             </Marker>

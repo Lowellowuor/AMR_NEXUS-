@@ -89,7 +89,7 @@ export default function AlertsDetailDrawer({ alert, onClose }) {
   const [assignee, setAssignee] = useState(alert?.assigned_to || '');
   const [guidanceText, setGuidanceText] = useState(null);
 
-  // SHAP explanation — auto-loaded
+  // SHAP explanation - auto-loaded
   const { data: explanation, isLoading: explanationLoading } = useQuery({
     queryKey: ['alert-explanation', alert?.id],
     queryFn: () => api.getAlertExplanation(alert.id),
@@ -98,7 +98,7 @@ export default function AlertsDetailDrawer({ alert, onClose }) {
     retry: false,
   });
 
-  // LLM guidance — on demand
+  // LLM guidance - on demand
   const guidanceMutation = useMutation({
     mutationFn: () => api.generateLLM(alert.id),
     onSuccess: (res) => {
@@ -171,7 +171,7 @@ export default function AlertsDetailDrawer({ alert, onClose }) {
             </div>
             <p className="text-xs text-[var(--text-muted)]">
               <span title={formatDateTime(alert.timestamp)}>{timeAgo(alert.timestamp)}</span>
-              {' · '}
+              {'  -  '}
               {alert.type === 'anomaly' ? 'Anomaly' : 'High MDR probability'}
             </p>
           </div>
@@ -214,9 +214,9 @@ export default function AlertsDetailDrawer({ alert, onClose }) {
                 <MapPin className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm text-[var(--text-primary)]">
-                    {alert.county}{alert.sub_county ? ` · ${alert.sub_county}` : ''}
+                    {alert.county}{alert.sub_county ? `  -  ${alert.sub_county}` : ''}
                   </p>
-                  <p className="text-xs text-[var(--text-muted)] capitalize">{alert.sector || '—'}</p>
+                  <p className="text-xs text-[var(--text-muted)] capitalize">{alert.sector || '-'}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
@@ -224,7 +224,7 @@ export default function AlertsDetailDrawer({ alert, onClose }) {
                 <div>
                   <p className="text-sm text-[var(--text-primary)]">{alert.pathogen_code}</p>
                   <p className="text-xs text-[var(--text-muted)] font-mono">
-                    {alert.record_id?.slice(0, 16)}…
+                    {alert.record_id?.slice(0, 16)}...
                   </p>
                 </div>
               </div>
@@ -250,7 +250,7 @@ export default function AlertsDetailDrawer({ alert, onClose }) {
             {explanationLoading ? (
               <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                Loading feature breakdown…
+                Loading feature breakdown...
               </div>
             ) : (
               <ExplanationBlock explanation={explanation} />
@@ -278,7 +278,7 @@ export default function AlertsDetailDrawer({ alert, onClose }) {
             {guidanceMutation.isPending && (
               <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
                 <Loader2 className="w-4 h-4 animate-spin text-[var(--accent-teal)]" />
-                Generating clinical guidance…
+                Generating clinical guidance...
               </div>
             )}
 
@@ -315,7 +315,7 @@ export default function AlertsDetailDrawer({ alert, onClose }) {
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[var(--radius-btn)] bg-[var(--accent-teal)] hover:bg-[var(--accent-teal-hover)] text-white text-sm font-medium transition disabled:opacity-60"
             >
               <Check className="w-4 h-4" />
-              {acknowledgeMutation.isPending ? 'Acknowledging…' : 'Acknowledge alert'}
+              {acknowledgeMutation.isPending ? 'Acknowledging...' : 'Acknowledge alert'}
             </button>
           )}
 
@@ -324,7 +324,7 @@ export default function AlertsDetailDrawer({ alert, onClose }) {
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Add a resolution note (optional)…"
+                placeholder="Add a resolution note (optional)..."
                 rows={3}
                 className="w-full rounded-[var(--radius-input)] border border-[var(--border-primary)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] resize-none focus:outline-none focus:border-[var(--accent-teal)] mb-3"
               />
@@ -334,7 +334,7 @@ export default function AlertsDetailDrawer({ alert, onClose }) {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-btn)] bg-[var(--status-success)] text-white text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
               >
                 <Check className="w-4 h-4" />
-                {resolveMutation.isPending ? 'Resolving…' : 'Mark as resolved'}
+                {resolveMutation.isPending ? 'Resolving...' : 'Mark as resolved'}
               </button>
             </SectionCard>
           )}
@@ -369,13 +369,13 @@ export default function AlertsDetailDrawer({ alert, onClose }) {
             <SectionCard title="History">
               {alert.acknowledged_at && (
                 <p className="text-xs text-[var(--text-secondary)]">
-                  Acknowledged by <strong>{alert.acknowledged_by}</strong> — {formatDateTime(alert.acknowledged_at)}
+                  Acknowledged by <strong>{alert.acknowledged_by}</strong> - {formatDateTime(alert.acknowledged_at)}
                 </p>
               )}
               {alert.resolved_at && (
                 <div className="mt-2">
                   <p className="text-xs text-[var(--text-secondary)]">
-                    Resolved by <strong>{alert.resolved_by}</strong> — {formatDateTime(alert.resolved_at)}
+                    Resolved by <strong>{alert.resolved_by}</strong> - {formatDateTime(alert.resolved_at)}
                   </p>
                   {alert.resolution_note && (
                     <p className="text-xs text-[var(--text-muted)] mt-1 italic">

@@ -35,6 +35,8 @@ class PredictionResponse(BaseModel):
     shap_summary: str
     source: str = "ml"
     fallback_used: bool = False
+    calibration_applied: bool = False
+    model_version: str = "1.0.0"
 
 
 class EmailReportRequest(BaseModel):

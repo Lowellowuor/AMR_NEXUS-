@@ -44,11 +44,11 @@ export default function PathogenOverviewTab({ data, onTabChange }) {
     <div className="space-y-5">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Metric label="Samples" value={formatNumber(s.samples)} hint="Matching current filters" />
-        <Metric label="MDR rate" value={formatPercent(s.mdr_rate)} hint={`95% CI ${s.ci_low}–${s.ci_high}%`} tone={tone} />
+        <Metric label="MDR rate" value={formatPercent(s.mdr_rate)} hint={`95% CI ${s.ci_low}-${s.ci_high}%`} tone={tone} />
         <Metric label="MDR isolates" value={formatNumber(s.mdr_count)} hint={`of ${formatNumber(s.samples)} total`} />
         <Metric
           label="Change"
-          value={s.change == null ? '—' : `${s.change > 0 ? '+' : ''}${s.change} pts`}
+          value={s.change == null ? '-' : `${s.change > 0 ? '+' : ''}${s.change} pts`}
           hint={s.previous_rate != null ? `Prev: ${s.previous_rate}%` : 'No previous period data'}
           tone={s.change == null ? 'default' : s.change > 0 ? 'critical' : 'success'}
         />

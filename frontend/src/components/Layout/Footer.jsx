@@ -5,16 +5,16 @@ export default function Footer() {
 
   return (
     <footer className="mt-auto px-4 sm:px-6 pb-4">
-      {/* Floating footer card â€“ same style as header */}
+      {/* Floating footer card " same style as header */}
       <div className="mx-auto bg-[var(--bg-secondary)]/80 backdrop-blur-md rounded-2xl shadow-lg border border-white/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             {/* Left: Brand & Copyright */}
             <div className="text-sm text-[var(--text-muted)]">
-              Â© {currentYear} AMRâ€‘Nexus One Health. All rights reserved.
+              Â© {currentYear} AMR'Nexus One Health. All rights reserved.
             </div>
 
-            {/* Center: Quick links â€“ pill shaped */}
+            {/* Center: Quick links " pill shaped */}
             <div className="flex flex-wrap justify-center gap-2">
               <Link 
                 to="/about" 
@@ -42,7 +42,7 @@ export default function Footer() {
               </Link>
             </div>
 
-            {/* Right: Version / Status â€“ pill shaped */}
+            {/* Right: Version / Status " pill shaped */}
             <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-secondary)]/40 rounded-full">
               <span className="inline-flex h-2 w-2 rounded-full bg-[var(--status-success)] animate-pulse"></span>
               <span className="text-xs text-[var(--text-muted)]">API v1.0 | Model v1.2</span>
