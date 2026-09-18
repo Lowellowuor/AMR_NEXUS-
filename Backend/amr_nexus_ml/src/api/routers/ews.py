@@ -8,7 +8,6 @@ from src.api.deps import get_db
 from src.db.models import AMRIsolateRecord
 from src.utils.logger import logger
 
-print("✅ ews_router is being imported!")
 
 ews_router = APIRouter()
 
