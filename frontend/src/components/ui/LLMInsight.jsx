@@ -1,19 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Sparkles, RefreshCw, Copy, Check, AlertCircle, Loader2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useLLMInsight } from '../../hooks/useLLMInsight';
 
-/**
- * Reusable narrative card. Drops into any page that has data worth
- * summarizing in plain language.
- *
- * Props:
- *   context       short string describing what the data is ("national summary")
- *   data          object sent to the LLM
- *   title         optional header (defaults to "AI summary")
- *   autoLoad      if true, loads on mount (defaults false - user clicks)
- *   cacheKey      optional override
- *   className     extra class names
- */
 export default function LLMInsight({
   context,
   data,
@@ -25,9 +15,12 @@ export default function LLMInsight({
   const mutation = useLLMInsight();
   const [copied, setCopied] = useState(false);
 
-  if (autoLoad && !mutation.data && !mutation.isPending && !mutation.isError) {
-    mutation.mutate({ context, data, cacheKey });
-  }
+  useEffect(() => {
+    if (autoLoad && !mutation.data && !mutation.isPending && !mutation.isError) {
+      mutation.mutate({ context, data, cacheKey });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLoad, context, cacheKey]);
 
   const handleCopy = async () => {
     if (!mutation.data?.text) return;
@@ -117,9 +110,33 @@ export default function LLMInsight({
         )}
 
         {mutation.data?.text && (
-          <p className="text-sm text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap">
-            {mutation.data.text}
-          </p>
+          <div className="prose prose-sm max-w-none text-[var(--text-primary)]">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h2: ({ children }) => (
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mt-4 mb-2 first:mt-0">
+                    {children}
+                  </h4>
+                ),
+                p: ({ children }) => (
+                  <p className="text-sm leading-relaxed mb-2">{children}</p>
+                ),
+                ul: ({ children }) => (
+                  <ul className="list-disc pl-5 space-y-1 mb-2 text-sm">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="list-decimal pl-5 space-y-1 mb-2 text-sm">{children}</ol>
+                ),
+                li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                strong: ({ children }) => (
+                  <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>
+                ),
+              }}
+            >
+              {mutation.data.text}
+            </ReactMarkdown>
+          </div>
         )}
       </div>
 

@@ -339,10 +339,6 @@ def create_app() -> FastAPI:
         context: str
         data: Dict[str, Any]
 
-    class InsightRequest(BaseModel):
-        context: str
-        data: Dict[str, Any]
-
     def _narrative(context: str, data: Dict[str, Any]) -> str:
         """Deterministic narrative generator. Produces factual prose from structured data."""
         ctx = (context or "").lower()
@@ -395,7 +391,7 @@ def create_app() -> FastAPI:
                     f"indicating patterns that warrant epidemiological review."
                 )
             if counties:
-                parts.append(f"Data was reported from {num(counties)} counties.")
+                parts.append(f"Data was reported from {num(counties)} {'county' if counties == 1 else 'counties'}.")
 
             if prev and prev.get("mdr_rate") is not None and rate is not None:
                 delta = round(float(rate) - float(prev.get("mdr_rate")), 1)
@@ -575,11 +571,29 @@ def create_app() -> FastAPI:
     @app.post("/llm/insight")
     async def llm_insight(req: InsightRequest):
         try:
-            narrative = _narrative(req.context, req.data)
-            return {"text": narrative, "source": "deterministic"}
+            from src.services.llm_service import generate_insight_response
+            narrative = generate_insight_response(req.context, req.data)
+            return {"text": narrative, "source": "llm"}
         except Exception as e:
-            logger.error(f"Narrative generation error: {e}")
-            raise HTTPException(status_code=500, detail="Failed to generate narrative")
+            err_str = str(e)
+            logger.warning(f"LLM insight failed, falling back to deterministic: {err_str}")
+
+            if "RESOURCE_EXHAUSTED" in err_str or "429" in err_str:
+                quota_note = (
+                    "\n\n---\n"
+                    "*AI summary quota reached for today (20 requests/day on free tier). "
+                    "Showing the deterministic interpretation instead. "
+                    "The full AI summary will return tomorrow, or enable billing on the Gemini key.*"
+                )
+            else:
+                quota_note = ""
+
+            try:
+                narrative = _narrative(req.context, req.data)
+                return {"text": narrative + quota_note, "source": "deterministic"}
+            except Exception as e2:
+                logger.error(f"Narrative generation error: {e2}")
+                raise HTTPException(status_code=500, detail="Failed to generate narrative")
 
     class CompareRequest(BaseModel):
         record_a: Dict[str, Any]

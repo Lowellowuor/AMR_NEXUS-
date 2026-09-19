@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { generateInsight } from '../api/endpoints';
 
+const CACHE_TTL_MS = 10 * 60 * 1000;
 const cache = new Map();
 
 function hashData(obj) {
@@ -15,11 +16,15 @@ export function useLLMInsight() {
   const mutation = useMutation({
     mutationFn: async ({ context, data, cacheKey }) => {
       const key = cacheKey || `${context}::${hashData(data)}`;
-      if (cache.has(key)) return cache.get(key);
+      const now = Date.now();
+      const hit = cache.get(key);
+      if (hit && now - hit.at < CACHE_TTL_MS) return hit.value;
+
       const res = await generateInsight(context, data);
-      cache.set(key, res);
+      cache.set(key, { value: res, at: now });
       return res;
     },
   });
+
   return mutation;
 }
