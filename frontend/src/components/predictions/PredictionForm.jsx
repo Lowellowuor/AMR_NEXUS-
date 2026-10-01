@@ -25,6 +25,7 @@ const schema = z.object({
   gender: z.string().optional(),
   hospitalised: z.boolean().optional(),
   facility: z.string().optional(),
+  site_id: z.number().nullable().optional(),
 });
 
 const genderOptions = [
@@ -44,6 +45,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
     counties: [],
     antibiotic_classes: [],
     test_methods: [],
+    sites: [],
   });
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState(null);
@@ -63,6 +65,7 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
       prior_antibiotic_exposure: false,
       hospitalised: false,
       facility: '',
+      site_id: null,
     },
   });
 
@@ -75,6 +78,12 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
       try {
         setOptionsLoading(true);
         const data = await api.getOptions();
+        let sites = [];
+        try {
+          sites = await api.getSamplingSites('active_only=true');
+        } catch {
+          sites = [];
+        }
 
         const pathogenOpts = (data.pathogens || []).map(p => ({
           value: p.code,
@@ -96,6 +105,11 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
           counties: countyOpts,
           antibiotic_classes: toOpts(data.antibiotic_classes),
           test_methods: toOpts(data.test_methods),
+          sites: (sites || []).map((s) => ({
+            value: s.id,
+            label: `${s.name} - ${s.sub_county || s.county}`,
+            county: s.county,
+          })),
         });
         setOptionsError(null);
       } catch (err) {
@@ -235,6 +249,34 @@ const PredictionForm = forwardRef(({ onSubmit, isLoading, onFormChange }, ref) =
               <label className="block text-sm font-semibold text-[var(--text-secondary)] mb-1">Sub-sector *</label>
               <input {...register('sub_sector')} className="mt-1 block w-full rounded-full border border-[var(--border-secondary)] bg-[var(--bg-secondary)] px-4 py-2 text-sm text-[var(--text-primary)] focus:border-gray-500 focus:ring-2 focus:ring-gray-500/20" placeholder="e.g., Poultry-Broiler" />
               {errors.sub_sector && <p className="text-[var(--status-critical)] text-xs mt-1">{errors.sub_sector.message}</p>}
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-[var(--text-secondary)] mb-1">
+                Sampling Site
+              </label>
+              <Select
+                options={(options.sites || []).filter(
+                  (s) => !watch('county') || s.county === watch('county'),
+                )}
+                value={
+                  (options.sites || []).find((s) => s.value === watch('site_id')) ||
+                  null
+                }
+                onChange={(opt) => setValue('site_id', opt?.value ?? null)}
+                placeholder="Optional - link this isolate to a registered site"
+                isClearable
+                styles={selectStyles}
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
+                menuPlacement="auto"
+                isDisabled={optionsLoading}
+                noOptionsMessage={() =>
+                  watch('county') ? 'No sites in this county' : 'No sites registered yet'
+                }
+              />
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                Optional. Enables triangulation back to a specific farm or facility.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-semibold text-[var(--text-secondary)] mb-1">Pathogen *</label>
