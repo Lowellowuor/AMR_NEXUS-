@@ -15,6 +15,8 @@ ignore = ["E501"]
 [tool.ruff.lint.per-file-ignores]
 # B008 is a false positive for FastAPI's Depends()/Query() idiom
 "src/api/routers/*.py" = ["B008"]
+# Pre-existing debt in predictions.py; deferred
+"src/api/routers/predictions.py" = ["B008", "B904", "E402", "E712", "F811", "I001", "UP017", "UP045"]
 "src/modules/*/router.py" = ["B008"]
 # Pre-existing debt in main.py; deferred to a dedicated cleanup PR
 "src/main.py" = ["B008", "B904", "I001", "UP006", "UP035", "UP045"]

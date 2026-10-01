@@ -28,6 +28,9 @@ def _serialize_record(r, full: bool = False) -> dict:
         "county": r.county or "",
         "sub_county": r.sub_county or "",
         "sector": r.sector or "",
+        "sub_sector": r.sub_sector or "",
+        "specimen_type": r.specimen_type or "",
+        "animal_species": r.animal_species or "",
         "anomaly_detected": bool(r.anomaly_flag) if r.anomaly_flag is not None else False,
         "anomaly_score": float(r.anomaly_score) if r.anomaly_score is not None else 0.0,
         "timestamp": r.created_at.isoformat() if r.created_at else None,
@@ -39,37 +42,45 @@ def _serialize_record(r, full: bool = False) -> dict:
         "model_version": r.model_version or "",
     }
     if full:
-        base.update({
-            "antibiotic_class": r.antibiotic_class or "",
-            "sir_result": r.sir_result or "",
-            "test_method": r.test_method or "",
-            "sub_sector": r.sub_sector or "",
-            "specimen_type": r.specimen_type or "",
-            "animal_species": r.animal_species or "",
-            "production_system": r.production_system or "",
-            "urban_rural": r.urban_rural or "",
-            "patient_age_years": float(r.patient_age_years) if r.patient_age_years is not None else None,
-            "patient_sex": r.patient_sex or "",
-            "ward_type": r.ward_type or "",
-            "prior_antibiotic_exposure": bool(r.prior_antibiotic_exposure) if r.prior_antibiotic_exposure is not None else None,
-            "infection_origin": r.infection_origin or "",
-            "gene_marker_blandm": bool(r.gene_marker_blandm) if r.gene_marker_blandm is not None else False,
-            "gene_marker_mcr1": bool(r.gene_marker_mcr1) if r.gene_marker_mcr1 is not None else False,
-            "hotspot_id": r.hotspot_id,
-            "updated_at": r.updated_at.isoformat() if r.updated_at else None,
-        })
+        base.update(
+            {
+                "antibiotic_class": r.antibiotic_class or "",
+                "sir_result": r.sir_result or "",
+                "test_method": r.test_method or "",
+                "sub_sector": r.sub_sector or "",
+                "specimen_type": r.specimen_type or "",
+                "animal_species": r.animal_species or "",
+                "production_system": r.production_system or "",
+                "urban_rural": r.urban_rural or "",
+                "patient_age_years": float(r.patient_age_years) if r.patient_age_years is not None else None,
+                "patient_sex": r.patient_sex or "",
+                "ward_type": r.ward_type or "",
+                "prior_antibiotic_exposure": bool(r.prior_antibiotic_exposure)
+                if r.prior_antibiotic_exposure is not None
+                else None,
+                "infection_origin": r.infection_origin or "",
+                "gene_marker_blandm": bool(r.gene_marker_blandm)
+                if r.gene_marker_blandm is not None
+                else False,
+                "gene_marker_mcr1": bool(r.gene_marker_mcr1) if r.gene_marker_mcr1 is not None else False,
+                "hotspot_id": r.hotspot_id,
+                "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+            }
+        )
     return base
 
 
-def _apply_filters(q, search, mdr, anomaly, pathogen, county, sector, start_date, end_date):
+def _apply_filters(q, search, mdr, anomaly, pathogen, county, sector, species, start_date, end_date):
     if search:
         like = f"%{search.lower()}%"
-        q = q.filter(or_(
-            func.lower(AMRIsolateRecord.pathogen_code).like(like),
-            func.lower(AMRIsolateRecord.county).like(like),
-            func.lower(AMRIsolateRecord.sub_county).like(like),
-            func.lower(AMRIsolateRecord.submission_type).like(like),
-        ))
+        q = q.filter(
+            or_(
+                func.lower(AMRIsolateRecord.pathogen_code).like(like),
+                func.lower(AMRIsolateRecord.county).like(like),
+                func.lower(AMRIsolateRecord.sub_county).like(like),
+                func.lower(AMRIsolateRecord.submission_type).like(like),
+            )
+        )
     if mdr in ("true", "false"):
         q = q.filter(AMRIsolateRecord.mdr_flag == (mdr == "true"))
     if anomaly in ("true", "false"):
@@ -80,6 +91,8 @@ def _apply_filters(q, search, mdr, anomaly, pathogen, county, sector, start_date
         q = q.filter(AMRIsolateRecord.county == county)
     if sector:
         q = q.filter(AMRIsolateRecord.sector == sector)
+    if species:
+        q = q.filter(AMRIsolateRecord.animal_species == species)
     if start_date:
         try:
             sd = datetime.fromisoformat(start_date).date()
@@ -128,6 +141,7 @@ async def list_predictions(
     pathogen: Optional[str] = None,
     county: Optional[str] = None,
     sector: Optional[str] = None,
+    species: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     sort_by: str = "created_at",
@@ -136,7 +150,7 @@ async def list_predictions(
     current_user: User = Depends(get_current_user),
 ):
     q = db.query(AMRIsolateRecord)
-    q = _apply_filters(q, search, mdr, anomaly, pathogen, county, sector, start_date, end_date)
+    q = _apply_filters(q, search, mdr, anomaly, pathogen, county, sector, species, start_date, end_date)
 
     sort_col = getattr(AMRIsolateRecord, sort_by, AMRIsolateRecord.created_at)
     q = q.order_by(desc(sort_col) if sort_dir == "desc" else asc(sort_col))
@@ -180,6 +194,7 @@ async def confirmed_stats(
     current_user: User = Depends(get_current_user),
 ):
     from datetime import timedelta as _td
+
     since = datetime.now(timezone.utc) - _td(days=days)
 
     base = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.created_at >= since)
@@ -190,10 +205,18 @@ async def confirmed_stats(
     confirmed = base.filter(AMRIsolateRecord.lab_confirmed_mdr.isnot(None))
     confirmed_count = confirmed.count()
 
-    tp = confirmed.filter(AMRIsolateRecord.mdr_flag == True, AMRIsolateRecord.lab_confirmed_mdr == True).count()
-    tn = confirmed.filter(AMRIsolateRecord.mdr_flag == False, AMRIsolateRecord.lab_confirmed_mdr == False).count()
-    fp = confirmed.filter(AMRIsolateRecord.mdr_flag == True, AMRIsolateRecord.lab_confirmed_mdr == False).count()
-    fn = confirmed.filter(AMRIsolateRecord.mdr_flag == False, AMRIsolateRecord.lab_confirmed_mdr == True).count()
+    tp = confirmed.filter(
+        AMRIsolateRecord.mdr_flag == True, AMRIsolateRecord.lab_confirmed_mdr == True
+    ).count()
+    tn = confirmed.filter(
+        AMRIsolateRecord.mdr_flag == False, AMRIsolateRecord.lab_confirmed_mdr == False
+    ).count()
+    fp = confirmed.filter(
+        AMRIsolateRecord.mdr_flag == True, AMRIsolateRecord.lab_confirmed_mdr == False
+    ).count()
+    fn = confirmed.filter(
+        AMRIsolateRecord.mdr_flag == False, AMRIsolateRecord.lab_confirmed_mdr == True
+    ).count()
 
     accuracy = round((tp + tn) / confirmed_count * 100, 1) if confirmed_count else None
     sensitivity = round(tp / (tp + fn) * 100, 1) if (tp + fn) else None
@@ -275,8 +298,7 @@ async def confirm_outcome(
         "outcome_confirmed_at": record.outcome_confirmed_at.isoformat(),
         "outcome_confirmed_by": record.outcome_confirmed_by,
         "prediction_matched": (
-            (record.mdr_flag is not None)
-            and (record.lab_confirmed_mdr == record.mdr_flag)
+            (record.mdr_flag is not None) and (record.lab_confirmed_mdr == record.mdr_flag)
         ),
     }
 
@@ -383,26 +405,39 @@ async def export_predictions_csv(
 
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow([
-        "record_id", "created_at", "pathogen_code", "county", "sub_county",
-        "sector", "antibiotic_class", "mdr_flag", "mdr_probability",
-        "anomaly_flag", "anomaly_score", "model_version"
-    ])
+    writer.writerow(
+        [
+            "record_id",
+            "created_at",
+            "pathogen_code",
+            "county",
+            "sub_county",
+            "sector",
+            "antibiotic_class",
+            "mdr_flag",
+            "mdr_probability",
+            "anomaly_flag",
+            "anomaly_score",
+            "model_version",
+        ]
+    )
     for r in rows:
-        writer.writerow([
-            str(r.record_id),
-            r.created_at.isoformat() if r.created_at else "",
-            r.pathogen_code or "",
-            r.county or "",
-            r.sub_county or "",
-            r.sector or "",
-            r.antibiotic_class or "",
-            r.mdr_flag,
-            r.mdr_probability or 0.0,
-            r.anomaly_flag,
-            r.anomaly_score or 0.0,
-            r.model_version or "",
-        ])
+        writer.writerow(
+            [
+                str(r.record_id),
+                r.created_at.isoformat() if r.created_at else "",
+                r.pathogen_code or "",
+                r.county or "",
+                r.sub_county or "",
+                r.sector or "",
+                r.antibiotic_class or "",
+                r.mdr_flag,
+                r.mdr_probability or 0.0,
+                r.anomaly_flag,
+                r.anomaly_score or 0.0,
+                r.model_version or "",
+            ]
+        )
     buf.seek(0)
     return StreamingResponse(
         iter([buf.getvalue()]),
@@ -452,6 +487,7 @@ async def get_comments(
 # =============================================================
 # Model Card
 # =============================================================
+
 
 @router.get("/ml/model-card")
 async def get_model_card(
@@ -578,4 +614,3 @@ async def get_model_card(
             },
         ],
     }
-
