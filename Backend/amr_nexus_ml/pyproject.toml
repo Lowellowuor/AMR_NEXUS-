@@ -16,4 +16,8 @@ ignore = ["E501"]
 # B008 is a false positive for FastAPI's Depends()/Query() idiom
 "src/api/routers/*.py" = ["B008"]
 "src/modules/*/router.py" = ["B008"]
+# Pre-existing debt in main.py; deferred to a dedicated cleanup PR
+"src/main.py" = ["B008", "B904", "I001", "UP006", "UP035", "UP045"]
+# Pre-existing debt in src/db/models.py; deferred
+"src/db/models.py" = ["I001", "UP017", "W291"]
 "tests/*" = ["B011"]

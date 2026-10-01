@@ -23,8 +23,8 @@ from pydantic import BaseModel
 
 from src.core.config import settings
 from src.core.ml import load_models
-from src.db.session import engine
-from src.db.models import AMRIsolateRecord, Base, DashboardNotification, Hotspot, User, UserTemplate
+from src.db.schema_check import ensure_schema_at_head
+from src.db.models import AMRIsolateRecord, DashboardNotification, User, UserTemplate
 from src.services.prediction_service import PredictionService
 from src.services.shap_service import compute_shap_explanation, record_to_feature_dict
 from src.services.llm_service import generate_llm_response, generate_comparison_response
@@ -108,9 +108,8 @@ sio = socketio.AsyncServer(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> Generator[None, None, None]:
-    logger.info("Ensuring database tables exist...")
-    Base.metadata.create_all(engine)
-    logger.info("Database schema ready.")
+    logger.info("Ensuring database schema is at Alembic head...")
+    ensure_schema_at_head()
     logger.info("Triggering background loading for binary ML model artifacts...")
     load_models()
     yield
