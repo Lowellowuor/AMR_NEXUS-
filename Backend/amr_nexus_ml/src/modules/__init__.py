@@ -27,6 +27,7 @@ __all__ = [
 _BUILTIN: list[tuple[str, str, str]] = [
     ("src.modules.example.router", "MODULE_META", "router"),
     ("src.modules.amu.router", "MODULE_META", "router"),
+    ("src.modules.actions.router", "MODULE_META", "router"),
 ]
 
 

@@ -17,6 +17,7 @@ from src.db.models import Base
 
 # Import module models so they register on Base.metadata
 from src.modules.amu import models as _amu_models  # noqa: F401
+from src.modules.actions import models as _actions_models  # noqa: F401
 
 
 config = context.config
