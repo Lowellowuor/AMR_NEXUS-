@@ -79,7 +79,7 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
               <div className="h-8 w-8 bg-[var(--accent-teal)] rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">A</span>
               </div>
-              <span className="text-lg font-semibold text-[var(--text-primary)]">AMR'Nexus</span>
+              <span className="text-lg font-semibold text-[var(--text-primary)]">AMR Nexus</span>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
