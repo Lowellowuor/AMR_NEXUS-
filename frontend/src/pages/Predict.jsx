@@ -129,6 +129,7 @@ export default function Predict() {
       prior_antibiotic_exposure: false,
       hospitalised: false,
       facility: '',
+      site_id: null,
     });
   };
 
