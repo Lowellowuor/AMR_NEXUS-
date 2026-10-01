@@ -5,8 +5,6 @@ import {
   ClockIcon,
   BellIcon,
   Cog6ToothIcon,
-  UserPlusIcon,
-  BellAlertIcon,
   BeakerIcon,
   DocumentChartBarIcon,
   ArrowPathIcon,
@@ -14,6 +12,7 @@ import {
   MapPinIcon,
   ClipboardDocumentListIcon,
   ShieldCheckIcon,
+  UsersIcon,
 } from '@heroicons/react/24/outline';
 
 const commonLinks = [
@@ -25,6 +24,7 @@ const commonLinks = [
   { name: 'Sampling Sites', href: '/sampling-sites', icon: MapPinIcon },
   { name: 'Actions', href: '/actions', icon: ClipboardDocumentListIcon },
   { name: 'Alert Routing', href: '/role-routing', icon: ShieldCheckIcon },
+  { name: 'Users', href: '/admin/users', icon: UsersIcon },
   { name: 'Reports', href: '/reports', icon: DocumentChartBarIcon },
   { name: 'Compare', href: '/compare', icon: ArrowPathIcon },
   { name: 'Pathogen Explorer', href: '/pathogen-explorer', icon: MagnifyingGlassIcon },

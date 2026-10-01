@@ -48,6 +48,33 @@ export const api = {
   health: () => authFetch(`${API_BASE}/health`).then(handleResponse),
   search: (q, limit = 20) =>
     authFetch(`${API_BASE}/search?q=${encodeURIComponent(q)}&limit=${limit}`).then(handleResponse),
+
+  // ---- Admin: user management ----
+  listUsers: (search = '') =>
+    authFetch(`${API_BASE}/api/v1/admin/users?search=${encodeURIComponent(search)}`).then(handleResponse),
+  createUser: (data) =>
+    authFetch(`${API_BASE}/api/v1/admin/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  updateUser: (id, data) =>
+    authFetch(`${API_BASE}/api/v1/admin/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  resetUserPassword: (id) =>
+    authFetch(`${API_BASE}/api/v1/admin/users/${id}/reset-password`, {
+      method: 'POST',
+    }).then(handleResponse),
+  disableUser: (id) =>
+    authFetch(`${API_BASE}/api/v1/admin/users/${id}`, {
+      method: 'DELETE',
+    }).then((res) => {
+      if (!res.ok) return handleResponse(res);
+      return null;
+    }),
   getSummary: (params = '') => authFetch(`${API_BASE}/analytics/summary?${params}`).then(handleResponse),
   getMDRTrend: (months = 6, params = '') => authFetch(`${API_BASE}/analytics/mdr_trend?months=${months}&${params}`).then(handleResponse),
   getByPathogen: (limit = 10, params = '') => authFetch(`${API_BASE}/analytics/by_pathogen?limit=${limit}&${params}`).then(handleResponse),

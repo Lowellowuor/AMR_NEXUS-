@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useTheme } from './design-system';
@@ -23,6 +23,7 @@ import DataQuality from './pages/DataQuality';
 import ModelCard from './pages/ModelCard';
 import Privacy from './pages/Privacy';
 import AuditLog from './pages/AuditLog';
+import AdminUsers from './pages/AdminUsers';
 import AmuDashboard from './pages/AmuDashboard';
 import SamplingSites from './pages/SamplingSites';
 import Actions from './pages/Actions';
@@ -33,14 +34,13 @@ const wrap = (el) => <ErrorBoundary>{el}</ErrorBoundary>;
 function AppRoutes() {
   const { user, mustChangePassword } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [role, setRole] = useState('national');
-
-  useEffect(() => {
-    if (user?.role) setRole(user.role);
-  }, [user]);
+  // Local override for the national/county toggle. If null, we fall back to
+  // the signed-in user's role. Avoids a setState-in-effect sync.
+  const [roleOverride, setRoleOverride] = useState(null);
+  const role = roleOverride ?? user?.role ?? 'national';
 
   const toggleRole = () =>
-    setRole((prev) => (prev === 'national' ? 'county' : 'national'));
+    setRoleOverride(role === 'national' ? 'county' : 'national');
 
   if (mustChangePassword) {
     return <ForcePasswordChange />;
@@ -78,6 +78,7 @@ function AppRoutes() {
         <Route path="model-card" element={wrap(<ModelCard />)} />
         <Route path="privacy" element={wrap(<Privacy />)} />
         <Route path="admin/audit" element={wrap(<AuditLog />)} />
+            <Route path="admin/users" element={wrap(<AdminUsers />)} />
             <Route path="amu" element={wrap(<AmuDashboard />)} />
             <Route path="sampling-sites" element={wrap(<SamplingSites />)} />
             <Route path="actions" element={wrap(<Actions />)} />
