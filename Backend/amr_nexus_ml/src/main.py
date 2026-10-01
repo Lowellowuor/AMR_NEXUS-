@@ -47,6 +47,7 @@ from src.api.routers import (
 )
 from src.services.forecast_utils import generate_time_series_forecast
 from src.api.routers import auth_router, audit_router, user_actions_router, analyst_router, model_health_router, admin_users_router, notifications_router
+from src.modules import bootstrap as bootstrap_modules, include_all as include_all_modules
 
 
 def get_cors_origins() -> List[str]:
@@ -703,6 +704,16 @@ def create_app() -> FastAPI:
             content={"error": "Validation error", "details": exc.errors()}
         )
 
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        logger.exception(
+            "Unhandled exception on %s %s", request.method, request.url.path
+        )
+        return JSONResponse(
+            {"detail": "Internal server error"},
+            status_code=500,
+        )
+
     app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
     app.include_router(notifications_router, prefix="/api/v1/notifications", tags=["notifications"])
     app.include_router(admin_users_router, prefix="/api/v1/admin", tags=["admin"])
@@ -717,6 +728,10 @@ def create_app() -> FastAPI:
     app.include_router(model_health_router, prefix="/ml", tags=["ml"])
     app.include_router(user_actions_router, prefix="/user", tags=["user-actions"])
     app.include_router(audit_router, prefix="/audit", tags=["audit"])
+
+    # Module framework (PR #1)
+    bootstrap_modules()
+    include_all_modules(app)
 
     return app
 

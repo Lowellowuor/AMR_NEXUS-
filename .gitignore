@@ -1,4 +1,4 @@
-﻿# Secrets - never commit
+# Secrets - never commit
 .env
 .env.*
 !.env.example
@@ -54,6 +54,8 @@ _bak/
 **/_bak/
 *.bak-*
 _*.py
+!__init__.py
+!**/__init__.py
 _err.txt
 venv.old/
 venv*/
