@@ -1,0 +1,26 @@
+# Normalize line endings across the repository.
+# Text files are stored with LF in the repository; checked out with LF
+# everywhere. This ends the "LF will be replaced by CRLF" warnings and
+# keeps diffs clean regardless of developer OS.
+* text=auto eol=lf
+
+# Windows-native scripts still need CRLF
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binary files - never try to normalize
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.pkl   binary
+*.parquet binary
+*.db    binary
+*.sqlite binary
+*.xlsx  binary
+
+# Locked dependency files - do not merge
+package-lock.json  -diff
