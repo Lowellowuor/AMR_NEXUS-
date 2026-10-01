@@ -211,6 +211,32 @@ export const api = {
     }).then(handleResponse),
   getSamplingSiteIsolates: (id, params = '') =>
     authFetch(`${API_BASE}/modules/sampling-sites/${id}/isolates?${params}`).then(handleResponse),
+
+  // ---- Actions module ----
+  getActions: (params = '') =>
+    authFetch(`${API_BASE}/modules/actions?${params}`).then(handleResponse),
+  getAction: (id) =>
+    authFetch(`${API_BASE}/modules/actions/${id}`).then(handleResponse),
+  createAction: (data) =>
+    authFetch(`${API_BASE}/modules/actions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  updateAction: (id, data) =>
+    authFetch(`${API_BASE}/modules/actions/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  closeAction: (id, data) =>
+    authFetch(`${API_BASE}/modules/actions/${id}/close`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  getMyActions: (params = '') =>
+    authFetch(`${API_BASE}/modules/actions/mine?${params}`).then(handleResponse),
 };
 
 export default api;
