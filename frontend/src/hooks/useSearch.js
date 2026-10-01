@@ -1,33 +1,34 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { debounce } from 'lodash';
+import api from '../api/client';
 
 export function useSearch() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const performSearch = useCallback(
-    debounce(async (term) => {
-      if (!term.trim()) {
-        setResults([]);
-        return;
-      }
-      setLoading(true);
-      try {
-        // TODO: Replace with actual backend endpoint: /search?q=term
-        // For now, mock results
-        const mock = [
-          { type: 'Pathogen', name: term.toUpperCase(), url: `/pathogen-explorer?pathogen=${encodeURIComponent(term)}` },
-          { type: 'County', name: term, url: `/analytics?county=${term}` },
-        ];
-        setResults(mock);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }, 300),
-    []
+  const performSearch = useMemo(
+    () =>
+      debounce(async (term) => {
+        if (!term.trim()) {
+          setResults([]);
+          setLoading(false);
+          return;
+        }
+        setLoading(true);
+        try {
+          const data = await api.search(term, 20);
+          setResults(Array.isArray(data) ? data : []);
+        } catch (err) {
+          console.error('Search failed:', err);
+          setResults([]);
+        } finally {
+          setLoading(false);
+        }
+      }, 300),
+    [],
   );
+
+  useEffect(() => () => performSearch.cancel(), [performSearch]);
 
   return { results, loading, performSearch };
 }

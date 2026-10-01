@@ -21,7 +21,9 @@ async function handleResponse(res) {
       } else if (errorData.error) {
         errorMessage = errorData.error;
       }
-    } catch {}
+    } catch {
+      // ignore body parse errors; keep default message
+    }
     throw new Error(errorMessage);
   }
   return res.json();
@@ -44,6 +46,8 @@ function authFetch(url, options = {}) {
 
 export const api = {
   health: () => authFetch(`${API_BASE}/health`).then(handleResponse),
+  search: (q, limit = 20) =>
+    authFetch(`${API_BASE}/search?q=${encodeURIComponent(q)}&limit=${limit}`).then(handleResponse),
   getSummary: (params = '') => authFetch(`${API_BASE}/analytics/summary?${params}`).then(handleResponse),
   getMDRTrend: (months = 6, params = '') => authFetch(`${API_BASE}/analytics/mdr_trend?months=${months}&${params}`).then(handleResponse),
   getByPathogen: (limit = 10, params = '') => authFetch(`${API_BASE}/analytics/by_pathogen?limit=${limit}&${params}`).then(handleResponse),
