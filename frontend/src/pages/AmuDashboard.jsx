@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { ChartBarIcon, BeakerIcon, MapPinIcon, TagIcon } from '@heroicons/react/24/outline';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChartBarIcon, BeakerIcon, MapPinIcon, TagIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { usePageTitle } from '../hooks/usePageTitle';
 import api from '../api/client';
 import { Skeleton } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
+import DrugForm from '../components/amu/DrugForm';
+import ConsumptionForm from '../components/amu/ConsumptionForm';
+import { useAuth } from '../contexts/AuthContext';
 
 const DIMENSIONS = [
   { value: 'sector', label: 'Sector' },
@@ -43,6 +46,12 @@ function SummaryBar({ quantity, max }) {
 export default function AmuDashboard() {
   usePageTitle('Antimicrobial Use');
   const [dimension, setDimension] = useState('sector');
+  const [showDrugForm, setShowDrugForm] = useState(false);
+  const [showConsumptionForm, setShowConsumptionForm] = useState(false);
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const canManage = user?.role === 'admin' || user?.role === 'analyst';
+
 
   const summary = useQuery({
     queryKey: ['amu', 'summary', dimension],
@@ -64,6 +73,22 @@ export default function AmuDashboard() {
     queryFn: () => api.getAmuDrugs(),
   });
 
+  const createDrugMutation = useMutation({
+    mutationFn: (payload) => api.createAmuDrug(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['amu', 'drugs'] });
+      setShowDrugForm(false);
+    },
+  });
+
+  const createConsumptionMutation = useMutation({
+    mutationFn: (payload) => api.createAmuConsumption(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['amu'] });
+      setShowConsumptionForm(false);
+    },
+  });
+
   const totals = summary.data ?? { total_quantity: 0, total_records: 0, buckets: [] };
   const maxBucketQty = Math.max(0, ...(totals.buckets || []).map((b) => b.quantity || 0));
   const topDrugsList = topDrugs.data?.items ?? [];
@@ -79,17 +104,39 @@ export default function AmuDashboard() {
             Consumption records across human, animal, and environment sectors.
           </p>
         </div>
-        <select
-          value={dimension}
-          onChange={(e) => setDimension(e.target.value)}
-          className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-full px-4 py-2 text-sm"
-        >
-          {DIMENSIONS.map((d) => (
-            <option key={d.value} value={d.value}>
-              Group by {d.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={dimension}
+            onChange={(e) => setDimension(e.target.value)}
+            className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-full px-4 py-2 text-sm"
+          >
+            {DIMENSIONS.map((d) => (
+              <option key={d.value} value={d.value}>
+                Group by {d.label}
+              </option>
+            ))}
+          </select>
+          {canManage && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowDrugForm(true)}
+                className="flex items-center gap-1 px-4 py-2 rounded-full text-sm border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]/60"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Drug
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowConsumptionForm(true)}
+                className="flex items-center gap-1 px-4 py-2 rounded-full text-sm bg-[var(--accent-teal)] text-white"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Consumption
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -214,6 +261,20 @@ export default function AmuDashboard() {
           </div>
         )}
       </div>
+
+      <DrugForm
+        open={showDrugForm}
+        busy={createDrugMutation.isPending}
+        onClose={() => setShowDrugForm(false)}
+        onSubmit={(payload) => createDrugMutation.mutate(payload)}
+      />
+      <ConsumptionForm
+        open={showConsumptionForm}
+        drugs={drugs.data ?? []}
+        busy={createConsumptionMutation.isPending}
+        onClose={() => setShowConsumptionForm(false)}
+        onSubmit={(payload) => createConsumptionMutation.mutate(payload)}
+      />
     </div>
   );
 }
