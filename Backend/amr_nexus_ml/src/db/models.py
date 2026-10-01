@@ -58,6 +58,7 @@ class AMRIsolateRecord(Base):
 
     # NEW: Optional link to a Hotspot (facility)
     hotspot_id = Column(Integer, ForeignKey("hotspots.id"), nullable=True)
+    site_id = Column(Integer, ForeignKey("sampling_sites.id", ondelete="SET NULL"), nullable=True, index=True)
 
 
 class SubCountyLocation(Base):

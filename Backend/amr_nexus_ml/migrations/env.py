@@ -14,12 +14,12 @@ from sqlalchemy import engine_from_config, pool
 # --- Application imports ---
 from src.core.config import settings
 from src.db.models import Base
+from src.modules.actions import models as _actions_models  # noqa: F401
 
 # Import module models so they register on Base.metadata
 from src.modules.amu import models as _amu_models  # noqa: F401
-from src.modules.actions import models as _actions_models  # noqa: F401
 from src.modules.role_routing import models as _role_routing_models  # noqa: F401
-
+from src.modules.sampling_sites import models as _sampling_sites_models  # noqa: F401
 
 config = context.config
 

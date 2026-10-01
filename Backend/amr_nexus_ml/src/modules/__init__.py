@@ -29,6 +29,7 @@ _BUILTIN: list[tuple[str, str, str]] = [
     ("src.modules.amu.router", "MODULE_META", "router"),
     ("src.modules.actions.router", "MODULE_META", "router"),
     ("src.modules.role_routing.router", "MODULE_META", "router"),
+    ("src.modules.sampling_sites.router", "MODULE_META", "router"),
 ]
 
 
