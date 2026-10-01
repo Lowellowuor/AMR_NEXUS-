@@ -24,7 +24,7 @@ def generate_llm_response(alert_data: Dict[str, Any], explanation: Dict[str, Any
     if not GEMINI_AVAILABLE:
         raise RuntimeError("Google GenAI SDK is not installed. Install with: pip install google-genai")
 
-    cache_key = _insight_cache_key(context, data)
+    cache_key = _insight_cache_key(explanation, alert_data)
     cached = _insight_cache_get(cache_key)
     if cached:
         logger.info("LLM insight cache hit")
@@ -71,6 +71,7 @@ Rules:
                 max_output_tokens=2048,
             ),
         )
+        _insight_cache_set(cache_key, response.text)
         return response.text
     except Exception as e:
         logger.error(f"Gemini API call failed: {str(e)}")
@@ -136,6 +137,12 @@ def generate_insight_response(context: str, data: Dict[str, Any]) -> str:
     if not GEMINI_AVAILABLE:
         raise RuntimeError("Google GenAI SDK is not installed. Install with: pip install google-genai")
 
+    cache_key = _insight_cache_key(context, data)
+    cached = _insight_cache_get(cache_key)
+    if cached:
+        logger.info("Insight cache hit")
+        return cached
+
     client = _get_client()
 
     system_prompt = """You are a senior antimicrobial resistance epidemiologist briefing a Ministry of Health officer.
@@ -184,4 +191,3 @@ Produce the brief."""
     except Exception as e:
         logger.error(f"Gemini insight call failed: {str(e)}")
         raise
-
