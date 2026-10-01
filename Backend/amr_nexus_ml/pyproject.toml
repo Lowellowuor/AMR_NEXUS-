@@ -19,5 +19,4 @@ ignore = ["E501"]
 # Pre-existing debt in main.py; deferred to a dedicated cleanup PR
 "src/main.py" = ["B008", "B904", "I001", "UP006", "UP035", "UP045"]
 # Pre-existing debt in src/db/models.py; deferred
-"src/db/models.py" = ["I001", "UP017", "W291"]
 "tests/*" = ["B011"]

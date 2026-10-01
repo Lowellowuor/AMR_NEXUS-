@@ -1,8 +1,10 @@
-from datetime import datetime, timezone
 import uuid
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Date, Numeric, Text, ForeignKey, JSON
+from datetime import UTC, datetime
+
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from src.database import Base
 
 
@@ -10,8 +12,8 @@ class AMRIsolateRecord(Base):
     __tablename__ = "amr_isolate_records"
 
     record_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
     submission_type = Column(String(20))
 
     pathogen_code = Column(String(100))
@@ -28,10 +30,10 @@ class AMRIsolateRecord(Base):
     production_system = Column(String(50))
 
     county = Column(String(100))
-    sub_county = Column(String(100))          
+    sub_county = Column(String(100))
     urban_rural = Column(String(10))
 
-    sample_collection_date = Column(Date)    
+    sample_collection_date = Column(Date)
     sample_month = Column(Integer)
 
     patient_age_years = Column(Numeric(5, 1))
@@ -76,7 +78,7 @@ class Hotspot(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(200), nullable=False)
-    type = Column(String(50), nullable=False)  
+    type = Column(String(50), nullable=False)
     latitude = Column(Numeric(8, 6), nullable=False)
     longitude = Column(Numeric(9, 6), nullable=False)
     county = Column(String(100), nullable=False, index=True)
@@ -84,8 +86,8 @@ class Hotspot(Base):
     address = Column(String(300), nullable=True)
     contact = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
 
 class Comment(Base):
@@ -93,7 +95,7 @@ class Comment(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     record_id = Column(UUID(as_uuid=True), ForeignKey("amr_isolate_records.record_id", ondelete="CASCADE"), nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     user_name = Column(String(100), nullable=False)
     text = Column(Text, nullable=False)
 
@@ -103,7 +105,7 @@ class RiskScore(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     record_id = Column(UUID(as_uuid=True), ForeignKey("amr_isolate_records.record_id", ondelete="CASCADE"), nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     overall_risk_score = Column(Numeric(5, 4), nullable=False)
     anomaly_component = Column(Numeric(5, 4), nullable=False)
     mdr_component = Column(Numeric(5, 4), nullable=False)
@@ -114,7 +116,7 @@ class DashboardNotification(Base):
     __tablename__ = "dashboard_notifications"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     county = Column(String(100), nullable=False)
     message = Column(String(500), nullable=False)
     is_read = Column(Boolean, default=False)
@@ -133,8 +135,8 @@ class User(Base):
     must_change_password = Column(Boolean, default=False, nullable=False)
     last_login_at = Column(DateTime, nullable=True)
     assigned_county = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     templates = relationship("UserTemplate", back_populates="user", cascade="all, delete-orphan")
 
@@ -146,7 +148,7 @@ class UserTemplate(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(100), nullable=False)
     form_data = Column(JSON, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     user = relationship("User", back_populates="templates")
 
@@ -164,15 +166,15 @@ class AlertAcknowledgement(Base):
     resolved_by = Column(String(100), nullable=True)
     resolution_note = Column(Text, nullable=True)
     assigned_to = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
 
 class AuditEvent(Base):
     __tablename__ = "audit_events"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    occurred_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    occurred_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
     actor_id = Column(Integer, nullable=True, index=True)
     actor_email = Column(String(100), nullable=True)
     actor_role = Column(String(20), nullable=True)
@@ -192,7 +194,7 @@ class SavedAnalysis(Base):
     __tablename__ = "saved_analyses"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
     created_by = Column(Integer, nullable=True, index=True)
     created_by_email = Column(String(100), nullable=True)
     title = Column(String(200), nullable=False)
@@ -215,7 +217,7 @@ class ModelRegistry(Base):
     artifact_path = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=False, index=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
 
 class PredictionLog(Base):
@@ -223,7 +225,7 @@ class PredictionLog(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     record_id = Column(UUID(as_uuid=True), ForeignKey("amr_isolate_records.record_id", ondelete="CASCADE"), nullable=True, index=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
     model_version = Column(String(50), nullable=True)
     latency_ms = Column(Numeric(10, 2), nullable=True)
     mdr_probability = Column(Numeric(5, 4), nullable=True)
@@ -238,7 +240,7 @@ class DriftSnapshot(Base):
     __tablename__ = "drift_snapshots"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
     window_days = Column(Integer, nullable=False)
     drift_score = Column(Numeric(5, 4), nullable=True)
     per_feature = Column(JSON, nullable=True)
@@ -256,15 +258,15 @@ class NotificationPreference(Base):
     sms_severity = Column(String(20), default="critical")
     sms_phone = Column(String(30), nullable=True)
     desktop_enabled = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
 
 class NotificationLog(Base):
     __tablename__ = "notification_logs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
     channel = Column(String(20), nullable=False, index=True)
     severity = Column(String(20), nullable=True, index=True)
     recipient_user_id = Column(Integer, nullable=True)
