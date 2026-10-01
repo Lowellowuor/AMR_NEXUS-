@@ -4,6 +4,7 @@ Called from the FastAPI lifespan handler. Replaces the previous
 `Base.metadata.create_all(engine)` so that Alembic is the single
 authority over schema (ADR-0008).
 """
+
 from pathlib import Path
 
 from alembic import command
@@ -55,9 +56,7 @@ def ensure_schema_at_head() -> None:
         return
 
     if current is None:
-        logger.info(
-            "Database has no alembic version; running full upgrade to %s.", head
-        )
+        logger.info("Database has no alembic version; running full upgrade to %s.", head)
     else:
         logger.info("Database at %s, upgrading to %s.", current, head)
 

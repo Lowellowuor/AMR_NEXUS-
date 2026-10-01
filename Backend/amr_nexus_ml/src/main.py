@@ -46,7 +46,15 @@ from src.api.routers import (
     hotspot_router,
 )
 from src.services.forecast_utils import generate_time_series_forecast
-from src.api.routers import auth_router, audit_router, user_actions_router, analyst_router, model_health_router, admin_users_router, notifications_router
+from src.api.routers import (
+    auth_router,
+    audit_router,
+    user_actions_router,
+    analyst_router,
+    model_health_router,
+    admin_users_router,
+    notifications_router,
+)
 from src.modules import bootstrap as bootstrap_modules, include_all as include_all_modules
 
 
@@ -82,7 +90,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if request.method == "OPTIONS":
             return await call_next(request)
-        if path in PUBLIC_PATHS or path.startswith("/docs") or path.startswith("/redoc") or path.startswith("/openapi"):
+        if (
+            path in PUBLIC_PATHS
+            or path.startswith("/docs")
+            or path.startswith("/redoc")
+            or path.startswith("/openapi")
+        ):
             return await call_next(request)
         auth = request.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
@@ -100,10 +113,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-sio = socketio.AsyncServer(
-    async_mode="asgi",
-    cors_allowed_origins=CORS_ORIGINS
-)
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=CORS_ORIGINS)
 
 
 @asynccontextmanager
@@ -157,10 +167,7 @@ def create_app() -> FastAPI:
     app.include_router(hotspot_router, tags=["hotspots"])
 
     @app.get("/ews/forecast")
-    async def direct_ews_forecast(
-        county: str = Query(None),
-        db: Session = Depends(get_db)
-    ):
+    async def direct_ews_forecast(county: str = Query(None), db: Session = Depends(get_db)):
         try:
             forecast = generate_time_series_forecast(db, county)
             return forecast
@@ -175,10 +182,16 @@ def create_app() -> FastAPI:
     async def root_metadata_options(db: Session = Depends(get_db)) -> Dict[str, Any]:
         sectors = [s[0] for s in db.query(AMRIsolateRecord.sector).distinct().all() if s[0]]
         sub_sectors = [s[0] for s in db.query(AMRIsolateRecord.sub_sector).distinct().all() if s[0]]
-        pathogens = [{"code": p[0], "name": p[0]} for p in db.query(AMRIsolateRecord.pathogen_code).distinct().all() if p[0]]
+        pathogens = [
+            {"code": p[0], "name": p[0]}
+            for p in db.query(AMRIsolateRecord.pathogen_code).distinct().all()
+            if p[0]
+        ]
         specimen_types = [s[0] for s in db.query(AMRIsolateRecord.specimen_type).distinct().all() if s[0]]
         counties_raw = [c[0] for c in db.query(AMRIsolateRecord.county).distinct().all() if c[0]]
-        antibiotic_classes = [a[0] for a in db.query(AMRIsolateRecord.antibiotic_class).distinct().all() if a[0]]
+        antibiotic_classes = [
+            a[0] for a in db.query(AMRIsolateRecord.antibiotic_class).distinct().all() if a[0]
+        ]
         test_methods = [t[0] for t in db.query(AMRIsolateRecord.test_method).distinct().all() if t[0]]
 
         counties = [{"code": c, "name": c} for c in counties_raw]
@@ -209,7 +222,12 @@ def create_app() -> FastAPI:
 
     @app.post("/templates")
     @app.post("/api/v1/templates")
-    def save_template_direct(name: str, form_data: Dict[str, Any], db: Session = Depends(get_db), current_user=Depends(require_admin)):
+    def save_template_direct(
+        name: str,
+        form_data: Dict[str, Any],
+        db: Session = Depends(get_db),
+        current_user=Depends(require_admin),
+    ):
         user = db.query(User).first()
         if not user:
             user = User(
@@ -391,7 +409,9 @@ def create_app() -> FastAPI:
                     f"indicating patterns that warrant epidemiological review."
                 )
             if counties:
-                parts.append(f"Data was reported from {num(counties)} {'county' if counties == 1 else 'counties'}.")
+                parts.append(
+                    f"Data was reported from {num(counties)} {'county' if counties == 1 else 'counties'}."
+                )
 
             if prev and prev.get("mdr_rate") is not None and rate is not None:
                 delta = round(float(rate) - float(prev.get("mdr_rate")), 1)
@@ -539,8 +559,7 @@ def create_app() -> FastAPI:
                 )
             elif mdr:
                 parts.append(
-                    "Recommended next step: verify with laboratory confirmation before "
-                    "adjusting treatment."
+                    "Recommended next step: verify with laboratory confirmation before adjusting treatment."
                 )
 
         # Anomalies
@@ -572,6 +591,7 @@ def create_app() -> FastAPI:
     async def llm_insight(req: InsightRequest):
         try:
             from src.services.llm_service import generate_insight_response
+
             narrative = generate_insight_response(req.context, req.data)
             return {"text": narrative, "source": "llm"}
         except Exception as e:
@@ -631,13 +651,13 @@ def create_app() -> FastAPI:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         county: Optional[str] = None,
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
     ) -> Dict[str, Any]:
         query = db.query(
             AMRIsolateRecord.pathogen_code,
             AMRIsolateRecord.antibiotic_class,
             func.count(AMRIsolateRecord.record_id).label("total"),
-            func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)).label("mdr_count")
+            func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)).label("mdr_count"),
         ).group_by(AMRIsolateRecord.pathogen_code, AMRIsolateRecord.antibiotic_class)
 
         if start_date:
@@ -659,16 +679,9 @@ def create_app() -> FastAPI:
             rate = (mdr or 0) / total * 100 if total else 0.0
             data[(pathogen, antibiotic)] = round(rate, 1)
 
-        matrix = [
-            [data.get((p, a), 0.0) for a in antibiotics]
-            for p in pathogens
-        ]
+        matrix = [[data.get((p, a), 0.0) for a in antibiotics] for p in pathogens]
 
-        return {
-            "pathogens": pathogens,
-            "antibiotics": antibiotics,
-            "matrix": matrix
-        }
+        return {"pathogens": pathogens, "antibiotics": antibiotics, "matrix": matrix}
 
     @app.get("/me")
     async def direct_me(current_user: User = Depends(get_current_user)):
@@ -692,22 +705,16 @@ def create_app() -> FastAPI:
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request, exc):
         return JSONResponse(
-            status_code=exc.status_code,
-            content={"error": exc.detail, "status_code": exc.status_code}
+            status_code=exc.status_code, content={"error": exc.detail, "status_code": exc.status_code}
         )
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request, exc):
-        return JSONResponse(
-            status_code=422,
-            content={"error": "Validation error", "details": exc.errors()}
-        )
+        return JSONResponse(status_code=422, content={"error": "Validation error", "details": exc.errors()})
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
-        logger.exception(
-            "Unhandled exception on %s %s", request.method, request.url.path
-        )
+        logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
         return JSONResponse(
             {"detail": "Internal server error"},
             status_code=500,
@@ -771,11 +778,14 @@ async def stream_isolate_data(sid: str, data: Dict[str, Any]) -> None:
             db.add(notif)
             db.commit()
 
-            await sio.emit("dashboard_notification_push", {
-                "county": notif.county,
-                "message": notif.message,
-                "timestamp": datetime.utcnow().isoformat(),
-            })
+            await sio.emit(
+                "dashboard_notification_push",
+                {
+                    "county": notif.county,
+                    "message": notif.message,
+                    "timestamp": datetime.utcnow().isoformat(),
+                },
+            )
 
         await sio.emit("prediction_complete", processed, to=sid)
     except Exception as e:

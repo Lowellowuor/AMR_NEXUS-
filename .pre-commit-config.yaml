@@ -1,0 +1,28 @@
+# Pre-commit hooks for the AMR Nexus monorepo.
+#
+# Scope: Python files only, under backend/amr_nexus_ml/.
+# Frontend ESLint hooks are deferred until the pre-existing lint debt
+# in frontend/docs/lint-status.md is cleared (Phase A3b).
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.9
+    hooks:
+      - id: ruff
+        name: ruff (backend)
+        args: [--fix]
+        files: ^Backend/amr_nexus_ml/.*\.py$
+      - id: ruff-format
+        name: ruff-format (backend)
+        files: ^Backend/amr_nexus_ml/.*\.py$
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+        files: ^Backend/amr_nexus_ml/.*\.(py|toml|yaml|yml|md|txt)$
+      - id: trailing-whitespace
+        files: ^Backend/amr_nexus_ml/.*\.(py|toml|yaml|yml|md|txt)$
+      - id: check-yaml
+      - id: check-added-large-files
+        args: [--maxkb=1024]
