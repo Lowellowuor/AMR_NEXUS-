@@ -1,6 +1,5 @@
 """Bootstrap for the AMR Nexus module registry."""
 import importlib
-from typing import List, Tuple
 
 from src.modules.registry import (
     Module,
@@ -25,8 +24,9 @@ __all__ = [
 
 
 # (import_path, meta_attr, router_attr)
-_BUILTIN: List[Tuple[str, str, str]] = [
+_BUILTIN: list[tuple[str, str, str]] = [
     ("src.modules.example.router", "MODULE_META", "router"),
+    ("src.modules.amu.router", "MODULE_META", "router"),
 ]
 
 

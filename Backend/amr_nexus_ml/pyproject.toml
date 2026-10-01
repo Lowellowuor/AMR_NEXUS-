@@ -13,8 +13,7 @@ select = ["E", "F", "W", "I", "B", "UP"]
 ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
+# B008 is a false positive for FastAPI's Depends()/Query() idiom
+"src/api/routers/*.py" = ["B008"]
+"src/modules/*/router.py" = ["B008"]
 "tests/*" = ["B011"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-q"
