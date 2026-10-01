@@ -1,23 +1,23 @@
 import hashlib
 import json
-import joblib
-import pandas as pd
-import numpy as np
+import time
 from pathlib import Path
-from typing import Optional
+
+import joblib
+import numpy as np
+import pandas as pd
 from sqlalchemy.orm import Session
 
+from src.core.config import settings
 from src.db.models import (
     AMRIsolateRecord,
     DashboardNotification,
     Hotspot,
-    SubCountyLocation,
     PredictionLog,
+    SubCountyLocation,
 )
 from src.services.model_health import confidence_tier, deterministic_fallback
 from src.services.notification_service import dispatch_prediction_alert
-import time
-from src.core.config import settings
 from src.utils.logger import logger
 
 DEFAULT_MODEL_VERSION = "1.0.0"
@@ -27,7 +27,7 @@ STERILE_SITES = {"blood", "csf", "sterile_fluid"}
 def _strip_transform_prefix(name: str) -> str:
     for prefix in ("num__", "cat__"):
         if name.startswith(prefix):
-            return name[len(prefix):]
+            return name[len(prefix) :]
     return name
 
 
@@ -83,7 +83,7 @@ class PredictionService:
             return
         self.model_available = True
 
-    def _validate_features(self, data: dict) -> Optional[str]:
+    def _validate_features(self, data: dict) -> str | None:
         if not self.original_features:
             return None
         missing = [f for f in self.original_features if f not in data]
@@ -109,18 +109,26 @@ class PredictionService:
         record["is_sterile_site"] = 1 if specimen in STERILE_SITES else 0
         return record
 
-    def _get_or_create_hotspot(self, county: str, sub_county: Optional[str]) -> Hotspot:
-        hotspot = self.db.query(Hotspot).filter(
-            Hotspot.county == county,
-            Hotspot.sub_county == sub_county,
-        ).first()
+    def _get_or_create_hotspot(self, county: str, sub_county: str | None) -> Hotspot:
+        hotspot = (
+            self.db.query(Hotspot)
+            .filter(
+                Hotspot.county == county,
+                Hotspot.sub_county == sub_county,
+            )
+            .first()
+        )
         if hotspot:
             return hotspot
 
-        loc = self.db.query(SubCountyLocation).filter(
-            SubCountyLocation.county == county,
-            SubCountyLocation.sub_county == sub_county,
-        ).first()
+        loc = (
+            self.db.query(SubCountyLocation)
+            .filter(
+                SubCountyLocation.county == county,
+                SubCountyLocation.sub_county == sub_county,
+            )
+            .first()
+        )
 
         if loc:
             lat = float(loc.latitude)
@@ -210,10 +218,7 @@ class PredictionService:
                 shap_value = float(shap_values[top_idx])
 
                 direction = "increases" if shap_value > 0 else "decreases"
-                shap_summary = (
-                    f"{shap_top_feature} {direction} risk "
-                    f"by {abs(shap_value):.3f}."
-                )
+                shap_summary = f"{shap_top_feature} {direction} risk by {abs(shap_value):.3f}."
             except Exception as e:
                 logger.warning(f"SHAP computation failed: {e}")
 
@@ -247,29 +252,34 @@ class PredictionService:
             shap_value=shap_value,
             shap_summary=shap_summary,
             hotspot_id=hotspot.id,
+            site_id=data.get("site_id"),
         )
         self.db.add(db_record)
         self.db.commit()
         self.db.refresh(db_record)
 
         try:
-            self.db.add(PredictionLog(
-                record_id=db_record.record_id,
-                model_version=self.model_version,
-                latency_ms=round((time.time() - self._start_ts) * 1000, 2) if hasattr(self, "_start_ts") else None,
-                mdr_probability=mdr_prob,
-                mdr_flag=bool(mdr_prob >= 0.5),
-                anomaly_flag=anomaly_flag,
-                confidence_tier=tier,
-                fallback_used=used_fallback,
-                feature_snapshot={
-                    "pathogen_code": data.get("pathogen_code"),
-                    "county": county,
-                    "sector": data.get("sector"),
-                    "antibiotic_class": data.get("antibiotic_class"),
-                    "specimen_type": data.get("specimen_type"),
-                },
-            ))
+            self.db.add(
+                PredictionLog(
+                    record_id=db_record.record_id,
+                    model_version=self.model_version,
+                    latency_ms=round((time.time() - self._start_ts) * 1000, 2)
+                    if hasattr(self, "_start_ts")
+                    else None,
+                    mdr_probability=mdr_prob,
+                    mdr_flag=bool(mdr_prob >= 0.5),
+                    anomaly_flag=anomaly_flag,
+                    confidence_tier=tier,
+                    fallback_used=used_fallback,
+                    feature_snapshot={
+                        "pathogen_code": data.get("pathogen_code"),
+                        "county": county,
+                        "sector": data.get("sector"),
+                        "antibiotic_class": data.get("antibiotic_class"),
+                        "specimen_type": data.get("specimen_type"),
+                    },
+                )
+            )
             self.db.commit()
         except Exception as e:
             logger.warning(f"Failed to log prediction: {e}")

@@ -1,5 +1,5 @@
-from typing import Optional
 from datetime import date
+
 from pydantic import BaseModel, Field
 
 
@@ -8,21 +8,22 @@ class AMRRecordIn(BaseModel):
     sub_sector: str = Field(..., max_length=50)
     pathogen_code: str = Field(..., max_length=100)
     specimen_type: str = Field(..., max_length=100)
-    animal_species: Optional[str] = Field(default=None, max_length=100)
-    production_system: Optional[str] = Field(default=None, max_length=50)
+    animal_species: str | None = Field(default=None, max_length=100)
+    production_system: str | None = Field(default=None, max_length=50)
     county: str = Field(..., max_length=100)
-    sub_county: Optional[str] = Field(default=None, max_length=100)          
-    urban_rural: Optional[str] = Field(default=None, max_length=10)
-    patient_age_years: Optional[float] = Field(default=None, ge=0, le=120)
-    patient_sex: Optional[str] = Field(default=None, max_length=1)
-    ward_type: Optional[str] = Field(default=None, max_length=50)
-    prior_antibiotic_exposure: Optional[bool] = None
-    infection_origin: Optional[str] = Field(default=None, max_length=20)
+    sub_county: str | None = Field(default=None, max_length=100)
+    urban_rural: str | None = Field(default=None, max_length=10)
+    patient_age_years: float | None = Field(default=None, ge=0, le=120)
+    patient_sex: str | None = Field(default=None, max_length=1)
+    ward_type: str | None = Field(default=None, max_length=50)
+    prior_antibiotic_exposure: bool | None = None
+    infection_origin: str | None = Field(default=None, max_length=20)
     antibiotic_class: str = Field(..., max_length=100)
     test_method: str = Field(..., max_length=50)
     sample_month: int = Field(..., ge=1, le=12)
-    sample_collection_date: Optional[date] = None                            
-    phone_number: Optional[str] = Field(default=None, max_length=20)
+    sample_collection_date: date | None = None
+    phone_number: str | None = Field(default=None, max_length=20)
+    site_id: int | None = None
 
 
 class PredictionResponse(BaseModel):
@@ -53,4 +54,4 @@ class GuidanceRequest(BaseModel):
     pathogen_code: str = Field(..., max_length=20)
     resistance_pattern: str = Field(..., max_length=200)
     user_role: str = Field(..., max_length=50)
-    county: Optional[str] = Field(default=None, max_length=100)
+    county: str | None = Field(default=None, max_length=100)
