@@ -1,12 +1,16 @@
 """Notification dispatcher — reads preferences and routes to channels."""
 
-from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
+from datetime import UTC, datetime
+from typing import Any
+
 from sqlalchemy.orm import Session
 
 from src.db.models import (
-    User, NotificationPreference, NotificationLog,
+    NotificationLog,
+    NotificationPreference,
+    User,
 )
+from src.modules.role_routing.service import role_allows
 from src.services import email_service
 from src.services.sms_service import send_sms
 from src.utils.logger import logger
@@ -23,9 +27,9 @@ def _meets_threshold(alert_severity: str, user_threshold: str) -> bool:
 
 
 def _build_message(
-    alert: Dict[str, Any],
-    user: Optional[User] = None,
-) -> Dict[str, str]:
+    alert: dict[str, Any],
+    user: User | None = None,
+) -> dict[str, str]:
     pathogen = (alert.get("pathogen_code") or alert.get("pathogen") or "Unknown").upper()
     county = alert.get("county") or "unknown county"
     severity = (alert.get("severity") or "medium").upper()
@@ -35,7 +39,7 @@ def _build_message(
     subject = f"[AMR Nexus] {severity} alert — {pathogen} in {county}"
 
     body_lines = [
-        f"AMR Nexus alert",
+        "AMR Nexus alert",
         "",
         f"Severity:    {severity}",
         f"Pathogen:    {pathogen}",
@@ -92,10 +96,10 @@ def get_or_create_prefs(db: Session, user: User) -> NotificationPreference:
 
 def dispatch_alert(
     db: Session,
-    alert: Dict[str, Any],
-    recipients: Optional[List[User]] = None,
-    force_channels: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    alert: dict[str, Any],
+    recipients: list[User] | None = None,
+    force_channels: list[str] | None = None,
+) -> dict[str, Any]:
     """Dispatch a single alert to all eligible users.
 
     recipients — optional override; otherwise all active users
@@ -103,7 +107,7 @@ def dispatch_alert(
     """
     severity = (alert.get("severity") or "medium").lower()
 
-    users_q = db.query(User).filter(User.is_active == True)
+    users_q = db.query(User).filter(User.is_active.is_(True))
     users = recipients if recipients is not None else users_q.all()
 
     msg = _build_message(alert, None)
@@ -116,7 +120,9 @@ def dispatch_alert(
         want_email = (
             force_channels and "email" in force_channels
         ) or (
-            prefs.email_enabled and _meets_threshold(severity, prefs.email_severity or "critical")
+            prefs.email_enabled
+            and _meets_threshold(severity, prefs.email_severity or "critical")
+            and role_allows(db, user.role, "email", severity)
         )
         if want_email:
             log = _log(
@@ -133,7 +139,7 @@ def dispatch_alert(
             res = email_service.send_email(user.email, msg["subject"], msg["body"])
             if res["status"] == "sent":
                 log.status = "sent"
-                log.sent_at = datetime.now(timezone.utc)
+                log.sent_at = datetime.now(UTC)
                 log.provider_ref = res.get("ref")
                 results["email"] += 1
             elif res["status"] == "skipped":
@@ -153,6 +159,7 @@ def dispatch_alert(
             prefs.sms_enabled
             and prefs.sms_phone
             and _meets_threshold(severity, prefs.sms_severity or "critical")
+            and role_allows(db, user.role, "sms", severity)
         )
         if want_sms and prefs.sms_phone:
             log = _log(
@@ -169,7 +176,7 @@ def dispatch_alert(
                 res = send_sms(prefs.sms_phone, msg["sms"])
                 if res.get("status") == "success" or res.get("status") == "sent":
                     log.status = "sent"
-                    log.sent_at = datetime.now(timezone.utc)
+                    log.sent_at = datetime.now(UTC)
                     log.provider_ref = str(res.get("ref") or "")
                     results["sms"] += 1
                 elif res.get("status") == "error":
@@ -189,7 +196,7 @@ def dispatch_alert(
     return results
 
 
-def dispatch_prediction_alert(db: Session, record) -> Dict[str, Any]:
+def dispatch_prediction_alert(db: Session, record) -> dict[str, Any]:
     """Convenience wrapper used by the prediction pipeline."""
     severity = "high"
     try:
