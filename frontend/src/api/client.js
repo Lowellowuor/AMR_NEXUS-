@@ -175,6 +175,18 @@ export const api = {
   deleteHotspot: (id) => authFetch(`${API_BASE}/hotspots/${id}`, {
     method: 'DELETE',
   }).then(handleResponse),
+
+  // ---- AMU / AMC module ----
+  getAmuDrugs: (params = '') =>
+    authFetch(`${API_BASE}/modules/amu/drugs?${params}`).then(handleResponse),
+  getAmuConsumption: (params = '') =>
+    authFetch(`${API_BASE}/modules/amu/consumption?${params}`).then(handleResponse),
+  getAmuSummary: (dimension, params = '') =>
+    authFetch(`${API_BASE}/modules/amu/summary?dimension=${dimension}&${params}`).then(handleResponse),
+  getAmuTrend: (params = '') =>
+    authFetch(`${API_BASE}/modules/amu/trend?${params}`).then(handleResponse),
+  getAmuTopDrugs: (params = '') =>
+    authFetch(`${API_BASE}/modules/amu/top-drugs?${params}`).then(handleResponse),
 };
 
 export default api;

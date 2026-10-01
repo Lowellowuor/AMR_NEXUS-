@@ -18,6 +18,7 @@ const commonLinks = [
   { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
   { name: 'History', href: '/history', icon: ClockIcon },
   { name: 'Alerts', href: '/alerts', icon: BellIcon },
+  { name: 'Antimicrobial Use', href: '/amu', icon: BeakerIcon },
   { name: 'Reports', href: '/reports', icon: DocumentChartBarIcon },
   { name: 'Compare', href: '/compare', icon: ArrowPathIcon },
   { name: 'Pathogen Explorer', href: '/pathogen-explorer', icon: MagnifyingGlassIcon },
