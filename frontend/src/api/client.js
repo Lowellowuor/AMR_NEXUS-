@@ -237,6 +237,20 @@ export const api = {
     }).then(handleResponse),
   getMyActions: (params = '') =>
     authFetch(`${API_BASE}/modules/actions/mine?${params}`).then(handleResponse),
+
+  // ---- Role Routing module ----
+  getRoleRouting: () =>
+    authFetch(`${API_BASE}/modules/role-routing`).then(handleResponse),
+  updateRoleRouting: (id, data) =>
+    authFetch(`${API_BASE}/modules/role-routing/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  resetRoleRoutingDefaults: () =>
+    authFetch(`${API_BASE}/modules/role-routing/reset-defaults`, {
+      method: 'POST',
+    }).then(handleResponse),
 };
 
 export default api;

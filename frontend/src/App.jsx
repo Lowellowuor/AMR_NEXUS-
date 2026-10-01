@@ -26,6 +26,7 @@ import AuditLog from './pages/AuditLog';
 import AmuDashboard from './pages/AmuDashboard';
 import SamplingSites from './pages/SamplingSites';
 import Actions from './pages/Actions';
+import RoleRouting from './pages/RoleRouting';
 
 const wrap = (el) => <ErrorBoundary>{el}</ErrorBoundary>;
 
@@ -80,6 +81,7 @@ function AppRoutes() {
             <Route path="amu" element={wrap(<AmuDashboard />)} />
             <Route path="sampling-sites" element={wrap(<SamplingSites />)} />
             <Route path="actions" element={wrap(<Actions />)} />
+            <Route path="role-routing" element={wrap(<RoleRouting />)} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
