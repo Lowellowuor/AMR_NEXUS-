@@ -187,6 +187,30 @@ export const api = {
     authFetch(`${API_BASE}/modules/amu/trend?${params}`).then(handleResponse),
   getAmuTopDrugs: (params = '') =>
     authFetch(`${API_BASE}/modules/amu/top-drugs?${params}`).then(handleResponse),
+
+  // ---- Sampling Sites module ----
+  getSamplingSites: (params = '') =>
+    authFetch(`${API_BASE}/modules/sampling-sites?${params}`).then(handleResponse),
+  getSamplingSite: (id) =>
+    authFetch(`${API_BASE}/modules/sampling-sites/${id}`).then(handleResponse),
+  createSamplingSite: (data) =>
+    authFetch(`${API_BASE}/modules/sampling-sites`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  updateSamplingSite: (id, data) =>
+    authFetch(`${API_BASE}/modules/sampling-sites/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  deactivateSamplingSite: (id) =>
+    authFetch(`${API_BASE}/modules/sampling-sites/${id}/deactivate`, {
+      method: 'POST',
+    }).then(handleResponse),
+  getSamplingSiteIsolates: (id, params = '') =>
+    authFetch(`${API_BASE}/modules/sampling-sites/${id}/isolates?${params}`).then(handleResponse),
 };
 
 export default api;

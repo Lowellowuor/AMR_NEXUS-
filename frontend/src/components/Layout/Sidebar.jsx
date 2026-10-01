@@ -11,6 +11,7 @@ import {
   DocumentChartBarIcon,
   ArrowPathIcon,
   MagnifyingGlassIcon,
+  MapPinIcon,
 } from '@heroicons/react/24/outline';
 
 const commonLinks = [
@@ -19,6 +20,7 @@ const commonLinks = [
   { name: 'History', href: '/history', icon: ClockIcon },
   { name: 'Alerts', href: '/alerts', icon: BellIcon },
   { name: 'Antimicrobial Use', href: '/amu', icon: BeakerIcon },
+  { name: 'Sampling Sites', href: '/sampling-sites', icon: MapPinIcon },
   { name: 'Reports', href: '/reports', icon: DocumentChartBarIcon },
   { name: 'Compare', href: '/compare', icon: ArrowPathIcon },
   { name: 'Pathogen Explorer', href: '/pathogen-explorer', icon: MagnifyingGlassIcon },
