@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import RegionDetailDrawer, { Metric, MetricGroup } from '../geo/RegionDetailDrawer';
 import api from '../../api/client';
-import { formatNumber, formatPercent } from '../../lib/format';
+import { formatPercent } from '../../lib/format';
 
 const SECTOR_LABEL = {
   human: 'Human',
