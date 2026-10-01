@@ -101,6 +101,17 @@ export default function HistoryAdvancedFilters({ filters, onChange, options }) {
             ))}
           </select>
         </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Species</span>
+          <input
+            type="text"
+            placeholder="e.g. cattle, poultry"
+            value={filters.species}
+            onChange={(e) => onChange({ species: e.target.value })}
+            className="rounded-[var(--radius-input)] border border-[var(--border-primary)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)]"
+          />
+        </label>
       </div>
     </div>
   );

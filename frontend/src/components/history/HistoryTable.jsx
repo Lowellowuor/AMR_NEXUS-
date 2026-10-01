@@ -60,6 +60,18 @@ export default function HistoryTable({
             {columns.county && (
               <SortableHeader label="County" column={SORTABLE.county} current={sortBy} dir={sortDir} onClick={onSort} />
             )}
+            {columns.sub_county && (
+              <th className={`px-3 ${rowPadding} text-left font-semibold text-[var(--text-secondary)]`}>Sub-county</th>
+            )}
+            {columns.sector && (
+              <th className={`px-3 ${rowPadding} text-left font-semibold text-[var(--text-secondary)]`}>Sector</th>
+            )}
+            {columns.animal_species && (
+              <th className={`px-3 ${rowPadding} text-left font-semibold text-[var(--text-secondary)]`}>Species</th>
+            )}
+            {columns.specimen_type && (
+              <th className={`px-3 ${rowPadding} text-left font-semibold text-[var(--text-secondary)]`}>Specimen</th>
+            )}
             {columns.mdr_flag && (
               <SortableHeader label="MDR" column={SORTABLE.mdr_flag} current={sortBy} dir={sortDir} onClick={onSort} />
             )}
@@ -94,6 +106,26 @@ export default function HistoryTable({
               {columns.county && (
                 <td className={`px-3 ${rowPadding} text-[var(--text-secondary)]`}>
                   {r.county || '-'}
+                </td>
+              )}
+              {columns.sub_county && (
+                <td className={`px-3 ${rowPadding} text-[var(--text-secondary)]`}>
+                  {r.sub_county || '-'}
+                </td>
+              )}
+              {columns.sector && (
+                <td className={`px-3 ${rowPadding} text-[var(--text-secondary)] capitalize`}>
+                  {r.sector || '-'}
+                </td>
+              )}
+              {columns.animal_species && (
+                <td className={`px-3 ${rowPadding} text-[var(--text-secondary)]`}>
+                  {r.animal_species || '-'}
+                </td>
+              )}
+              {columns.specimen_type && (
+                <td className={`px-3 ${rowPadding} text-[var(--text-secondary)]`}>
+                  {r.specimen_type || '-'}
                 </td>
               )}
               {columns.mdr_flag && (

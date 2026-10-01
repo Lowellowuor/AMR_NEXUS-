@@ -15,6 +15,10 @@ export const SORTABLE = {
 export const ALL_COLUMNS = [
   { id: 'pathogen_code', label: 'Pathogen', alwaysOn: true },
   { id: 'county', label: 'County', alwaysOn: true },
+  { id: 'sub_county', label: 'Sub-county' },
+  { id: 'sector', label: 'Sector' },
+  { id: 'animal_species', label: 'Species' },
+  { id: 'specimen_type', label: 'Specimen' },
   { id: 'mdr_flag', label: 'MDR' },
   { id: 'mdr_probability', label: 'Probability' },
   { id: 'anomaly_flag', label: 'Anomaly' },
@@ -58,7 +62,9 @@ export function loadColumnPrefs() {
         Object.entries(parsed).filter(([k]) => known.has(k)),
       );
     }
-  } catch {}
+  } catch {
+    // fall through to defaults
+  }
   return Object.fromEntries(ALL_COLUMNS.map((c) => [c.id, true]));
 }
 

@@ -13,6 +13,7 @@ export function useHistoryFilters() {
       pathogen: searchParams.get('pathogen') || '',
       county: searchParams.get('county') || '',
       sector: searchParams.get('sector') || '',
+      species: searchParams.get('species') || '',
       start_date: searchParams.get('start_date') || '',
       end_date: searchParams.get('end_date') || '',
       sort_by: searchParams.get('sort_by') || 'created_at',
@@ -53,8 +54,8 @@ export function useHistoryFilters() {
   }, [debouncedSearch]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchInput(filters.search);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.search]);
 
   const filterParams = useMemo(() => {
@@ -65,6 +66,7 @@ export function useHistoryFilters() {
     if (filters.pathogen) p.set('pathogen', filters.pathogen);
     if (filters.county) p.set('county', filters.county);
     if (filters.sector) p.set('sector', filters.sector);
+    if (filters.species) p.set('species', filters.species);
     if (filters.start_date) p.set('start_date', filters.start_date);
     if (filters.end_date) p.set('end_date', filters.end_date);
     p.set('sort_by', filters.sort_by);
@@ -79,6 +81,7 @@ export function useHistoryFilters() {
     !!filters.pathogen ||
     !!filters.county ||
     !!filters.sector ||
+    !!filters.species ||
     !!filters.start_date ||
     !!filters.end_date;
 
