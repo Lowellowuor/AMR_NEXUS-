@@ -51,7 +51,7 @@ class CommentCreate(BaseModel):
 
 
 class GuidanceRequest(BaseModel):
-    pathogen_code: str = Field(..., max_length=20)
+    pathogen_code: str = Field(..., max_length=100)
     resistance_pattern: str = Field(..., max_length=200)
     user_role: str = Field(..., max_length=50)
     county: str | None = Field(default=None, max_length=100)

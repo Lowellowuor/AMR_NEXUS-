@@ -1553,3 +1553,110 @@ async def root_cause_factors(
             "frameworks."
         ),
     }
+
+
+# ---------------------------------------------------------------------------
+# WHO GLASS indicator strip
+#
+# Returns the seven priority pathogen/antibiotic-class combinations used in
+# WHO GLASS national reporting. For each, computes the observed MDR rate
+# among isolates where that class was tested.
+#
+# NOTE: because `sir_result` is not populated on the seed data, the metric
+# uses `mdr_flag` as a proxy — i.e. "of isolates tested against this class,
+# what fraction were multidrug-resistant overall". This is documented on
+# every response with `basis: "mdr_flag_proxy"`.
+# ---------------------------------------------------------------------------
+
+# (id, pathogen, class, label)
+_GLASS_INDICATORS = [
+    ("ecoli_3gc", "E. coli", "Cephalosporin", "E. coli \u00b7 3rd-gen cephalosporins"),
+    ("ecoli_carba", "E. coli", "Carbapenem", "E. coli \u00b7 carbapenems"),
+    ("kpneumo_carba", "Klebsiella pneumoniae", "Carbapenem", "K. pneumoniae \u00b7 carbapenems"),
+    ("salmonella_fq", "Salmonella spp.", "Fluoroquinolone", "Salmonella \u00b7 fluoroquinolones"),
+    ("saureus_pen", "Staphylococcus aureus", "Penicillin", "S. aureus \u00b7 penicillin"),
+    ("paeruginosa_carba", "Pseudomonas aeruginosa", "Carbapenem", "P. aeruginosa \u00b7 carbapenems"),
+    ("abaumannii_carba", "Acinetobacter baumannii", "Carbapenem", "A. baumannii \u00b7 carbapenems"),
+]
+
+_GLASS_WINDOW_DAYS = 180
+_GLASS_MIN_SAMPLE = 10
+
+
+def _wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score interval for a binomial proportion, as a 0-100 range."""
+    if total <= 0:
+        return 0.0, 0.0
+    p = successes / total
+    denom = 1 + (z * z) / total
+    centre = (p + (z * z) / (2 * total)) / denom
+    margin = (z * ((p * (1 - p) / total + (z * z) / (4 * total * total)) ** 0.5)) / denom
+    low = max(0.0, (centre - margin)) * 100
+    high = min(1.0, (centre + margin)) * 100
+    return round(low, 1), round(high, 1)
+
+
+@analytics_router.get("/glass-indicators", response_model=dict[str, Any])
+async def glass_indicators(
+    county: str | None = None,
+    days: int = _GLASS_WINDOW_DAYS,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    since = datetime.now(UTC) - timedelta(days=days)
+
+    def base_q():
+        q = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.created_at >= since)
+        if county:
+            q = q.filter(AMRIsolateRecord.county == county)
+        return q
+
+    indicators: list[dict[str, Any]] = []
+    for ind_id, pathogen, drug_class, label in _GLASS_INDICATORS:
+        q = base_q().filter(
+            AMRIsolateRecord.pathogen_code == pathogen,
+            AMRIsolateRecord.antibiotic_class == drug_class,
+        )
+        total = q.count()
+        resistant = q.filter(AMRIsolateRecord.mdr_flag.is_(True)).count() if total else 0
+        percent = round((resistant / total) * 100, 1) if total else 0.0
+        ci_low, ci_high = _wilson_ci(resistant, total)
+
+        indicators.append(
+            {
+                "id": ind_id,
+                "label": label,
+                "pathogen_code": pathogen,
+                "antibiotic_class": drug_class,
+                "samples": total,
+                "resistant": resistant,
+                "percent": percent,
+                "ci_low": ci_low,
+                "ci_high": ci_high,
+                "basis": "mdr_flag_proxy",
+                "small_sample": total < _GLASS_MIN_SAMPLE,
+                "glass_priority": True,
+            }
+        )
+
+    with_data = [i for i in indicators if i["samples"] > 0]
+    summary = {
+        "county": county,
+        "days": days,
+        "indicators_returned": len(indicators),
+        "indicators_with_data": len(with_data),
+        "total_samples": sum(i["samples"] for i in indicators),
+    }
+
+    return {
+        "summary": summary,
+        "indicators": indicators,
+        "frameworks": {
+            "reference": "WHO GLASS 2.0 core indicators",
+            "basis_note": (
+                "Resistance proxy: percentage of isolates, tested against the "
+                "given antibiotic class, that were multidrug-resistant overall. "
+                "Populate `sir_result` to report true class-level resistance."
+            ),
+        },
+    }
