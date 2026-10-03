@@ -37,6 +37,7 @@ export default function Sidebar({ role = 'national', mobile = false, onNavigate 
       items: [
         { name: 'Predict', href: '/predict', icon: BeakerIcon },
         { name: 'Clinical Guidance', href: '/guidance', icon: SparklesIcon },
+        { name: 'Contributing Factors', href: '/root-causes', icon: MagnifyingGlassIcon },
         { name: 'History', href: '/history', icon: ClockIcon },
         { name: 'Pathogen Explorer', href: '/pathogen-explorer', icon: MagnifyingGlassIcon },
       ],

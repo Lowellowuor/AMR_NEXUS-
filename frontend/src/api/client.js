@@ -102,6 +102,8 @@ export const api = {
   getFacilityCoverage: (params = '') => authFetch(`${API_BASE}/analytics/facility_coverage?${params}`).then(handleResponse),
   getTopCountiesWithTrend: (limit = 8, params = '') => authFetch(`${API_BASE}/analytics/top_counties_with_trend?limit=${limit}&${params}`).then(handleResponse),
   getGlassIndicators: (params = '') => authFetch(`${API_BASE}/analytics/glass_indicators?${params}`).then(handleResponse),
+  getRootCauseFactors: (params = '') =>
+    authFetch(`${API_BASE}/analytics/root-cause-factors?${params}`).then(handleResponse),
 
   getAuditEvents: (params = '') => authFetch(`${API_BASE}/audit/events?${params}`).then(handleResponse),
   getAuditStats: () => authFetch(`${API_BASE}/audit/stats`).then(handleResponse),
