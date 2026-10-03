@@ -15,6 +15,7 @@ import {
   ShieldExclamationIcon,
   GlobeAltIcon,
   SparklesIcon,
+  BookOpenIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -64,6 +65,7 @@ export default function Sidebar({ role = 'national', mobile = false, onNavigate 
       items: [
         { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
         { name: 'EWS Forecast', href: '/ews-forecast', icon: ChartBarIcon },
+        { name: 'Modelling Approach', href: '/modelling', icon: BookOpenIcon },
         { name: 'Reports', href: '/reports', icon: DocumentChartBarIcon },
       ],
     },
