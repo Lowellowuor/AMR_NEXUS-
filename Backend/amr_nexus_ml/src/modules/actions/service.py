@@ -1,4 +1,5 @@
 """Business logic for the Action layer."""
+
 from datetime import UTC, datetime
 
 from sqlalchemy import desc, select
@@ -44,9 +45,7 @@ def get_action(db: Session, action_id: int) -> ActionPlan | None:
     return db.get(ActionPlan, action_id)
 
 
-def create_action(
-    db: Session, payload: ActionCreate, created_by: int
-) -> ActionPlan:
+def create_action(db: Session, payload: ActionCreate, created_by: int) -> ActionPlan:
     action = ActionPlan(
         **payload.model_dump(),
         created_by=created_by,
@@ -59,9 +58,7 @@ def create_action(
     return action
 
 
-def update_action(
-    db: Session, action: ActionPlan, payload: ActionUpdate
-) -> ActionPlan:
+def update_action(db: Session, action: ActionPlan, payload: ActionUpdate) -> ActionPlan:
     data = payload.model_dump(exclude_unset=True)
     for key, value in data.items():
         setattr(action, key, value)
@@ -70,9 +67,7 @@ def update_action(
     return action
 
 
-def close_action(
-    db: Session, action: ActionPlan, payload: ActionClose
-) -> ActionPlan:
+def close_action(db: Session, action: ActionPlan, payload: ActionClose) -> ActionPlan:
     action.status = payload.status
     action.closing_note = payload.closing_note
     action.closed_at = datetime.now(UTC)

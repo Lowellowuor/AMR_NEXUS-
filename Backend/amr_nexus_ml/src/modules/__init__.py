@@ -1,4 +1,5 @@
 """Bootstrap for the AMR Nexus module registry."""
+
 import importlib
 
 from src.modules.registry import (

@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import desc, func, or_
-import sqlalchemy as sa
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any, List
-from pydantic import BaseModel
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from src.api.deps import get_db, get_current_user
-from src.db.models import User, AMRIsolateRecord, SavedAnalysis
+import sqlalchemy as sa
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy import desc, func, or_
+from sqlalchemy.orm import Session
+
+from src.api.deps import get_current_user, get_db
+from src.db.models import AMRIsolateRecord, SavedAnalysis, User
 from src.utils.logger import logger
 
 router = APIRouter()
@@ -15,78 +16,113 @@ router = APIRouter()
 
 class AskRequest(BaseModel):
     question: str
-    context: Optional[Dict[str, Any]] = None
+    context: dict[str, Any] | None = None
 
 
 class FileRequest(BaseModel):
     title: str
     answer: str
-    question: Optional[str] = None
-    context_type: Optional[str] = None
-    context_data: Optional[Dict[str, Any]] = None
-    tags: Optional[str] = None
+    question: str | None = None
+    context_type: str | None = None
+    context_data: dict[str, Any] | None = None
+    tags: str | None = None
 
 
 # ---------- Medical data helpers ----------
 
-def _load_db_snapshot(db: Session, days: int = 90) -> Dict[str, Any]:
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+
+def _load_db_snapshot(db: Session, days: int = 90) -> dict[str, Any]:
+    since = datetime.now(UTC) - timedelta(days=days)
     since_date = since.date()
 
     total = db.query(func.count(AMRIsolateRecord.record_id)).scalar() or 0
-    recent = db.query(func.count(AMRIsolateRecord.record_id)).filter(
-        AMRIsolateRecord.sample_collection_date >= since_date
-    ).scalar() or 0
+    recent = (
+        db.query(func.count(AMRIsolateRecord.record_id))
+        .filter(AMRIsolateRecord.sample_collection_date >= since_date)
+        .scalar()
+        or 0
+    )
 
-    mdr_total = db.query(func.count(AMRIsolateRecord.record_id)).filter(
-        AMRIsolateRecord.mdr_flag == True
-    ).scalar() or 0
+    mdr_total = (
+        db.query(func.count(AMRIsolateRecord.record_id)).filter(AMRIsolateRecord.mdr_flag == True).scalar()
+        or 0
+    )
 
-    recent_mdr = db.query(func.count(AMRIsolateRecord.record_id)).filter(
-        AMRIsolateRecord.sample_collection_date >= since_date,
-        AMRIsolateRecord.mdr_flag == True,
-    ).scalar() or 0
+    recent_mdr = (
+        db.query(func.count(AMRIsolateRecord.record_id))
+        .filter(
+            AMRIsolateRecord.sample_collection_date >= since_date,
+            AMRIsolateRecord.mdr_flag == True,
+        )
+        .scalar()
+        or 0
+    )
 
-    by_county = db.query(
-        AMRIsolateRecord.county,
-        func.count(AMRIsolateRecord.record_id),
-        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
-    ).filter(
-        AMRIsolateRecord.county.isnot(None),
-        AMRIsolateRecord.sample_collection_date >= since_date,
-    ).group_by(AMRIsolateRecord.county).all()
+    by_county = (
+        db.query(
+            AMRIsolateRecord.county,
+            func.count(AMRIsolateRecord.record_id),
+            func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+        )
+        .filter(
+            AMRIsolateRecord.county.isnot(None),
+            AMRIsolateRecord.sample_collection_date >= since_date,
+        )
+        .group_by(AMRIsolateRecord.county)
+        .all()
+    )
 
-    by_pathogen = db.query(
-        AMRIsolateRecord.pathogen_code,
-        func.count(AMRIsolateRecord.record_id),
-        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
-    ).filter(
-        AMRIsolateRecord.pathogen_code.isnot(None),
-        AMRIsolateRecord.sample_collection_date >= since_date,
-    ).group_by(AMRIsolateRecord.pathogen_code).all()
+    by_pathogen = (
+        db.query(
+            AMRIsolateRecord.pathogen_code,
+            func.count(AMRIsolateRecord.record_id),
+            func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+        )
+        .filter(
+            AMRIsolateRecord.pathogen_code.isnot(None),
+            AMRIsolateRecord.sample_collection_date >= since_date,
+        )
+        .group_by(AMRIsolateRecord.pathogen_code)
+        .all()
+    )
 
-    by_sector = db.query(
-        AMRIsolateRecord.sector,
-        func.count(AMRIsolateRecord.record_id),
-        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
-    ).filter(
-        AMRIsolateRecord.sector.isnot(None),
-        AMRIsolateRecord.sample_collection_date >= since_date,
-    ).group_by(AMRIsolateRecord.sector).all()
+    by_sector = (
+        db.query(
+            AMRIsolateRecord.sector,
+            func.count(AMRIsolateRecord.record_id),
+            func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+        )
+        .filter(
+            AMRIsolateRecord.sector.isnot(None),
+            AMRIsolateRecord.sample_collection_date >= since_date,
+        )
+        .group_by(AMRIsolateRecord.sector)
+        .all()
+    )
 
-    by_class = db.query(
-        AMRIsolateRecord.antibiotic_class,
-        func.count(AMRIsolateRecord.record_id),
-        func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
-    ).filter(
-        AMRIsolateRecord.antibiotic_class.isnot(None),
-        AMRIsolateRecord.sample_collection_date >= since_date,
-    ).group_by(AMRIsolateRecord.antibiotic_class).all()
+    by_class = (
+        db.query(
+            AMRIsolateRecord.antibiotic_class,
+            func.count(AMRIsolateRecord.record_id),
+            func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)),
+        )
+        .filter(
+            AMRIsolateRecord.antibiotic_class.isnot(None),
+            AMRIsolateRecord.sample_collection_date >= since_date,
+        )
+        .group_by(AMRIsolateRecord.antibiotic_class)
+        .all()
+    )
 
-    anomalies = db.query(func.count(AMRIsolateRecord.record_id)).filter(
-        AMRIsolateRecord.sample_collection_date >= since_date,
-        AMRIsolateRecord.anomaly_flag == True,
-    ).scalar() or 0
+    anomalies = (
+        db.query(func.count(AMRIsolateRecord.record_id))
+        .filter(
+            AMRIsolateRecord.sample_collection_date >= since_date,
+            AMRIsolateRecord.anomaly_flag == True,
+        )
+        .scalar()
+        or 0
+    )
 
     def _rate(n, m):
         try:
@@ -95,34 +131,22 @@ def _load_db_snapshot(db: Session, days: int = 90) -> Dict[str, Any]:
             return 0
 
     counties = sorted(
-        [
-            {"county": c, "samples": int(n), "mdr_rate": _rate(n, mdr)}
-            for c, n, mdr in by_county
-        ],
+        [{"county": c, "samples": int(n), "mdr_rate": _rate(n, mdr)} for c, n, mdr in by_county],
         key=lambda x: x["mdr_rate"],
         reverse=True,
     )
     pathogens = sorted(
-        [
-            {"pathogen": p, "samples": int(n), "mdr_rate": _rate(n, mdr)}
-            for p, n, mdr in by_pathogen
-        ],
+        [{"pathogen": p, "samples": int(n), "mdr_rate": _rate(n, mdr)} for p, n, mdr in by_pathogen],
         key=lambda x: x["samples"],
         reverse=True,
     )
     sectors = sorted(
-        [
-            {"sector": s, "samples": int(n), "mdr_rate": _rate(n, mdr)}
-            for s, n, mdr in by_sector
-        ],
+        [{"sector": s, "samples": int(n), "mdr_rate": _rate(n, mdr)} for s, n, mdr in by_sector],
         key=lambda x: x["mdr_rate"],
         reverse=True,
     )
     antibiotic_classes = sorted(
-        [
-            {"antibiotic_class": a, "samples": int(n), "mdr_rate": _rate(n, mdr)}
-            for a, n, mdr in by_class
-        ],
+        [{"antibiotic_class": a, "samples": int(n), "mdr_rate": _rate(n, mdr)} for a, n, mdr in by_class],
         key=lambda x: x["mdr_rate"],
         reverse=True,
     )
@@ -145,6 +169,7 @@ def _load_db_snapshot(db: Session, days: int = 90) -> Dict[str, Any]:
 
 # ---------- Deterministic medical responder ----------
 
+
 def _fmt_pct(v):
     try:
         return f"{float(v):.1f}%"
@@ -159,7 +184,7 @@ def _fmt_int(v):
         return "—"
 
 
-def _answer_from_data(question: str, snap: Dict[str, Any]) -> str:
+def _answer_from_data(question: str, snap: dict[str, Any]) -> str:
     q = (question or "").lower().strip()
 
     if not q:
@@ -199,8 +224,7 @@ def _answer_from_data(question: str, snap: Dict[str, Any]) -> str:
         if sectors:
             top_s = sectors[0]
             parts.append(
-                f"By sector, {top_s['sector']} shows the highest MDR rate at "
-                f"{_fmt_pct(top_s['mdr_rate'])}."
+                f"By sector, {top_s['sector']} shows the highest MDR rate at {_fmt_pct(top_s['mdr_rate'])}."
             )
         if anom:
             parts.append(
@@ -220,9 +244,7 @@ def _answer_from_data(question: str, snap: Dict[str, Any]) -> str:
             return "No county-level data is available for the current window."
         parts = [f"The following counties show the highest MDR rates in the last {window} days:"]
         for c in counties[:5]:
-            parts.append(
-                f"{c['county']} — {_fmt_pct(c['mdr_rate'])} ({c['samples']} samples)."
-            )
+            parts.append(f"{c['county']} — {_fmt_pct(c['mdr_rate'])} ({c['samples']} samples).")
         return " ".join(parts)
 
     # WHICH PATHOGEN
@@ -231,20 +253,16 @@ def _answer_from_data(question: str, snap: Dict[str, Any]) -> str:
             return "No pathogen data is available for the current window."
         parts = [f"Top pathogens by isolate count in the last {window} days:"]
         for p in pathogens[:5]:
-            parts.append(
-                f"{p['pathogen']} — {p['samples']} isolates, {_fmt_pct(p['mdr_rate'])} MDR."
-            )
+            parts.append(f"{p['pathogen']} — {p['samples']} isolates, {_fmt_pct(p['mdr_rate'])} MDR.")
         return " ".join(parts)
 
     # SECTOR / ONE HEALTH
     if any(k in q for k in ["sector", "human", "animal", "poultry", "environment", "one health"]):
         if not sectors:
             return "No sector-level data is available for the current window."
-        parts = ["Distribution by sector in the last {} days:".format(window)]
+        parts = [f"Distribution by sector in the last {window} days:"]
         for s in sectors:
-            parts.append(
-                f"{s['sector']} — {s['samples']} isolates, {_fmt_pct(s['mdr_rate'])} MDR."
-            )
+            parts.append(f"{s['sector']} — {s['samples']} isolates, {_fmt_pct(s['mdr_rate'])} MDR.")
         parts.append(
             "The One Health approach requires attention to any sector with an MDR rate "
             "above 30%, as cross-sector transmission is a recognised risk."
@@ -257,9 +275,7 @@ def _answer_from_data(question: str, snap: Dict[str, Any]) -> str:
             return "No antibiotic-class data is available for the current window."
         parts = [f"Antibiotic classes by MDR rate in the last {window} days:"]
         for a in classes[:6]:
-            parts.append(
-                f"{a['antibiotic_class']} — {_fmt_pct(a['mdr_rate'])} ({a['samples']} samples)."
-            )
+            parts.append(f"{a['antibiotic_class']} — {_fmt_pct(a['mdr_rate'])} ({a['samples']} samples).")
         parts.append(
             "Classes with resistance above 60% typically require Reserve agents for "
             "empiric therapy, and should be confirmed with culture."
@@ -279,9 +295,7 @@ def _answer_from_data(question: str, snap: Dict[str, Any]) -> str:
     if any(k in q for k in ["anomaly", "anomalies", "alert", "outbreak", "signal"]):
         if anom == 0:
             return f"No anomalies were flagged in the last {window} days — the system is stable."
-        parts = [
-            f"{_fmt_int(anom)} anomalous isolates were flagged in the last {window} days."
-        ]
+        parts = [f"{_fmt_int(anom)} anomalous isolates were flagged in the last {window} days."]
         if counties:
             parts.append(
                 f"They are concentrated in {counties[0]['county']} and "
@@ -329,6 +343,7 @@ async def ask(
     llm_answer = None
     try:
         from src.services.llm_service import generate_comparison_response
+
         medical_prompt = f"""You are a senior clinical epidemiologist at the Ministry of Health, Kenya,
 reviewing antimicrobial resistance surveillance data. Answer the following
 question clearly and factually, in plain English (3-6 sentences). Do not
@@ -390,7 +405,7 @@ async def file_analysis(
 
 @router.get("/filed")
 async def list_filed(
-    search: Optional[str] = None,
+    search: str | None = None,
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -401,10 +416,12 @@ async def list_filed(
         q = q.filter(SavedAnalysis.created_by == current_user.id)
     if search:
         like = f"%{search.lower()}%"
-        q = q.filter(or_(
-            func.lower(SavedAnalysis.title).like(like),
-            func.lower(SavedAnalysis.answer).like(like),
-        ))
+        q = q.filter(
+            or_(
+                func.lower(SavedAnalysis.title).like(like),
+                func.lower(SavedAnalysis.answer).like(like),
+            )
+        )
     rows = q.order_by(desc(SavedAnalysis.created_at)).limit(limit).all()
     return [
         {

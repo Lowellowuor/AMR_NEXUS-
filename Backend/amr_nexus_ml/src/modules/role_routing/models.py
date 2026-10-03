@@ -1,4 +1,5 @@
 """SQLAlchemy model for role-based alert routing."""
+
 from datetime import UTC, datetime
 
 from sqlalchemy import (
@@ -16,9 +17,7 @@ from src.db.models import Base
 
 class RoleRouting(Base):
     __tablename__ = "role_routing"
-    __table_args__ = (
-        UniqueConstraint("role", "channel", name="uq_role_routing_role_channel"),
-    )
+    __table_args__ = (UniqueConstraint("role", "channel", name="uq_role_routing_role_channel"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     role = Column(String(20), nullable=False, index=True)

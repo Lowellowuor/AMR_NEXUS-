@@ -1,4 +1,5 @@
 """Tests for the module registry (PR #1)."""
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 

@@ -1,19 +1,18 @@
-from datetime import datetime, timezone
+import csv
+import io
+import uuid
+from datetime import UTC, date, datetime, timedelta
+
+import sqlalchemy as sa
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from sqlalchemy import asc, desc, func, or_
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, desc, asc, func
-import sqlalchemy as sa
-from typing import Optional
-from datetime import date, datetime, timedelta
-import io
-import csv
-import uuid
 
-from src.api.deps import get_db, get_current_user, require_admin
-from src.api.schemas import AMRRecordIn, PredictionResponse, CommentCreate
-from src.services.prediction_service import PredictionService
+from src.api.deps import get_current_user, get_db, require_admin
+from src.api.schemas import AMRRecordIn, CommentCreate, PredictionResponse
 from src.db.models import AMRIsolateRecord, Comment, User
+from src.services.prediction_service import PredictionService
 
 router = APIRouter()
 
@@ -113,7 +112,7 @@ from pydantic import BaseModel
 
 class OutcomeIn(BaseModel):
     actual_mdr: bool
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 @router.post("/predict", response_model=PredictionResponse)
@@ -135,15 +134,15 @@ async def predict(
 async def list_predictions(
     limit: int = Query(50, ge=1, le=500),
     skip: int = Query(0, ge=0),
-    search: Optional[str] = None,
-    mdr: Optional[str] = None,
-    anomaly: Optional[str] = None,
-    pathogen: Optional[str] = None,
-    county: Optional[str] = None,
-    sector: Optional[str] = None,
-    species: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    search: str | None = None,
+    mdr: str | None = None,
+    anomaly: str | None = None,
+    pathogen: str | None = None,
+    county: str | None = None,
+    sector: str | None = None,
+    species: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     sort_by: str = "created_at",
     sort_dir: str = "desc",
     db: Session = Depends(get_db),
@@ -189,13 +188,13 @@ async def prediction_stats(
 @router.get("/predictions/confirmed-stats")
 async def confirmed_stats(
     days: int = Query(90, ge=1, le=365),
-    county: Optional[str] = None,
+    county: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     from datetime import timedelta as _td
 
-    since = datetime.now(timezone.utc) - _td(days=days)
+    since = datetime.now(UTC) - _td(days=days)
 
     base = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.created_at >= since)
     if county:
@@ -285,7 +284,7 @@ async def confirm_outcome(
         raise HTTPException(status_code=404, detail="Record not found")
 
     record.lab_confirmed_mdr = payload.actual_mdr
-    record.outcome_confirmed_at = datetime.now(timezone.utc)
+    record.outcome_confirmed_at = datetime.now(UTC)
     record.outcome_confirmed_by = current_user.name or current_user.email
     record.outcome_notes = (payload.notes or "")[:2000]
 
@@ -388,14 +387,14 @@ async def bulk_delete(
 
 @router.get("/predictions/export/csv")
 async def export_predictions_csv(
-    search: Optional[str] = None,
-    mdr: Optional[str] = None,
-    anomaly: Optional[str] = None,
-    pathogen: Optional[str] = None,
-    county: Optional[str] = None,
-    sector: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    search: str | None = None,
+    mdr: str | None = None,
+    anomaly: str | None = None,
+    pathogen: str | None = None,
+    county: str | None = None,
+    sector: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

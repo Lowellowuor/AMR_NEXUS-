@@ -1,4 +1,5 @@
 """Tests for the Sampling Sites module (PR #6)."""
+
 import uuid
 
 VALID_USER = {"username": "admin@amrnexus.com", "password": "ChangeMe123!"}
@@ -57,12 +58,8 @@ def test_create_site_invalid_latitude(client, auth_headers):
 
 def test_get_site(client, auth_headers):
     payload = {"name": _unique("Clinic"), "site_type": "clinic", "county": "Nairobi"}
-    created = client.post(
-        "/modules/sampling-sites", json=payload, headers=auth_headers
-    ).json()
-    r = client.get(
-        f"/modules/sampling-sites/{created['id']}", headers=auth_headers
-    )
+    created = client.post("/modules/sampling-sites", json=payload, headers=auth_headers).json()
+    r = client.get(f"/modules/sampling-sites/{created['id']}", headers=auth_headers)
     assert r.status_code == 200, r.text
     assert r.json()["id"] == created["id"]
 
@@ -74,9 +71,7 @@ def test_get_site_not_found(client, auth_headers):
 
 def test_update_site(client, auth_headers):
     payload = {"name": _unique("Update me"), "county": "Nairobi"}
-    created = client.post(
-        "/modules/sampling-sites", json=payload, headers=auth_headers
-    ).json()
+    created = client.post("/modules/sampling-sites", json=payload, headers=auth_headers).json()
     r = client.patch(
         f"/modules/sampling-sites/{created['id']}",
         json={"owner_contact": "+254700000000"},
@@ -88,9 +83,7 @@ def test_update_site(client, auth_headers):
 
 def test_deactivate_site(client, auth_headers):
     payload = {"name": _unique("Deactivate me"), "county": "Nairobi"}
-    created = client.post(
-        "/modules/sampling-sites", json=payload, headers=auth_headers
-    ).json()
+    created = client.post("/modules/sampling-sites", json=payload, headers=auth_headers).json()
     r = client.post(
         f"/modules/sampling-sites/{created['id']}/deactivate",
         headers=auth_headers,
@@ -99,9 +92,7 @@ def test_deactivate_site(client, auth_headers):
     assert r.json()["is_active"] is False
 
     # Active-only list should not include it
-    r = client.get(
-        "/modules/sampling-sites?active_only=true", headers=auth_headers
-    )
+    r = client.get("/modules/sampling-sites?active_only=true", headers=auth_headers)
     ids = [s["id"] for s in r.json()]
     assert created["id"] not in ids
 
@@ -109,18 +100,12 @@ def test_deactivate_site(client, auth_headers):
 def test_site_isolates_empty(client, auth_headers):
     """Triangulation endpoint works even with no isolates linked."""
     payload = {"name": _unique("Empty site"), "county": "Nairobi"}
-    created = client.post(
-        "/modules/sampling-sites", json=payload, headers=auth_headers
-    ).json()
-    r = client.get(
-        f"/modules/sampling-sites/{created['id']}/isolates", headers=auth_headers
-    )
+    created = client.post("/modules/sampling-sites", json=payload, headers=auth_headers).json()
+    r = client.get(f"/modules/sampling-sites/{created['id']}/isolates", headers=auth_headers)
     assert r.status_code == 200, r.text
     assert r.json() == []
 
 
 def test_site_isolates_not_found(client, auth_headers):
-    r = client.get(
-        "/modules/sampling-sites/999999/isolates", headers=auth_headers
-    )
+    r = client.get("/modules/sampling-sites/999999/isolates", headers=auth_headers)
     assert r.status_code == 404, r.text

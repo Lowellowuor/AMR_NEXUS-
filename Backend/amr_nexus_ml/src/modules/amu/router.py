@@ -4,6 +4,7 @@ Mounted at /modules/amu by the module registry. Requires authentication
 (via the global AuthMiddleware). Write operations require admin or analyst
 role; all roles can read.
 """
+
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -46,6 +47,7 @@ def _require_write(user: User) -> None:
 
 # ---------- Drug reference ----------
 
+
 @router.get("/drugs", response_model=list[DrugReferenceRead])
 def list_drugs(
     active_only: bool = Query(False),
@@ -70,6 +72,7 @@ def create_drug(
 
 
 # ---------- Consumption ----------
+
 
 @router.get("/consumption", response_model=list[ConsumptionRead])
 def list_consumption(
@@ -116,6 +119,7 @@ def create_consumption(
 
 # ---------- Aggregations ----------
 
+
 @router.get("/summary", response_model=SummaryResponse)
 def summary(
     dimension: str = Query(..., description="county | sector | species | drug"),
@@ -126,9 +130,7 @@ def summary(
     _user: User = Depends(get_current_user),
 ):
     try:
-        return service.summarise(
-            db, dimension=dimension, county=county, start=start, end=end
-        )
+        return service.summarise(db, dimension=dimension, county=county, start=start, end=end)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from None
 
@@ -142,9 +144,7 @@ def trend(
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
-    return service.trend(
-        db, county=county, drug_id=drug_id, start=start, end=end
-    )
+    return service.trend(db, county=county, drug_id=drug_id, start=start, end=end)
 
 
 @router.get("/top-drugs", response_model=TopDrugsResponse)

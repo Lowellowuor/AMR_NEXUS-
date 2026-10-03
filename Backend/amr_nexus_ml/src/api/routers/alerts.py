@@ -1,13 +1,13 @@
-from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import desc, func, or_
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
-from src.api.deps import get_db, get_current_user
-from src.db.models import AMRIsolateRecord, AlertAcknowledgement, User
-from src.core.config import settings
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import desc, func, or_
+from sqlalchemy.orm import Session
+
+from src.api.deps import get_current_user, get_db
+from src.db.models import AlertAcknowledgement, AMRIsolateRecord, User
 
 alerts_router = APIRouter()
 
@@ -24,7 +24,7 @@ def _severity(r: AMRIsolateRecord) -> str:
     return "low"
 
 
-def _serialize(r: AMRIsolateRecord, ack: Optional[AlertAcknowledgement]) -> Dict[str, Any]:
+def _serialize(r: AMRIsolateRecord, ack: AlertAcknowledgement | None) -> dict[str, Any]:
     return {
         "id": str(r.record_id),
         "record_id": str(r.record_id),
@@ -65,14 +65,14 @@ def _build_message(r: AMRIsolateRecord) -> str:
     return f"Elevated MDR probability — {pathogen} in {county}"
 
 
-@alerts_router.get("", response_model=List[Dict[str, Any]])
-@alerts_router.get("/active", response_model=List[Dict[str, Any]])
+@alerts_router.get("", response_model=list[dict[str, Any]])
+@alerts_router.get("/active", response_model=list[dict[str, Any]])
 async def list_alerts(
-    county: Optional[str] = None,
-    severity: Optional[str] = None,
-    type: Optional[str] = None,
-    status_filter: Optional[str] = Query(None, alias="status"),
-    search: Optional[str] = None,
+    county: str | None = None,
+    severity: str | None = None,
+    type: str | None = None,
+    status_filter: str | None = Query(None, alias="status"),
+    search: str | None = None,
     include_resolved: bool = False,
     limit: int = Query(200, ge=1, le=1000),
     db: Session = Depends(get_db),
@@ -88,19 +88,19 @@ async def list_alerts(
         q = q.filter(AMRIsolateRecord.county == county)
     if search:
         like = f"%{search.lower()}%"
-        q = q.filter(or_(
-            func.lower(AMRIsolateRecord.pathogen_code).like(like),
-            func.lower(AMRIsolateRecord.county).like(like),
-        ))
+        q = q.filter(
+            or_(
+                func.lower(AMRIsolateRecord.pathogen_code).like(like),
+                func.lower(AMRIsolateRecord.county).like(like),
+            )
+        )
 
     records = q.order_by(desc(AMRIsolateRecord.created_at)).limit(limit).all()
 
     record_ids = [r.record_id for r in records]
     ack_map = {}
     if record_ids:
-        acks = db.query(AlertAcknowledgement).filter(
-            AlertAcknowledgement.record_id.in_(record_ids)
-        ).all()
+        acks = db.query(AlertAcknowledgement).filter(AlertAcknowledgement.record_id.in_(record_ids)).all()
         ack_map = {a.record_id: a for a in acks}
 
     items = [_serialize(r, ack_map.get(r.record_id)) for r in records]
@@ -123,7 +123,7 @@ async def list_alerts(
 
 @alerts_router.get("/stats")
 async def alert_stats(
-    county: Optional[str] = None,
+    county: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -140,9 +140,7 @@ async def alert_stats(
     record_ids = [r.record_id for r in records]
     ack_map = {}
     if record_ids:
-        acks = db.query(AlertAcknowledgement).filter(
-            AlertAcknowledgement.record_id.in_(record_ids)
-        ).all()
+        acks = db.query(AlertAcknowledgement).filter(AlertAcknowledgement.record_id.in_(record_ids)).all()
         ack_map = {a.record_id: a for a in acks}
 
     counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
@@ -167,7 +165,7 @@ async def alert_stats(
 
 @alerts_router.get("/count")
 async def get_alerts_count(
-    county: Optional[str] = None,
+    county: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -182,20 +180,22 @@ async def get_alerts_count(
     record_ids = [r.record_id for r in q.all()]
     unack = 0
     if record_ids:
-        acked = db.query(AlertAcknowledgement.record_id).filter(
-            AlertAcknowledgement.record_id.in_(record_ids),
-            AlertAcknowledgement.acknowledged == True,
-            AlertAcknowledgement.resolved == False,
-        ).all()
+        acked = (
+            db.query(AlertAcknowledgement.record_id)
+            .filter(
+                AlertAcknowledgement.record_id.in_(record_ids),
+                AlertAcknowledgement.acknowledged == True,
+                AlertAcknowledgement.resolved == False,
+            )
+            .all()
+        )
         acked_set = {row[0] for row in acked}
         unack = len(record_ids) - len(acked_set)
     return {"count": unack}
 
 
 def _get_or_create_ack(db: Session, record_id: UUID) -> AlertAcknowledgement:
-    ack = db.query(AlertAcknowledgement).filter(
-        AlertAcknowledgement.record_id == record_id
-    ).first()
+    ack = db.query(AlertAcknowledgement).filter(AlertAcknowledgement.record_id == record_id).first()
     if not ack:
         ack = AlertAcknowledgement(record_id=record_id)
         db.add(ack)
@@ -219,7 +219,7 @@ async def acknowledge_alert(
     rid = _parse_uuid(alert_id)
     ack = _get_or_create_ack(db, rid)
     ack.acknowledged = True
-    ack.acknowledged_at = datetime.now(timezone.utc)
+    ack.acknowledged_at = datetime.now(UTC)
     ack.acknowledged_by = current_user.name or current_user.email
     db.commit()
     return {"status": "acknowledged", "alert_id": alert_id}
@@ -228,19 +228,19 @@ async def acknowledge_alert(
 @alerts_router.patch("/{alert_id}/resolve")
 async def resolve_alert(
     alert_id: str,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     rid = _parse_uuid(alert_id)
     ack = _get_or_create_ack(db, rid)
     ack.resolved = True
-    ack.resolved_at = datetime.now(timezone.utc)
+    ack.resolved_at = datetime.now(UTC)
     ack.resolved_by = current_user.name or current_user.email
     ack.resolution_note = payload.get("note", "")
     if not ack.acknowledged:
         ack.acknowledged = True
-        ack.acknowledged_at = datetime.now(timezone.utc)
+        ack.acknowledged_at = datetime.now(UTC)
         ack.acknowledged_by = current_user.name or current_user.email
     db.commit()
     return {"status": "resolved", "alert_id": alert_id}
@@ -249,7 +249,7 @@ async def resolve_alert(
 @alerts_router.patch("/{alert_id}/assign")
 async def assign_alert(
     alert_id: str,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -262,7 +262,7 @@ async def assign_alert(
 
 @alerts_router.post("/bulk-acknowledge")
 async def bulk_acknowledge(
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -273,7 +273,7 @@ async def bulk_acknowledge(
         raise HTTPException(status_code=400, detail="Maximum 200 alerts per bulk action")
 
     actor = current_user.name or current_user.email
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     count = 0
     for alert_id in ids:
         try:

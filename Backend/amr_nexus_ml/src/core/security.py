@@ -1,17 +1,17 @@
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+
 import bcrypt
 from dotenv import load_dotenv
-from jose import JWTError, jwt
 from fastapi import HTTPException
+from jose import JWTError, jwt
 
 # Load .env before reading env vars — makes this module import-order-independent.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(_REPO_ROOT / ".env")
 
-SECRET_KEY = os.environ["SECRET_KEY"]   # fail hard if missing, never fall back
+SECRET_KEY = os.environ["SECRET_KEY"]  # fail hard if missing, never fall back
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))
 
@@ -29,10 +29,14 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
-def create_access_token(user_id: int, role: str, email: Optional[str] = None, token_version: int = 1, expires_minutes: Optional[int] = None) -> str:
-    expire = datetime.utcnow() + timedelta(
-        minutes=expires_minutes or ACCESS_TOKEN_EXPIRE_MINUTES
-    )
+def create_access_token(
+    user_id: int,
+    role: str,
+    email: str | None = None,
+    token_version: int = 1,
+    expires_minutes: int | None = None,
+) -> str:
+    expire = datetime.utcnow() + timedelta(minutes=expires_minutes or ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {"sub": str(user_id), "role": role, "email": email or "", "tv": token_version, "exp": expire}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 

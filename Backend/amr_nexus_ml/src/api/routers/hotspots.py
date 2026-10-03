@@ -1,15 +1,16 @@
+from datetime import date, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from datetime import date, datetime
-from src.database import get_db
-from src.db.models import Hotspot, AMRIsolateRecord, User
+
 from src.api.deps import require_admin
+from src.database import get_db
+from src.db.models import AMRIsolateRecord, Hotspot, User
 
 router = APIRouter(prefix="/hotspots", tags=["hotspots"])
 
 
-def _parse_date(value: Optional[str]) -> Optional[date]:
+def _parse_date(value: str | None) -> date | None:
     if not value:
         return None
     try:
@@ -21,10 +22,10 @@ def _parse_date(value: Optional[str]) -> Optional[date]:
 def compute_hotspot_stats(
     db: Session,
     hotspot_id: int,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    pathogen: Optional[str] = None,
-    sector: Optional[str] = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    pathogen: str | None = None,
+    sector: str | None = None,
 ):
     query = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.hotspot_id == hotspot_id)
     if start_date:
@@ -61,13 +62,13 @@ def compute_hotspot_stats(
     return total_samples, overall_rate, breakdown_list
 
 
-@router.get("", response_model=List[dict])
+@router.get("", response_model=list[dict])
 def get_hotspots(
-    start_date: Optional[str] = Query(None),
-    end_date: Optional[str] = Query(None),
-    county: Optional[str] = Query(None),
-    pathogen: Optional[str] = Query(None),
-    sector: Optional[str] = Query(None),
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    county: str | None = Query(None),
+    pathogen: str | None = Query(None),
+    sector: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     start = _parse_date(start_date)
@@ -86,20 +87,22 @@ def get_hotspots(
         total_samples, resistance_rate, breakdown = compute_hotspot_stats(
             db, h.id, start, end, pathogen, sector
         )
-        result.append({
-            "id": h.id,
-            "name": h.name,
-            "type": h.type,
-            "latitude": float(h.latitude),
-            "longitude": float(h.longitude),
-            "county": h.county,
-            "sub_county": h.sub_county,
-            "address": h.address,
-            "contact": h.contact,
-            "total_samples": total_samples,
-            "resistance_rate": resistance_rate,
-            "pathogen_breakdown": breakdown,
-        })
+        result.append(
+            {
+                "id": h.id,
+                "name": h.name,
+                "type": h.type,
+                "latitude": float(h.latitude),
+                "longitude": float(h.longitude),
+                "county": h.county,
+                "sub_county": h.sub_county,
+                "address": h.address,
+                "contact": h.contact,
+                "total_samples": total_samples,
+                "resistance_rate": resistance_rate,
+                "pathogen_breakdown": breakdown,
+            }
+        )
     return result
 
 

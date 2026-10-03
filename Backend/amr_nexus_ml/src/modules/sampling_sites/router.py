@@ -3,6 +3,7 @@
 Mounted at /modules/sampling-sites by the module registry. Requires
 authentication. Read for any authenticated user; write for admin/analyst.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -78,9 +79,7 @@ def get_site(
 ):
     site = service.get_site(db, site_id)
     if site is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Site not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
     return site
 
 
@@ -94,9 +93,7 @@ def update_site(
     _require_write(user)
     site = service.get_site(db, site_id)
     if site is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Site not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
     return service.update_site(db, site, payload)
 
 
@@ -109,9 +106,7 @@ def deactivate_site(
     _require_write(user)
     site = service.get_site(db, site_id)
     if site is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Site not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
     return service.deactivate_site(db, site)
 
 
@@ -125,9 +120,5 @@ def site_isolates(
 ):
     site = service.get_site(db, site_id)
     if site is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Site not found"
-        )
-    return service.list_isolates_for_site(
-        db, site_id=site_id, limit=limit, offset=offset
-    )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
+    return service.list_isolates_for_site(db, site_id=site_id, limit=limit, offset=offset)

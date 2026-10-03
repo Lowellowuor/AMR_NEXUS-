@@ -1,13 +1,13 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from src.api.deps import get_db
-from src.db.models import User
-from src.core.security import verify_password, create_access_token
-from src.db.models import AuditEvent
+from src.core.security import create_access_token, verify_password
+from src.db.models import AuditEvent, User
 
 router = APIRouter()
 
@@ -30,23 +30,25 @@ def login(
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account disabled. Contact your administrator.")
 
-    user.last_login_at = datetime.now(timezone.utc)
+    user.last_login_at = datetime.now(UTC)
     db.commit()
 
     token = create_access_token(user.id, user.role, user.email, user.token_version)
 
-    db.add(AuditEvent(
-        actor_id=user.id,
-        actor_email=user.email,
-        actor_role=user.role,
-        action="login",
-        resource="session",
-        resource_id=str(user.id),
-        method="POST",
-        path="/auth/login",
-        status_code=200,
-        result="success",
-    ))
+    db.add(
+        AuditEvent(
+            actor_id=user.id,
+            actor_email=user.email,
+            actor_role=user.role,
+            action="login",
+            resource="session",
+            resource_id=str(user.id),
+            method="POST",
+            path="/auth/login",
+            status_code=200,
+            result="success",
+        )
+    )
     db.commit()
 
     return {

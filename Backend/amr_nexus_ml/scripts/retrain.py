@@ -10,22 +10,20 @@ Usage:
     python scripts/retrain.py --min-rows 50
     python scripts/retrain.py --promote
 """
-import sys
+
+import argparse
 import json
 import shutil
 import sqlite3
-import argparse
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 
-import numpy as np
-import pandas as pd
 import joblib
+import pandas as pd
 import xgboost as xgb
+from sklearn.metrics import brier_score_loss, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import (
-    roc_auc_score, precision_score, recall_score, f1_score, brier_score_loss
-)
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -33,8 +31,14 @@ from src.core.config import settings
 from src.utils.logger import logger
 
 FRONTEND_FEATURES = [
-    "sector", "sub_sector", "pathogen_code", "specimen_type",
-    "county", "antibiotic_class", "test_method", "sample_month",
+    "sector",
+    "sub_sector",
+    "pathogen_code",
+    "specimen_type",
+    "county",
+    "antibiotic_class",
+    "test_method",
+    "sample_month",
     "prior_antibiotic_exposure",
 ]
 
@@ -113,9 +117,7 @@ def main() -> int:
     X = df[current_originals].copy()
     y = df["lab_confirmed_mdr"].astype(int)
 
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
     # Reuse the existing preprocessor: transform, do not re-fit.
     X_train_p = current_pre.transform(X_train)
@@ -160,9 +162,7 @@ def main() -> int:
     cand_dir.mkdir(parents=True, exist_ok=True)
 
     joblib.dump(model, cand_dir / "mdr_model.pkl")
-    (cand_dir / "metrics.json").write_text(
-        json.dumps(metrics, indent=2), encoding="utf-8"
-    )
+    (cand_dir / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     (cand_dir / "train_meta.json").write_text(
         json.dumps(
             {

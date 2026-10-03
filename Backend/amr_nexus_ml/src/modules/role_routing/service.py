@@ -1,4 +1,5 @@
 """Business logic for role-based alert routing."""
+
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -113,12 +114,7 @@ def role_allows(
     """
     if not role or not channel or not severity:
         return True
-    stmt = (
-        select(RoleRouting)
-        .where(RoleRouting.role == role)
-        .where(RoleRouting.channel == channel)
-        .limit(1)
-    )
+    stmt = select(RoleRouting).where(RoleRouting.role == role).where(RoleRouting.channel == channel).limit(1)
     rule = db.execute(stmt).scalars().first()
     if rule is None:
         return True

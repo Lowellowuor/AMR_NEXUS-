@@ -1,4 +1,5 @@
 """Business logic for the Sampling Sites module."""
+
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 

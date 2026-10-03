@@ -5,6 +5,7 @@ with its own router, models, schemas, service and permissions. This registry
 holds the list of modules the app knows about and gives the app a single
 way to include them all.
 """
+
 from dataclasses import dataclass
 
 from fastapi import APIRouter, FastAPI

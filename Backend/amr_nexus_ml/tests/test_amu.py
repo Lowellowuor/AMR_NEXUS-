@@ -1,4 +1,5 @@
 """Tests for the AMU/AMC module (PR #2)."""
+
 import uuid
 
 VALID_USER = {"username": "admin@amrnexus.com", "password": "ChangeMe123!"}

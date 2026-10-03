@@ -1,8 +1,9 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+
+from src.core.security import decode_token
 from src.database import SessionLocal
 from src.db.models import AuditEvent
-from src.core.security import decode_token
 from src.utils.logger import logger
 
 AUDIT_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
@@ -95,20 +96,22 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 result = "error"
 
             with SessionLocal() as db:
-                db.add(AuditEvent(
-                    actor_id=actor.get("id"),
-                    actor_email=actor.get("email"),
-                    actor_role=actor.get("role"),
-                    action=_infer_action(method, path),
-                    resource=_infer_resource(path),
-                    resource_id=_extract_resource_id(path),
-                    method=method,
-                    path=path,
-                    status_code=response.status_code,
-                    result=result,
-                    ip_address=request.client.host if request.client else None,
-                    user_agent=(request.headers.get("user-agent") or "")[:500],
-                ))
+                db.add(
+                    AuditEvent(
+                        actor_id=actor.get("id"),
+                        actor_email=actor.get("email"),
+                        actor_role=actor.get("role"),
+                        action=_infer_action(method, path),
+                        resource=_infer_resource(path),
+                        resource_id=_extract_resource_id(path),
+                        method=method,
+                        path=path,
+                        status_code=response.status_code,
+                        result=result,
+                        ip_address=request.client.host if request.client else None,
+                        user_agent=(request.headers.get("user-agent") or "")[:500],
+                    )
+                )
                 db.commit()
         except Exception as exc:
             logger.warning(f"Audit write failed: {exc}")

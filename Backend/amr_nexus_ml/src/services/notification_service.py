@@ -82,9 +82,7 @@ def _log(db: Session, **kwargs) -> NotificationLog:
 
 
 def get_or_create_prefs(db: Session, user: User) -> NotificationPreference:
-    prefs = db.query(NotificationPreference).filter(
-        NotificationPreference.user_id == user.id
-    ).first()
+    prefs = db.query(NotificationPreference).filter(NotificationPreference.user_id == user.id).first()
     if prefs:
         return prefs
     prefs = NotificationPreference(user_id=user.id)
@@ -117,9 +115,7 @@ def dispatch_alert(
         prefs = get_or_create_prefs(db, user)
 
         # Email
-        want_email = (
-            force_channels and "email" in force_channels
-        ) or (
+        want_email = (force_channels and "email" in force_channels) or (
             prefs.email_enabled
             and _meets_threshold(severity, prefs.email_severity or "critical")
             and role_allows(db, user.role, "email", severity)
@@ -153,9 +149,7 @@ def dispatch_alert(
             db.commit()
 
         # SMS
-        want_sms = (
-            force_channels and "sms" in force_channels
-        ) or (
+        want_sms = (force_channels and "sms" in force_channels) or (
             prefs.sms_enabled
             and prefs.sms_phone
             and _meets_threshold(severity, prefs.sms_severity or "critical")

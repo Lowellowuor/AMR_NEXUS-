@@ -1,24 +1,20 @@
-﻿import logging
 import sys
-from typing import Dict, Any, List
+from typing import Any
+
 import socketio
 import uvicorn
-from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.api.app import app as fastapi_app
-from src.utils.logger import logger
+
 from src.database import SessionLocal
 from src.services.prediction_service import AMRPredictionService
-from src.utils.config import config
+from src.utils.logger import logger
 
-CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:5174"]
+CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:5174"]
 SERVER_HOST: str = "0.0.0.0"
 SERVER_PORT: int = 8000
 
-sio: socketio.AsyncServer = socketio.AsyncServer(
-    async_mode="asgi", 
-    cors_allowed_origins=CORS_ORIGINS
-)
+sio: socketio.AsyncServer = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=CORS_ORIGINS)
 
 fastapi_app.add_middleware(
     CORSMiddleware,
@@ -28,15 +24,12 @@ fastapi_app.add_middleware(
     allow_headers=["*"],
 )
 
-combined_app: socketio.ASGIApp = socketio.ASGIApp(
-    socketio_server=sio, 
-    other_asgi_app=fastapi_app
-)
+combined_app: socketio.ASGIApp = socketio.ASGIApp(socketio_server=sio, other_asgi_app=fastapi_app)
 fastapi_app.sio = sio
 
 
 @sio.event
-async def connect(sid: str, environ: Dict[str, Any]) -> None:
+async def connect(sid: str, environ: dict[str, Any]) -> None:
     logger.info(f"SocketIO client connected securely. Session ID: {sid}")
 
 
@@ -46,7 +39,7 @@ async def disconnect(sid: str) -> None:
 
 
 @sio.event
-async def stream_isolate_data(sid: str, data: Dict[str, Any]) -> None:
+async def stream_isolate_data(sid: str, data: dict[str, Any]) -> None:
     logger.info(f"Real-time pipeline payload received via socket channel from: {sid}")
     db_session = SessionLocal()
     try:
@@ -63,13 +56,7 @@ async def stream_isolate_data(sid: str, data: Dict[str, Any]) -> None:
 if __name__ == "__main__":
     try:
         logger.info(f"Starting ASGI enterprise server deployment layer on {SERVER_HOST}:{SERVER_PORT}")
-        uvicorn.run(
-            "src.main:combined_app", 
-            host=SERVER_HOST, 
-            port=SERVER_PORT, 
-            workers=1,
-            log_level="info"
-        )
+        uvicorn.run("src.main:combined_app", host=SERVER_HOST, port=SERVER_PORT, workers=1, log_level="info")
     except Exception as e:
         logger.critical(f"Server deployment engine suffered unhandled boot crash: {str(e)}")
         sys.exit(1)

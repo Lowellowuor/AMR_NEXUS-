@@ -4,6 +4,7 @@ This module does nothing useful. It exists so that PR #1 has a real
 module to register, test, and verify in OpenAPI. Delete it once the
 first real module (AMU/AMC) is in place, or keep it as a template.
 """
+
 from fastapi import APIRouter
 
 from src.modules.registry import ModuleMeta

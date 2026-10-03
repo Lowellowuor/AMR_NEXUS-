@@ -1,15 +1,15 @@
 """Model health, calibration, and drift utilities."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
-import sqlalchemy as sa
 
-from src.db.models import PredictionLog, AMRIsolateRecord, DriftSnapshot
+from src.db.models import AMRIsolateRecord, PredictionLog
 
 
-def confidence_tier(probability: Optional[float]) -> str:
+def confidence_tier(probability: float | None) -> str:
     """Map a probability to a clinically meaningful confidence tier."""
     if probability is None:
         return "unknown"
@@ -22,7 +22,7 @@ def confidence_tier(probability: Optional[float]) -> str:
     return "borderline"
 
 
-def deterministic_fallback(features: Dict[str, Any]) -> Dict[str, Any]:
+def deterministic_fallback(features: dict[str, Any]) -> dict[str, Any]:
     """Rule-based risk score when the ML model is unavailable.
 
     Calibrated roughly from published East African AMR patterns.
@@ -31,7 +31,16 @@ def deterministic_fallback(features: Dict[str, Any]) -> Dict[str, Any]:
     score = 0.15
 
     pathogen = (features.get("pathogen_code") or "").upper()
-    high_risk_pathogens = {"KPN", "KLEBSIELLA", "ACINETOBACTER", "ABAUMANNII", "PSEUDOMONAS", "PAE", "MRSA", "SAU"}
+    high_risk_pathogens = {
+        "KPN",
+        "KLEBSIELLA",
+        "ACINETOBACTER",
+        "ABAUMANNII",
+        "PSEUDOMONAS",
+        "PAE",
+        "MRSA",
+        "SAU",
+    }
     if any(p in pathogen for p in high_risk_pathogens):
         score += 0.15
 
@@ -62,32 +71,42 @@ def deterministic_fallback(features: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def compute_calibration(db: Session, days: int = 90, buckets: int = 10) -> Dict[str, Any]:
+def compute_calibration(db: Session, days: int = 90, buckets: int = 10) -> dict[str, Any]:
     """Compare predicted probabilities to observed MDR outcomes."""
-    since = datetime.now(timezone.utc) - timedelta(days=days)
-    rows = db.query(PredictionLog).filter(
-        PredictionLog.created_at >= since,
-        PredictionLog.mdr_probability.isnot(None),
-    ).all()
+    since = datetime.now(UTC) - timedelta(days=days)
+    rows = (
+        db.query(PredictionLog)
+        .filter(
+            PredictionLog.created_at >= since,
+            PredictionLog.mdr_probability.isnot(None),
+        )
+        .all()
+    )
 
     if not rows:
         return {"buckets": [], "sample_size": 0, "calibration_error": None}
 
-    bins: List[Dict[str, Any]] = []
+    bins: list[dict[str, Any]] = []
     for i in range(buckets):
         lo = i / buckets
         hi = (i + 1) / buckets
-        in_bin = [r for r in rows if lo <= float(r.mdr_probability) < hi or (i == buckets - 1 and float(r.mdr_probability) == 1.0)]
+        in_bin = [
+            r
+            for r in rows
+            if lo <= float(r.mdr_probability) < hi or (i == buckets - 1 and float(r.mdr_probability) == 1.0)
+        ]
         if not in_bin:
             continue
         avg_pred = sum(float(r.mdr_probability) for r in in_bin) / len(in_bin)
         observed = sum(1 for r in in_bin if r.mdr_flag) / len(in_bin)
-        bins.append({
-            "bucket": f"{int(lo*100)}-{int(hi*100)}%",
-            "predicted": round(avg_pred * 100, 1),
-            "observed": round(observed * 100, 1),
-            "count": len(in_bin),
-        })
+        bins.append(
+            {
+                "bucket": f"{int(lo * 100)}-{int(hi * 100)}%",
+                "predicted": round(avg_pred * 100, 1),
+                "observed": round(observed * 100, 1),
+                "count": len(in_bin),
+            }
+        )
 
     # Expected calibration error (weighted absolute difference)
     total = len(rows)
@@ -100,9 +119,9 @@ def compute_calibration(db: Session, days: int = 90, buckets: int = 10) -> Dict[
     }
 
 
-def compute_drift(db: Session, days: int = 30) -> Dict[str, Any]:
+def compute_drift(db: Session, days: int = 30) -> dict[str, Any]:
     """Compare current feature distributions to the full historical baseline."""
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
 
     def distribution(field, cutoff=None):
         q = db.query(field, func.count(AMRIsolateRecord.record_id))
@@ -133,8 +152,14 @@ def compute_drift(db: Session, days: int = 30) -> Dict[str, Any]:
             "drift": round(tv, 4),
             "status": status,
             "top_changes": sorted(
-                [{"value": k, "historical_pct": round(historical.get(k, 0) * 100, 1), "current_pct": round(current.get(k, 0) * 100, 1)}
-                 for k in keys],
+                [
+                    {
+                        "value": k,
+                        "historical_pct": round(historical.get(k, 0) * 100, 1),
+                        "current_pct": round(current.get(k, 0) * 100, 1),
+                    }
+                    for k in keys
+                ],
                 key=lambda x: abs(x["historical_pct"] - x["current_pct"]),
                 reverse=True,
             )[:3],
@@ -159,9 +184,9 @@ def compute_drift(db: Session, days: int = 30) -> Dict[str, Any]:
     }
 
 
-def compute_performance(db: Session, days: int = 90) -> Dict[str, Any]:
+def compute_performance(db: Session, days: int = 90) -> dict[str, Any]:
     """Live performance metrics from the prediction log."""
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
 
     logs = db.query(PredictionLog).filter(PredictionLog.created_at >= since).all()
     if not logs:
@@ -185,7 +210,9 @@ def compute_performance(db: Session, days: int = 90) -> Dict[str, Any]:
     return {
         "total_predictions": total,
         "avg_latency_ms": round(sum(latencies) / len(latencies), 1) if latencies else None,
-        "p95_latency_ms": round(sorted(latencies)[int(len(latencies) * 0.95)], 1) if len(latencies) >= 20 else None,
+        "p95_latency_ms": round(sorted(latencies)[int(len(latencies) * 0.95)], 1)
+        if len(latencies) >= 20
+        else None,
         "fallback_rate": round(fallback / total * 100, 2),
         "fallback_count": fallback,
         "confidence_distribution": conf,

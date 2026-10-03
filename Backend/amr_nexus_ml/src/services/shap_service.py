@@ -5,9 +5,7 @@ import joblib
 import pandas as pd
 
 MODEL_PATH = os.getenv("MODEL_PATH", "./saved_models/mdr_model.pkl")
-SHAP_BACKGROUND_PATH = os.getenv(
-    "SHAP_BACKGROUND_PATH", "./saved_models/shap_background.parquet"
-)
+SHAP_BACKGROUND_PATH = os.getenv("SHAP_BACKGROUND_PATH", "./saved_models/shap_background.parquet")
 
 _model = None
 _preprocessor = None
@@ -30,15 +28,11 @@ def _load_artifacts():
     if not os.path.exists(MODEL_PATH):
         raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
     if not os.path.exists(SHAP_BACKGROUND_PATH):
-        raise FileNotFoundError(
-            f"SHAP background data not found at {SHAP_BACKGROUND_PATH}"
-        )
+        raise FileNotFoundError(f"SHAP background data not found at {SHAP_BACKGROUND_PATH}")
 
     _model = joblib.load(MODEL_PATH)
     _preprocessor = joblib.load(os.path.join(model_dir, "preprocessor.pkl"))
-    _original_features = joblib.load(
-        os.path.join(model_dir, "original_feature_names.pkl")
-    )
+    _original_features = joblib.load(os.path.join(model_dir, "original_feature_names.pkl"))
     _pair_freq_map = joblib.load(os.path.join(model_dir, "pair_freq_map.pkl"))
     _shap_explainer = joblib.load(os.path.join(model_dir, "shap_explainer.pkl"))
     _feature_names = joblib.load(os.path.join(model_dir, "feature_names.pkl"))
@@ -58,9 +52,7 @@ def record_to_feature_dict(record):
         "antibiotic_class": record.get("antibiotic_class", "unknown"),
         "test_method": record.get("test_method", "unknown"),
         "sample_month": record.get("sample_month", 1),
-        "prior_antibiotic_exposure": int(
-            record.get("prior_antibiotic_exposure", 0) or 0
-        ),
+        "prior_antibiotic_exposure": int(record.get("prior_antibiotic_exposure", 0) or 0),
     }
 
 
@@ -98,13 +90,17 @@ def _build_summary(probability, contributors):
 
     summary = f"The model predicts MDR probability {probability:.2f}. "
     if top_positive:
-        summary += "Main drivers: " + ", ".join(
-            f"{c['factor']} ({c['importance']:.2f})" for c in top_positive
-        ) + ". "
+        summary += (
+            "Main drivers: "
+            + ", ".join(f"{c['factor']} ({c['importance']:.2f})" for c in top_positive)
+            + ". "
+        )
     if top_negative:
-        summary += "Protective factors: " + ", ".join(
-            f"{c['factor']} ({c['importance']:.2f})" for c in top_negative
-        ) + "."
+        summary += (
+            "Protective factors: "
+            + ", ".join(f"{c['factor']} ({c['importance']:.2f})" for c in top_negative)
+            + "."
+        )
     return summary
 
 
@@ -133,9 +129,6 @@ def compute_shap_explanation(record):
         "model_version": getattr(_model, "model_version", "xgb-1.0"),
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "contributors": contributors,
-        "waterfall": [
-            {"factor": c["factor"], "shap_value": c["shap_value"]}
-            for c in contributors[:10]
-        ],
+        "waterfall": [{"factor": c["factor"], "shap_value": c["shap_value"]} for c in contributors[:10]],
         "missing_features": missing_features,
     }

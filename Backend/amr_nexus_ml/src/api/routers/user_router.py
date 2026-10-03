@@ -1,17 +1,16 @@
-from typing import Dict, Any, List
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from src.core.config import settings
-from src.api.deps import get_db, get_current_user
-from src.db.models import UserTemplate, User 
+
+from src.api.deps import get_current_user, get_db
+from src.db.models import User, UserTemplate
 
 user_router = APIRouter()
 
 
 @user_router.get("/profile")
-def get_current_user_profile(
-    current_user: User = Depends(get_current_user)
-) -> Dict[str, Any]:
+def get_current_user_profile(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
     return {
         "id": current_user.id,
         "name": current_user.name,
@@ -21,14 +20,11 @@ def get_current_user_profile(
     }
 
 
-@user_router.get("/templates", response_model=List[Dict[str, Any]])
+@user_router.get("/templates", response_model=list[dict[str, Any]])
 def get_templates(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-) -> List[Dict[str, Any]]:
-    templates = db.query(UserTemplate).filter(
-        UserTemplate.user_id == current_user.id
-    ).all()
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> list[dict[str, Any]]:
+    templates = db.query(UserTemplate).filter(UserTemplate.user_id == current_user.id).all()
     return [
         {
             "id": t.id,
@@ -40,28 +36,24 @@ def get_templates(
     ]
 
 
-@user_router.post("/templates", response_model=Dict[str, Any])
+@user_router.post("/templates", response_model=dict[str, Any])
 def save_template(
     name: str,
-    form_data: Dict[str, Any],
+    form_data: dict[str, Any],
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-) -> Dict[str, Any]:
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
 
-    existing = db.query(UserTemplate).filter(
-        UserTemplate.user_id == current_user.id,
-        UserTemplate.name == name
-    ).first()
+    existing = (
+        db.query(UserTemplate)
+        .filter(UserTemplate.user_id == current_user.id, UserTemplate.name == name)
+        .first()
+    )
     if existing:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A template with this name already exists."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="A template with this name already exists."
         )
-    template = UserTemplate(
-        user_id=current_user.id,
-        name=name,
-        form_data=form_data
-    )
+    template = UserTemplate(user_id=current_user.id, name=name, form_data=form_data)
     db.add(template)
     db.commit()
     db.refresh(template)
@@ -75,18 +67,16 @@ def save_template(
 
 @user_router.delete("/templates/{template_id}")
 def delete_template(
-    template_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-) -> Dict[str, Any]:
-    template = db.query(UserTemplate).filter(
-        UserTemplate.id == template_id,
-        UserTemplate.user_id == current_user.id
-    ).first()
+    template_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> dict[str, Any]:
+    template = (
+        db.query(UserTemplate)
+        .filter(UserTemplate.id == template_id, UserTemplate.user_id == current_user.id)
+        .first()
+    )
     if not template:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Template not found or does not belong to you."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Template not found or does not belong to you."
         )
     db.delete(template)
     db.commit()

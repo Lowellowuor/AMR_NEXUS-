@@ -1,12 +1,14 @@
 import json
 import os
-from typing import Dict, Any
+from typing import Any
+
 from src.core.config import settings
 from src.utils.logger import logger
 
 try:
     from google import genai
     from google.genai import types
+
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
@@ -20,7 +22,7 @@ def _get_client():
     return genai.Client(api_key=api_key)
 
 
-def generate_llm_response(alert_data: Dict[str, Any], explanation: Dict[str, Any]) -> str:
+def generate_llm_response(alert_data: dict[str, Any], explanation: dict[str, Any]) -> str:
     if not GEMINI_AVAILABLE:
         raise RuntimeError("Google GenAI SDK is not installed. Install with: pip install google-genai")
 
@@ -49,17 +51,17 @@ Rules:
 
     user_prompt = f"""
     Alert details:
-    Pathogen: {alert_data.get('pathogen', 'Unknown')}
-    Drug class: {alert_data.get('drugClass', alert_data.get('antibiotic_class', 'Unknown'))}
-    County: {alert_data.get('county', 'Unknown')}
-    Sub-county: {alert_data.get('subCounty', alert_data.get('sub_county', 'Unknown'))}
-    Risk score: {alert_data.get('riskScore', alert_data.get('risk_score', 'Unknown'))}
-    Sector: {alert_data.get('sector', 'Unknown')}
+    Pathogen: {alert_data.get("pathogen", "Unknown")}
+    Drug class: {alert_data.get("drugClass", alert_data.get("antibiotic_class", "Unknown"))}
+    County: {alert_data.get("county", "Unknown")}
+    Sub-county: {alert_data.get("subCounty", alert_data.get("sub_county", "Unknown"))}
+    Risk score: {alert_data.get("riskScore", alert_data.get("risk_score", "Unknown"))}
+    Sector: {alert_data.get("sector", "Unknown")}
 
     SHAP explanation:
-    Confidence: {explanation.get('confidence', 'N/A')}
+    Confidence: {explanation.get("confidence", "N/A")}
     Top contributors:
-    {chr(10).join([f"- {c['factor']}: {c['shap_value']:.3f} ({c['direction']})" for c in explanation.get('contributors', [])[:5]])}
+    {chr(10).join([f"- {c['factor']}: {c['shap_value']:.3f} ({c['direction']})" for c in explanation.get("contributors", [])[:5]])}
     """
 
     try:
@@ -98,14 +100,14 @@ def generate_comparison_response(prompt: str) -> str:
         raise
 
 
-import time as _time
 import hashlib as _hashlib
+import time as _time
 
-_INSIGHT_CACHE: Dict[str, tuple] = {}
+_INSIGHT_CACHE: dict[str, tuple] = {}
 _INSIGHT_TTL_SECONDS = 24 * 60 * 60
 
 
-def _insight_cache_key(context: str, data: Dict[str, Any]) -> str:
+def _insight_cache_key(context: str, data: dict[str, Any]) -> str:
     try:
         payload = f"{context}::{json.dumps(data, sort_keys=True, default=str)}"
     except Exception:
@@ -132,7 +134,7 @@ def _insight_cache_set(key: str, text: str) -> None:
             _INSIGHT_CACHE.pop(k, None)
 
 
-def generate_insight_response(context: str, data: Dict[str, Any]) -> str:
+def generate_insight_response(context: str, data: dict[str, Any]) -> str:
     """Produce a structured surveillance brief for a given context and dataset."""
     if not GEMINI_AVAILABLE:
         raise RuntimeError("Google GenAI SDK is not installed. Install with: pip install google-genai")

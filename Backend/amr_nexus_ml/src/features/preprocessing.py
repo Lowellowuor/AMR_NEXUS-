@@ -1,18 +1,14 @@
-import sys
-from pathlib import Path
-from typing import List, Dict, Any, Optional
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from joblib import dump, load
-from src.utils.logger import logger
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
 class FeaturePreprocessor:
     def __init__(self) -> None:
         self.scaler: StandardScaler = StandardScaler()
-        self.ohe: Optional[OneHotEncoder] = None
-        self.cat_cols: List[str] = [
+        self.ohe: OneHotEncoder | None = None
+        self.cat_cols: list[str] = [
             "sector",
             "specimen_type",
             "antibiotic_class",
@@ -24,13 +20,13 @@ class FeaturePreprocessor:
             "county",
             "sub_sector",
         ]
-        self.numeric_cols: List[str] = [
+        self.numeric_cols: list[str] = [
             "patient_age_years",
             "sample_month",
             "prior_antibiotic_use",
             "hospitalised",
         ]
-        self._feature_names_out: List[str] = []
+        self._feature_names_out: list[str] = []
 
     def fit(self, df: pd.DataFrame) -> "FeaturePreprocessor":
         df_clean = self._ensure_columns(df.copy())
@@ -38,11 +34,7 @@ class FeaturePreprocessor:
         df_clean = self._handle_missing(df_clean)
 
         if self.cat_cols:
-            self.ohe = OneHotEncoder(
-                sparse_output=False, 
-                handle_unknown="ignore", 
-                dtype=np.float32
-            )
+            self.ohe = OneHotEncoder(sparse_output=False, handle_unknown="ignore", dtype=np.float32)
             self.ohe.fit(df_clean[self.cat_cols].astype(str))
             cat_features = list(self.ohe.get_feature_names_out(self.cat_cols))
         else:
@@ -60,14 +52,8 @@ class FeaturePreprocessor:
         df_clean = self._handle_missing(df_clean)
 
         if self.numeric_cols:
-            numeric_scaled = self.scaler.transform(
-                df_clean[self.numeric_cols].astype(np.float32)
-            )
-            numeric_df = pd.DataFrame(
-                numeric_scaled, 
-                columns=self.numeric_cols, 
-                index=df_clean.index
-            )
+            numeric_scaled = self.scaler.transform(df_clean[self.numeric_cols].astype(np.float32))
+            numeric_df = pd.DataFrame(numeric_scaled, columns=self.numeric_cols, index=df_clean.index)
         else:
             numeric_df = pd.DataFrame(index=df_clean.index)
 
@@ -145,7 +131,7 @@ class FeaturePreprocessor:
         return df
 
     @property
-    def columns(self) -> List[str]:
+    def columns(self) -> list[str]:
         return self._feature_names_out
 
     def save(self, path: str) -> None:

@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import func
 from datetime import datetime
+
 import numpy as np
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sklearn.linear_model import LinearRegression
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from src.api.deps import get_db
 from src.db.models import AMRIsolateRecord
 from src.utils.logger import logger
-
 
 ews_router = APIRouter()
 
@@ -17,12 +18,12 @@ CACHE_TTL = 3600
 
 def get_monthly_rates(db: Session, county: str = None, months_back: int = 24):
     query = db.query(
-        func.date_trunc('month', AMRIsolateRecord.created_at).label('month'),
-        func.avg(AMRIsolateRecord.mdr_flag).label('rate')
+        func.date_trunc("month", AMRIsolateRecord.created_at).label("month"),
+        func.avg(AMRIsolateRecord.mdr_flag).label("rate"),
     )
     if county:
         query = query.filter(AMRIsolateRecord.county == county)
-    query = query.group_by('month').order_by('month').limit(months_back)
+    query = query.group_by("month").order_by("month").limit(months_back)
     rows = query.all()
     return [(row.month, float(row.rate)) for row in rows]
 
@@ -45,14 +46,13 @@ def generate_time_series_forecast(db: Session, county: str = None, forecast_mont
 
 @ews_router.get("/forecast")
 async def get_ews_forecast(
-    county: str = Query(None, description="Optional county filter"),
-    db: Session = Depends(get_db)
+    county: str = Query(None, description="Optional county filter"), db: Session = Depends(get_db)
 ):
     cache_key = f"forecast_{county or 'all'}"
     now = datetime.now().timestamp()
-    if cache_key in _cache and (now - _cache[cache_key]['timestamp']) < CACHE_TTL:
+    if cache_key in _cache and (now - _cache[cache_key]["timestamp"]) < CACHE_TTL:
         logger.info(f"Returning cached forecast for {cache_key}")
-        return _cache[cache_key]['data']
+        return _cache[cache_key]["data"]
 
     try:
         forecast = generate_time_series_forecast(db, county)

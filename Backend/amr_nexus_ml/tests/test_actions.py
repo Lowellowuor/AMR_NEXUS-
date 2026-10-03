@@ -1,4 +1,5 @@
 """Tests for the Action layer (PR #4)."""
+
 import uuid
 
 VALID_USER = {"username": "admin@amrnexus.com", "password": "ChangeMe123!"}
@@ -52,9 +53,7 @@ def test_create_action_invalid_source_type(client, auth_headers):
 
 def test_get_action(client, auth_headers):
     payload = {"title": _unique("Fetch me")}
-    created = client.post(
-        "/modules/actions", json=payload, headers=auth_headers
-    ).json()
+    created = client.post("/modules/actions", json=payload, headers=auth_headers).json()
     r = client.get(f"/modules/actions/{created['id']}", headers=auth_headers)
     assert r.status_code == 200, r.text
     assert r.json()["id"] == created["id"]
@@ -67,9 +66,7 @@ def test_get_action_not_found(client, auth_headers):
 
 def test_update_action(client, auth_headers):
     payload = {"title": _unique("Update me")}
-    created = client.post(
-        "/modules/actions", json=payload, headers=auth_headers
-    ).json()
+    created = client.post("/modules/actions", json=payload, headers=auth_headers).json()
     r = client.patch(
         f"/modules/actions/{created['id']}",
         json={"status": "in_progress", "priority": "critical"},
@@ -83,9 +80,7 @@ def test_update_action(client, auth_headers):
 
 def test_close_action(client, auth_headers):
     payload = {"title": _unique("Close me")}
-    created = client.post(
-        "/modules/actions", json=payload, headers=auth_headers
-    ).json()
+    created = client.post("/modules/actions", json=payload, headers=auth_headers).json()
     r = client.post(
         f"/modules/actions/{created['id']}/close",
         json={"status": "done", "closing_note": "Handled on site"},

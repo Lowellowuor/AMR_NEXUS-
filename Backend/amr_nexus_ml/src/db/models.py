@@ -94,7 +94,9 @@ class Comment(Base):
     __tablename__ = "comments"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    record_id = Column(UUID(as_uuid=True), ForeignKey("amr_isolate_records.record_id", ondelete="CASCADE"), nullable=False)
+    record_id = Column(
+        UUID(as_uuid=True), ForeignKey("amr_isolate_records.record_id", ondelete="CASCADE"), nullable=False
+    )
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     user_name = Column(String(100), nullable=False)
     text = Column(Text, nullable=False)
@@ -104,7 +106,9 @@ class RiskScore(Base):
     __tablename__ = "risk_scores"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    record_id = Column(UUID(as_uuid=True), ForeignKey("amr_isolate_records.record_id", ondelete="CASCADE"), nullable=False)
+    record_id = Column(
+        UUID(as_uuid=True), ForeignKey("amr_isolate_records.record_id", ondelete="CASCADE"), nullable=False
+    )
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     overall_risk_score = Column(Numeric(5, 4), nullable=False)
     anomaly_component = Column(Numeric(5, 4), nullable=False)
@@ -157,7 +161,13 @@ class AlertAcknowledgement(Base):
     __tablename__ = "alert_acknowledgements"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    record_id = Column(UUID(as_uuid=True), ForeignKey("amr_isolate_records.record_id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    record_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("amr_isolate_records.record_id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
     acknowledged = Column(Boolean, default=False)
     acknowledged_at = Column(DateTime, nullable=True)
     acknowledged_by = Column(String(100), nullable=True)
@@ -224,7 +234,12 @@ class PredictionLog(Base):
     __tablename__ = "prediction_logs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    record_id = Column(UUID(as_uuid=True), ForeignKey("amr_isolate_records.record_id", ondelete="CASCADE"), nullable=True, index=True)
+    record_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("amr_isolate_records.record_id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
     model_version = Column(String(50), nullable=True)
     latency_ms = Column(Numeric(10, 2), nullable=True)
@@ -251,7 +266,9 @@ class NotificationPreference(Base):
     __tablename__ = "notification_preferences"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
     email_enabled = Column(Boolean, default=True)
     email_severity = Column(String(20), default="critical")
     sms_enabled = Column(Boolean, default=False)

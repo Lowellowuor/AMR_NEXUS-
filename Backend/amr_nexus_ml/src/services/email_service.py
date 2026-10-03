@@ -1,14 +1,15 @@
 """SMTP email delivery."""
 
-import smtplib
 import os
-from email.mime.text import MIMEText
+import smtplib
 from email.mime.multipart import MIMEMultipart
-from typing import Dict, Any, Optional
+from email.mime.text import MIMEText
+from typing import Any
+
 from src.utils.logger import logger
 
 
-def _settings() -> Dict[str, Optional[str]]:
+def _settings() -> dict[str, str | None]:
     return {
         "host": os.getenv("SMTP_HOST"),
         "port": int(os.getenv("SMTP_PORT", "587")),
@@ -23,7 +24,7 @@ def is_configured() -> bool:
     return bool(s["host"] and s["user"] and s["password"])
 
 
-def send_email(to: str, subject: str, body_text: str, body_html: Optional[str] = None) -> Dict[str, Any]:
+def send_email(to: str, subject: str, body_text: str, body_html: str | None = None) -> dict[str, Any]:
     """Send an email. Returns {status, detail, ref}."""
     if not is_configured():
         logger.info("Email not configured — skipping send")

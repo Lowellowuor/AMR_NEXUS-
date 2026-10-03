@@ -1,12 +1,14 @@
 # Pre-commit hooks for the AMR Nexus monorepo.
 #
-# Scope: Python files only, under backend/amr_nexus_ml/.
-# Frontend ESLint hooks are deferred until the pre-existing lint debt
-# in frontend/docs/lint-status.md is cleared (Phase A3b).
+# Backend: Python files under Backend/amr_nexus_ml/ (Ruff)
+# Frontend: JS/JSX under frontend/src/ (ESLint)
+#
+# ESLint runs from the frontend/ directory so it resolves its config and
+# plugins from frontend/node_modules.
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.9
+    rev: v0.16.10
     hooks:
       - id: ruff
         name: ruff (backend)
@@ -17,7 +19,7 @@ repos:
         files: ^Backend/amr_nexus_ml/.*\.py$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v6.0.0
     hooks:
       - id: end-of-file-fixer
         files: ^Backend/amr_nexus_ml/.*\.(py|toml|yaml|yml|md|txt)$
@@ -26,3 +28,20 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
         args: [--maxkb=1024]
+
+  - repo: local
+    hooks:
+      - id: eslint-frontend
+        name: eslint (frontend)
+        entry: cmd /c "cd frontend && npx eslint src"
+        language: system
+        files: ^frontend/src/.*\.(js|jsx)$
+        pass_filenames: false
+        verbose: true
+      - id: eslint-frontend-config
+        name: eslint (frontend config)
+        entry: cmd /c "cd frontend && npx eslint *.config.js"
+        language: system
+        files: ^frontend/.*\.config\.js$
+        pass_filenames: false
+        verbose: true

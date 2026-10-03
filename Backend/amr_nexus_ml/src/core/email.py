@@ -2,7 +2,9 @@ import io
 import smtplib
 from datetime import datetime
 from email.message import EmailMessage
+
 from reportlab.pdfgen import canvas
+
 from src.core.config import settings
 from src.utils.logger import logger
 

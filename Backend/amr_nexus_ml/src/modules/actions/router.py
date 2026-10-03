@@ -5,6 +5,7 @@ authentication (via the global AuthMiddleware). Any authenticated user
 can create; only the assignee, the creator, or an admin can update or
 close an action.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -92,9 +93,7 @@ def get_action(
 ):
     action = service.get_action(db, action_id)
     if action is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Action not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action not found")
     return action
 
 
@@ -107,9 +106,7 @@ def update_action(
 ):
     action = service.get_action(db, action_id)
     if action is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Action not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action not found")
     if not _can_modify(action, user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -127,9 +124,7 @@ def close_action(
 ):
     action = service.get_action(db, action_id)
     if action is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Action not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action not found")
     if not _can_modify(action, user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
-import sqlalchemy as sa
-from datetime import datetime, date, timedelta
-from typing import Optional
+from datetime import date, datetime, timedelta
 from uuid import uuid4
 
-from src.api.deps import get_db, get_current_user
+import sqlalchemy as sa
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import desc, func
+from sqlalchemy.orm import Session
+
+from src.api.deps import get_current_user, get_db
 from src.db.models import AMRIsolateRecord, User
 
 reports_router = APIRouter(prefix="/reports", tags=["reports"])
@@ -169,7 +169,9 @@ def _section_recent_anomalies(db, start, end, county, limit=10):
     ]
 
 
-def _build_report_payload(report_type: str, scope: str, county: Optional[str], start: date, end: date, user: User, db: Session):
+def _build_report_payload(
+    report_type: str, scope: str, county: str | None, start: date, end: date, user: User, db: Session
+):
     config = REPORT_TYPES.get(report_type)
     if not config:
         raise HTTPException(status_code=400, detail=f"Unknown report type: {report_type}")
@@ -181,7 +183,9 @@ def _build_report_payload(report_type: str, scope: str, county: Optional[str], s
 
     period_start = start.isoformat()
     period_end = end.isoformat()
-    report_id = f"AMR-{'NAT' if scope == 'national' else 'CTY'}-{end.strftime('%Y-%m-%d')}-{uuid4().hex[:6].upper()}"
+    report_id = (
+        f"AMR-{'NAT' if scope == 'national' else 'CTY'}-{end.strftime('%Y-%m-%d')}-{uuid4().hex[:6].upper()}"
+    )
 
     metrics = _section_metrics(db, start, end, county if scope == "county" else None)
     trend = _section_trend(db, start, end, county if scope == "county" else None)
@@ -192,26 +196,35 @@ def _build_report_payload(report_type: str, scope: str, county: Optional[str], s
     sections = [
         {"id": "key_metrics", "title": "Key metrics", "type": "metrics", "data": metrics},
         {"id": "trend", "title": "Monthly MDR trend", "type": "trend", "data": trend},
-        {"id": "pathogens", "title": "Top pathogens by MDR rate", "type": "pathogen_table", "data": pathogens},
+        {
+            "id": "pathogens",
+            "title": "Top pathogens by MDR rate",
+            "type": "pathogen_table",
+            "data": pathogens,
+        },
         {"id": "sectors", "title": "Distribution by sector", "type": "sector_table", "data": sectors},
     ]
 
     if scope == "national":
         counties = _section_top_counties(db, start, end)
-        sections.append({
-            "id": "counties",
-            "title": "County coverage",
-            "type": "county_table",
-            "data": counties,
-        })
+        sections.append(
+            {
+                "id": "counties",
+                "title": "County coverage",
+                "type": "county_table",
+                "data": counties,
+            }
+        )
 
     if anomalies:
-        sections.append({
-            "id": "anomalies",
-            "title": "Recent flagged anomalies",
-            "type": "anomaly_list",
-            "data": anomalies,
-        })
+        sections.append(
+            {
+                "id": "anomalies",
+                "title": "Recent flagged anomalies",
+                "type": "anomaly_list",
+                "data": anomalies,
+            }
+        )
 
     return {
         "meta": {
@@ -243,10 +256,10 @@ async def list_report_types(current_user: User = Depends(get_current_user)):
 @reports_router.get("/generate")
 async def generate_report(
     type: str = Query(..., description="weekly_epi | monthly_county | quarterly_national"),
-    scope: Optional[str] = Query(None, description="national | county"),
-    county: Optional[str] = Query(None),
-    start_date: Optional[str] = Query(None),
-    end_date: Optional[str] = Query(None),
+    scope: str | None = Query(None, description="national | county"),
+    county: str | None = Query(None),
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

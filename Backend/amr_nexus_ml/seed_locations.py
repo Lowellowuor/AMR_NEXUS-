@@ -63,7 +63,7 @@ LOCATIONS = [
     ("Kajiado", "Kitengela", -1.5167, 36.9500),
 ]
 
-conn = sqlite3.connect('amr_data.db')
+conn = sqlite3.connect("amr_data.db")
 cur = conn.cursor()
 
 # Clear existing rows to avoid duplicates
@@ -72,7 +72,7 @@ cur.execute("DELETE FROM sub_county_locations")
 for county, sub_county, lat, lon in LOCATIONS:
     cur.execute(
         "INSERT INTO sub_county_locations (county, sub_county, latitude, longitude) VALUES (?, ?, ?, ?)",
-        (county, sub_county, lat, lon)
+        (county, sub_county, lat, lon),
     )
 
 conn.commit()

@@ -1,16 +1,15 @@
-from datetime import datetime, timezone
-from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
 from pydantic import BaseModel
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
 
-from src.api.deps import get_db, get_current_user, require_admin
-from src.db.models import User, NotificationLog, NotificationPreference
-from src.services.notification_service import (
-    get_or_create_prefs, dispatch_alert,
-)
+from src.api.deps import get_current_user, get_db, require_admin
+from src.db.models import NotificationLog, NotificationPreference, User
 from src.services import email_service
+from src.services.notification_service import (
+    dispatch_alert,
+    get_or_create_prefs,
+)
 
 router = APIRouter()
 
@@ -27,22 +26,22 @@ def _serialize_prefs(p: NotificationPreference) -> dict:
 
 
 class PrefsIn(BaseModel):
-    email_enabled: Optional[bool] = None
-    email_severity: Optional[str] = None
-    sms_enabled: Optional[bool] = None
-    sms_severity: Optional[str] = None
-    sms_phone: Optional[str] = None
-    desktop_enabled: Optional[bool] = None
+    email_enabled: bool | None = None
+    email_severity: str | None = None
+    sms_enabled: bool | None = None
+    sms_severity: str | None = None
+    sms_phone: str | None = None
+    desktop_enabled: bool | None = None
 
 
 class ManualSendIn(BaseModel):
-    alert_id: Optional[str] = None
+    alert_id: str | None = None
     severity: str = "high"
-    pathogen_code: Optional[str] = None
-    county: Optional[str] = None
-    message: Optional[str] = None
-    channels: Optional[List[str]] = None
-    recipient_email: Optional[str] = None
+    pathogen_code: str | None = None
+    county: str | None = None
+    message: str | None = None
+    channels: list[str] | None = None
+    recipient_email: str | None = None
 
 
 @router.get("/preferences")
@@ -99,7 +98,10 @@ async def manual_send(
             raise HTTPException(status_code=404, detail="Recipient not found")
         recipients = [target]
     results = dispatch_alert(
-        db, alert, recipients=recipients, force_channels=payload.channels,
+        db,
+        alert,
+        recipients=recipients,
+        force_channels=payload.channels,
     )
     return results
 
@@ -107,8 +109,8 @@ async def manual_send(
 @router.get("/log")
 async def list_log(
     limit: int = Query(100, ge=1, le=500),
-    channel: Optional[str] = None,
-    status: Optional[str] = None,
+    channel: str | None = None,
+    status: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):

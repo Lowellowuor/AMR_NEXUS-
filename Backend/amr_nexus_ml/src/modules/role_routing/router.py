@@ -3,6 +3,7 @@
 Mounted at /modules/role-routing by the module registry. Read for any
 authenticated user; write for admin only.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -53,9 +54,7 @@ def update_rule(
     _require_admin(user)
     rule = service.get_rule(db, rule_id)
     if rule is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Rule not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rule not found")
     return service.update_rule(db, rule, payload, updated_by=user.id)
 
 

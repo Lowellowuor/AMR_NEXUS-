@@ -1,4 +1,5 @@
 """SQLAlchemy model for Sampling Sites."""
+
 from datetime import UTC, datetime
 
 from sqlalchemy import (
@@ -36,9 +37,7 @@ class SamplingSite(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    created_at = Column(
-        DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True
-    )
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True)
     updated_at = Column(
         DateTime,
         default=lambda: datetime.now(UTC),

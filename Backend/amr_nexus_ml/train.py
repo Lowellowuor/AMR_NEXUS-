@@ -1,30 +1,35 @@
-import os
+import datetime
 import glob
 import json
-import joblib
-import datetime
+import os
+import warnings
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Any
 
+import click
+import joblib
 import numpy as np
 import pandas as pd
-import click
-import warnings
+
 warnings.filterwarnings("ignore")
 
-from sklearn.model_selection import train_test_split, StratifiedKFold
-from sklearn.metrics import (
-    roc_auc_score, precision_score, recall_score, f1_score, brier_score_loss,
-)
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+import shap
+import xgboost as xgb
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
 from sklearn.decomposition import TruncatedSVD
 from sklearn.ensemble import IsolationForest
+from sklearn.impute import SimpleImputer
 from sklearn.isotonic import IsotonicRegression
-import xgboost as xgb
-import shap
+from sklearn.metrics import (
+    brier_score_loss,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
+from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from src.core.config import settings
 from src.utils.logger import logger
@@ -36,8 +41,14 @@ RANDOM_STATE = 42
 STERILE_SITES = {"blood", "csf", "sterile_fluid"}
 
 FRONTEND_FEATURES = [
-    "sector", "sub_sector", "pathogen_code", "specimen_type",
-    "county", "antibiotic_class", "test_method", "sample_month",
+    "sector",
+    "sub_sector",
+    "pathogen_code",
+    "specimen_type",
+    "county",
+    "antibiotic_class",
+    "test_method",
+    "sample_month",
     "prior_antibiotic_exposure",
 ]
 
@@ -52,11 +63,11 @@ COLUMN_MAPPING = {
 
 class DataLoader:
     @staticmethod
-    def expand_paths(path_str: str) -> List[str]:
+    def expand_paths(path_str: str) -> list[str]:
         if not path_str:
             return []
         paths = [p.strip() for p in path_str.split(",") if p.strip()]
-        files: List[str] = []
+        files: list[str] = []
         for p in paths:
             if os.path.isdir(p):
                 files.extend(sorted(glob.glob(os.path.join(p, "*.csv"))))
@@ -80,11 +91,11 @@ class DataLoader:
     @staticmethod
     def from_path(
         path_str: str,
-        target_col: Optional[str] = None,
-        threshold: Optional[float] = None,
-        limit: Optional[int] = None,
-        encoding: Optional[str] = None,
-    ) -> Tuple[pd.DataFrame, pd.Series, List[str]]:
+        target_col: str | None = None,
+        threshold: float | None = None,
+        limit: int | None = None,
+        encoding: str | None = None,
+    ) -> tuple[pd.DataFrame, pd.Series, list[str]]:
         files = DataLoader.expand_paths(path_str)
         if not files:
             raise ValueError(f"No files found at {path_str}")
@@ -106,13 +117,10 @@ class DataLoader:
 
         if df[target_col].dtype == object:
             positive = {"resistant", "mdr", "positive", "yes", "1", "r"}
-            df[target_col] = (
-                df[target_col].astype(str).str.lower()
-                .map(lambda x: 1 if x in positive else 0)
-            )
+            df[target_col] = df[target_col].astype(str).str.lower().map(lambda x: 1 if x in positive else 0)
         else:
             unique_vals = set(df[target_col].dropna().unique())
-            if unique_vals.issubset({0, 1, 0.0, 1.0}):
+            if unique_vals.issubset({0, 1}):
                 df[target_col] = df[target_col].astype(int)
             else:
                 if threshold is None:
@@ -128,26 +136,21 @@ class DataLoader:
 def add_sterile_flag(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     if "specimen_type" in df.columns:
-        df["is_sterile_site"] = (
-            df["specimen_type"].astype(str).str.lower()
-            .isin(STERILE_SITES).astype(int)
-        )
+        df["is_sterile_site"] = df["specimen_type"].astype(str).str.lower().isin(STERILE_SITES).astype(int)
     else:
         df["is_sterile_site"] = 0
     return df
 
 
-def compute_pair_freq(df: pd.DataFrame) -> Dict[str, int]:
+def compute_pair_freq(df: pd.DataFrame) -> dict[str, int]:
     counts = df.groupby(["sector", "sub_sector"]).size().to_dict()
     return {f"{k[0]}_{k[1]}": v for k, v in counts.items()}
 
 
-def apply_pair_freq(df: pd.DataFrame, pair_freq_map: Dict[str, int]) -> pd.DataFrame:
+def apply_pair_freq(df: pd.DataFrame, pair_freq_map: dict[str, int]) -> pd.DataFrame:
     df = df.copy()
     df["sector_sub_pair_count"] = df.apply(
-        lambda r: pair_freq_map.get(
-            f"{r.get('sector', '')}_{r.get('sub_sector', '')}", 0
-        ),
+        lambda r: pair_freq_map.get(f"{r.get('sector', '')}_{r.get('sub_sector', '')}", 0),
         axis=1,
     )
     return df
@@ -159,18 +162,24 @@ class PreprocessorBuilder:
         numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
         categorical_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
 
-        numeric_pipe = Pipeline([
-            ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", StandardScaler()),
-        ])
-        categorical_pipe = Pipeline([
-            ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
-            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
-        ])
-        return ColumnTransformer([
-            ("num", numeric_pipe, numeric_cols),
-            ("cat", categorical_pipe, categorical_cols),
-        ])
+        numeric_pipe = Pipeline(
+            [
+                ("imputer", SimpleImputer(strategy="median")),
+                ("scaler", StandardScaler()),
+            ]
+        )
+        categorical_pipe = Pipeline(
+            [
+                ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
+                ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+            ]
+        )
+        return ColumnTransformer(
+            [
+                ("num", numeric_pipe, numeric_cols),
+                ("cat", categorical_pipe, categorical_cols),
+            ]
+        )
 
 
 def build_xgb(scale_pos_weight: float) -> xgb.XGBClassifier:
@@ -187,7 +196,7 @@ def build_xgb(scale_pos_weight: float) -> xgb.XGBClassifier:
     )
 
 
-def binary_metrics(y_true, y_proba, threshold: float = 0.5) -> Dict[str, float]:
+def binary_metrics(y_true, y_proba, threshold: float = 0.5) -> dict[str, float]:
     y_pred = (y_proba >= threshold).astype(int)
     return {
         "auc": float(roc_auc_score(y_true, y_proba)),
@@ -205,8 +214,8 @@ def subgroup_metrics(
     name: str,
     min_n: int = 10,
     top_n: int = 8,
-) -> Dict[str, Dict[str, Dict[str, float]]]:
-    out: Dict[str, Dict[str, float]] = {}
+) -> dict[str, dict[str, dict[str, float]]]:
+    out: dict[str, dict[str, float]] = {}
     for value, idx in groups.groupby(groups).groups.items():
         idx_list = list(idx)
         if len(idx_list) < min_n:
@@ -223,10 +232,10 @@ def subgroup_metrics(
     return {name: dict(ordered)}
 
 
-def cross_validate(X_base: pd.DataFrame, y: pd.Series) -> Tuple[List[float], List[float], np.ndarray]:
+def cross_validate(X_base: pd.DataFrame, y: pd.Series) -> tuple[list[float], list[float], np.ndarray]:
     skf = StratifiedKFold(n_splits=CV_FOLDS, shuffle=True, random_state=RANDOM_STATE)
-    aucs: List[float] = []
-    briers: List[float] = []
+    aucs: list[float] = []
+    briers: list[float] = []
     oof_proba = np.zeros(len(X_base))
 
     for fold, (train_idx, val_idx) in enumerate(skf.split(X_base, y), 1):
@@ -257,9 +266,18 @@ def cross_validate(X_base: pd.DataFrame, y: pd.Series) -> Tuple[List[float], Lis
 
 
 def save_artifacts(
-    model, preprocessor, iso_model, svd, shap_explainer,
-    anomaly_threshold, feature_names, original_features,
-    pair_freq_map, calibrator, X_sample, model_dir: Path,
+    model,
+    preprocessor,
+    iso_model,
+    svd,
+    shap_explainer,
+    anomaly_threshold,
+    feature_names,
+    original_features,
+    pair_freq_map,
+    calibrator,
+    X_sample,
+    model_dir: Path,
 ):
     model_dir.mkdir(parents=True, exist_ok=True)
 
@@ -300,7 +318,7 @@ def main(csv_path, target_col, threshold, limit, encoding, dry_run, model_dir_ov
     logger.info(f"CV AUC: {cv_auc_mean:.4f} +/- {cv_auc_std:.4f}")
     logger.info(f"CV Brier: {cv_brier_mean:.4f}")
 
-    subgroups: Dict[str, Any] = {}
+    subgroups: dict[str, Any] = {}
     for col in ["sector", "specimen_type", "county"]:
         if col in X_base.columns:
             subgroups.update(subgroup_metrics(y, oof_proba, X_base[col], col))
@@ -339,9 +357,7 @@ def main(csv_path, target_col, threshold, limit, encoding, dry_run, model_dir_ov
     svd = TruncatedSVD(n_components=n_components, random_state=RANDOM_STATE)
     X_tr_reduced = svd.fit_transform(X_tr_all_p)
 
-    iso_model = IsolationForest(
-        contamination=settings.ANOMALY_CONTAMINATION, random_state=RANDOM_STATE
-    )
+    iso_model = IsolationForest(contamination=settings.ANOMALY_CONTAMINATION, random_state=RANDOM_STATE)
     iso_model.fit(X_tr_reduced)
     anomaly_threshold = float(np.percentile(iso_model.score_samples(X_tr_reduced), 5))
 
@@ -352,14 +368,23 @@ def main(csv_path, target_col, threshold, limit, encoding, dry_run, model_dir_ov
 
     model_dir = Path(model_dir_override or settings.MODEL_DIR)
     save_artifacts(
-        final_model, pre_final, iso_model, svd, shap_explainer,
-        anomaly_threshold, feature_names, X_tr_all.columns,
-        pf_final, calibrator, X_sample, model_dir,
+        final_model,
+        pre_final,
+        iso_model,
+        svd,
+        shap_explainer,
+        anomaly_threshold,
+        feature_names,
+        X_tr_all.columns,
+        pf_final,
+        calibrator,
+        X_sample,
+        model_dir,
     )
 
     metrics = {
         "model_version": MODEL_VERSION,
-        "trained_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "trained_at": datetime.datetime.now(datetime.UTC).isoformat(),
         "training_rows": int(len(X_tr_all)),
         "holdout_rows": int(len(X_ho)),
         "cv_folds": CV_FOLDS,

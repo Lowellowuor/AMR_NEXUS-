@@ -1,4 +1,3 @@
-from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -6,7 +5,7 @@ class Settings(BaseSettings):
     # Application
     PROJECT_NAME: str = "AMR-Nexus ML API"
     API_V1_STR: str = "/api/v1"
-    CORS_ORIGINS: List[str] = ["http://localhost:5173"]
+    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
     LOG_LEVEL: str = "INFO"
 
     # Database
@@ -18,21 +17,27 @@ class Settings(BaseSettings):
     TRAINING_DATA_PATH: str = "./data/kenya_amr_3000_isolates.csv"
     SHAP_BACKGROUND_PATH: str = "./saved_models/shap_background.parquet"
     DATA_FILE_PATH: str = "./data/kenya_amr_3000_isolates.csv"
-    ANOMALY_FILE_PATH: Optional[str] = "./data/kenya_amr_anomaly_200.csv"
+    ANOMALY_FILE_PATH: str | None = "./data/kenya_amr_anomaly_200.csv"
     ANOMALY_RATIO: float = 0.05
 
     # Training
-    TARGET_COL: Optional[str] = "mdr_flag"
+    TARGET_COL: str | None = "mdr_flag"
     MDR_THRESHOLD: float = 0.5
     CSV_ENCODING: str = "utf-8"
-    LIMIT: Optional[int] = 3000
+    LIMIT: int | None = 3000
     SPLIT_BY_TIME: bool = False
 
     # Feature list
-    FRONTEND_FEATURES: List[str] = [
-        'sector', 'sub_sector', 'pathogen_code', 'specimen_type',
-        'county', 'antibiotic_class', 'test_method', 'sample_month',
-        'prior_antibiotic_exposure'
+    FRONTEND_FEATURES: list[str] = [
+        "sector",
+        "sub_sector",
+        "pathogen_code",
+        "specimen_type",
+        "county",
+        "antibiotic_class",
+        "test_method",
+        "sample_month",
+        "prior_antibiotic_exposure",
     ]
 
     # SHAP

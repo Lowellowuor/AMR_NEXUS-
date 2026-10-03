@@ -1,21 +1,25 @@
-﻿from sqlalchemy.orm import Session
-from sqlalchemy import func
+from datetime import datetime
+
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from src.db.models import AMRIsolateRecord
-from datetime import datetime
+
 
 def get_monthly_rates(db: Session, county: str = None, months_back: int = 24):
     query = db.query(
-        func.strftime('%Y-%m', AMRIsolateRecord.created_at).label('month'),
-        func.avg(AMRIsolateRecord.mdr_flag).label('rate')
+        func.strftime("%Y-%m", AMRIsolateRecord.created_at).label("month"),
+        func.avg(AMRIsolateRecord.mdr_flag).label("rate"),
     )
     if county:
         query = query.filter(AMRIsolateRecord.county == county)
-    query = query.group_by('month').order_by('month').limit(months_back)
+    query = query.group_by("month").order_by("month").limit(months_back)
     rows = query.all()
     # Convert string month back to datetime for further processing
-    return [(datetime.strptime(row.month, '%Y-%m'), float(row.rate)) for row in rows]
+    return [(datetime.strptime(row.month, "%Y-%m"), float(row.rate)) for row in rows]
+
 
 def generate_time_series_forecast(db: Session, county: str = None, forecast_months: int = 6):
     monthly = get_monthly_rates(db, county, months_back=24)

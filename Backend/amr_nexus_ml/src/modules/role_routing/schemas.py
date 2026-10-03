@@ -1,4 +1,5 @@
 """Pydantic v2 schemas for the role routing module."""
+
 from datetime import datetime
 from typing import Literal
 

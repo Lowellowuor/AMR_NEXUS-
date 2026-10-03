@@ -1,12 +1,15 @@
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from typing import Optional
+from datetime import UTC
 
-from src.api.deps import get_db, get_current_user, require_admin
-from src.db.models import User, ModelRegistry, PredictionLog
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
+from src.api.deps import get_current_user, get_db, require_admin
+from src.db.models import ModelRegistry, PredictionLog, User
 from src.services.model_health import (
-    compute_calibration, compute_drift, compute_performance,
+    compute_calibration,
+    compute_drift,
+    compute_performance,
 )
 
 router = APIRouter()
@@ -39,7 +42,12 @@ async def get_active_model(
 ):
     m = db.query(ModelRegistry).filter(ModelRegistry.is_active == True).first()
     if not m:
-        return {"version": "1.0.0", "algorithm": "XGBoost", "is_active": True, "notes": "Default from artifact files"}
+        return {
+            "version": "1.0.0",
+            "algorithm": "XGBoost",
+            "is_active": True,
+            "notes": "Default from artifact files",
+        }
     return {
         "id": m.id,
         "version": m.version,
@@ -119,11 +127,14 @@ async def register_model(
     if payload.get("is_active"):
         db.query(ModelRegistry).update({ModelRegistry.is_active: False})
 
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     entry = ModelRegistry(
         version=version,
         algorithm=payload.get("algorithm"),
-        trained_at=datetime.fromisoformat(payload["trained_at"]) if payload.get("trained_at") else datetime.now(timezone.utc),
+        trained_at=datetime.fromisoformat(payload["trained_at"])
+        if payload.get("trained_at")
+        else datetime.now(UTC),
         metrics=payload.get("metrics"),
         feature_names=payload.get("feature_names"),
         artifact_path=payload.get("artifact_path"),

@@ -4,6 +4,7 @@ Aggregation is performed here. Raw quantity + unit is stored as entered;
 normalisation to standard units happens at read time so the schema never
 needs to change when new units are added.
 """
+
 from datetime import datetime
 
 from sqlalchemy import desc, func, select
@@ -27,7 +28,7 @@ _UNIT_TO_GRAMS = {
     "mg": 0.001,
     "g": 1.0,
     "kg": 1000.0,
-    "ml": 1.0,      # assume density ~1 for liquids for now
+    "ml": 1.0,  # assume density ~1 for liquids for now
     "l": 1000.0,
     "tablet": 1.0,
     "dose": 1.0,
@@ -43,6 +44,7 @@ def normalise_quantity(quantity: float, unit: str) -> float:
 
 
 # ---------- Drug reference ----------
+
 
 def list_drugs(db: Session, active_only: bool = False) -> list[AMUDrug]:
     stmt = select(AMUDrug)
@@ -64,6 +66,7 @@ def create_drug(db: Session, payload: DrugReferenceCreate) -> AMUDrug:
 
 
 # ---------- Consumption ----------
+
 
 def list_consumption(
     db: Session,
@@ -123,9 +126,7 @@ def summarise(
     end: datetime | None = None,
 ) -> SummaryResponse:
     if dimension not in _ALLOWED_DIMENSIONS:
-        raise ValueError(
-            f"dimension must be one of {sorted(_ALLOWED_DIMENSIONS.keys())}"
-        )
+        raise ValueError(f"dimension must be one of {sorted(_ALLOWED_DIMENSIONS.keys())}")
     column = _ALLOWED_DIMENSIONS[dimension]
 
     stmt = select(
@@ -174,11 +175,15 @@ def trend(
     # simple and portable via func.strftime for the pilot.
     period_col = func.strftime("%Y-%m", AMUConsumption.period_start).label("period")
 
-    stmt = select(
-        period_col,
-        func.sum(AMUConsumption.quantity),
-        func.count(AMUConsumption.id),
-    ).group_by(period_col).order_by(period_col)
+    stmt = (
+        select(
+            period_col,
+            func.sum(AMUConsumption.quantity),
+            func.count(AMUConsumption.id),
+        )
+        .group_by(period_col)
+        .order_by(period_col)
+    )
 
     if county:
         stmt = stmt.where(AMUConsumption.county == county)
@@ -190,10 +195,7 @@ def trend(
         stmt = stmt.where(AMUConsumption.period_start <= end)
 
     rows = db.execute(stmt).all()
-    points = [
-        TrendPoint(period=str(p), quantity=float(q or 0.0), records=int(r or 0))
-        for p, q, r in rows
-    ]
+    points = [TrendPoint(period=str(p), quantity=float(q or 0.0), records=int(r or 0)) for p, q, r in rows]
     return TrendResponse(county=county, drug_id=drug_id, points=points)
 
 

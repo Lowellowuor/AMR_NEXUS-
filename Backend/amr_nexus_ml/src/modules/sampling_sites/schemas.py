@@ -1,12 +1,11 @@
 """Pydantic v2 schemas for the Sampling Sites module."""
+
 from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-SiteType = Literal[
-    "farm", "clinic", "market", "abattoir", "environmental", "other"
-]
+SiteType = Literal["farm", "clinic", "market", "abattoir", "environmental", "other"]
 Sector = Literal["human", "animal", "environment"]
 
 

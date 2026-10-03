@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
-from sqlalchemy import or_, desc, func
-from typing import Optional
-from datetime import datetime, timedelta, date
-import io
 import csv
+import io
+from datetime import date, datetime, timedelta
+
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
+from sqlalchemy import desc, func, or_
+from sqlalchemy.orm import Session
 
 from src.api.deps import get_db, require_admin
 from src.db.models import AuditEvent, User
@@ -35,9 +35,11 @@ def _serialize(e: AuditEvent) -> dict:
 def _apply_filters(q, actor, action, resource, result, start_date, end_date, search):
     if actor:
         like = f"%{actor.lower()}%"
-        q = q.filter(or_(
-            func.lower(AuditEvent.actor_email).like(like),
-        ))
+        q = q.filter(
+            or_(
+                func.lower(AuditEvent.actor_email).like(like),
+            )
+        )
     if action and action != "all":
         q = q.filter(AuditEvent.action == action)
     if resource and resource != "all":
@@ -57,23 +59,25 @@ def _apply_filters(q, actor, action, resource, result, start_date, end_date, sea
             pass
     if search:
         like = f"%{search}%"
-        q = q.filter(or_(
-            AuditEvent.path.ilike(like),
-            AuditEvent.resource_id.ilike(like),
-            AuditEvent.actor_email.ilike(like),
-        ))
+        q = q.filter(
+            or_(
+                AuditEvent.path.ilike(like),
+                AuditEvent.resource_id.ilike(like),
+                AuditEvent.actor_email.ilike(like),
+            )
+        )
     return q
 
 
 @audit_router.get("/events")
 async def list_events(
-    actor: Optional[str] = None,
-    action: Optional[str] = None,
-    resource: Optional[str] = None,
-    result: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    search: Optional[str] = None,
+    actor: str | None = None,
+    action: str | None = None,
+    resource: str | None = None,
+    result: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    search: str | None = None,
     limit: int = Query(100, ge=1, le=1000),
     skip: int = Query(0, ge=0),
     db: Session = Depends(get_db),
@@ -102,12 +106,19 @@ async def audit_stats(
     total = db.query(AuditEvent).count()
     today = db.query(AuditEvent).filter(AuditEvent.occurred_at >= day_ago).count()
     week = db.query(AuditEvent).filter(AuditEvent.occurred_at >= week_ago).count()
-    denied = db.query(AuditEvent).filter(AuditEvent.result == "denied", AuditEvent.occurred_at >= week_ago).count()
+    denied = (
+        db.query(AuditEvent).filter(AuditEvent.result == "denied", AuditEvent.occurred_at >= week_ago).count()
+    )
 
-    distinct_actors = db.query(func.count(func.distinct(AuditEvent.actor_id))).filter(
-        AuditEvent.occurred_at >= week_ago,
-        AuditEvent.actor_id.isnot(None),
-    ).scalar() or 0
+    distinct_actors = (
+        db.query(func.count(func.distinct(AuditEvent.actor_id)))
+        .filter(
+            AuditEvent.occurred_at >= week_ago,
+            AuditEvent.actor_id.isnot(None),
+        )
+        .scalar()
+        or 0
+    )
 
     return {
         "total": total,
@@ -120,13 +131,13 @@ async def audit_stats(
 
 @audit_router.get("/export")
 async def export_events(
-    actor: Optional[str] = None,
-    action: Optional[str] = None,
-    resource: Optional[str] = None,
-    result: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    search: Optional[str] = None,
+    actor: str | None = None,
+    action: str | None = None,
+    resource: str | None = None,
+    result: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    search: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
@@ -136,25 +147,39 @@ async def export_events(
 
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow([
-        "id", "occurred_at", "actor_email", "actor_role", "action", "resource",
-        "resource_id", "method", "path", "status_code", "result", "ip_address",
-    ])
+    writer.writerow(
+        [
+            "id",
+            "occurred_at",
+            "actor_email",
+            "actor_role",
+            "action",
+            "resource",
+            "resource_id",
+            "method",
+            "path",
+            "status_code",
+            "result",
+            "ip_address",
+        ]
+    )
     for e in rows:
-        writer.writerow([
-            e.id,
-            e.occurred_at.isoformat() if e.occurred_at else "",
-            e.actor_email or "",
-            e.actor_role or "",
-            e.action or "",
-            e.resource or "",
-            e.resource_id or "",
-            e.method or "",
-            e.path or "",
-            e.status_code or "",
-            e.result or "",
-            e.ip_address or "",
-        ])
+        writer.writerow(
+            [
+                e.id,
+                e.occurred_at.isoformat() if e.occurred_at else "",
+                e.actor_email or "",
+                e.actor_role or "",
+                e.action or "",
+                e.resource or "",
+                e.resource_id or "",
+                e.method or "",
+                e.path or "",
+                e.status_code or "",
+                e.result or "",
+                e.ip_address or "",
+            ]
+        )
     buf.seek(0)
     filename = f"audit_events_{date.today()}.csv"
     return StreamingResponse(

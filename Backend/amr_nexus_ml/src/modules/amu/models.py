@@ -1,4 +1,5 @@
 """SQLAlchemy models for the AMU/AMC module."""
+
 from datetime import UTC, datetime
 
 from sqlalchemy import (
@@ -26,9 +27,7 @@ class AMUDrug(Base):
     route = Column(String(50), nullable=True)
     species_approved = Column(String(200), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(
-        DateTime, default=lambda: datetime.now(UTC), nullable=False
-    )
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
 
     consumption = relationship("AMUConsumption", back_populates="drug")
 

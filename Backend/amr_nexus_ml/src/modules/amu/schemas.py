@@ -1,4 +1,5 @@
 """Pydantic v2 schemas for the AMU/AMC module."""
+
 from datetime import datetime
 from typing import Literal
 

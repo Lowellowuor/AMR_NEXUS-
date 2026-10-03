@@ -1,14 +1,13 @@
 import secrets
-from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import desc, func, or_
-from typing import Optional
-from pydantic import BaseModel, EmailStr
+from sqlalchemy.orm import Session
 
 from src.api.deps import get_db, require_admin
-from src.db.models import User, AuditEvent
 from src.core.security import hash_password
+from src.db.models import AuditEvent, User
 
 router = APIRouter()
 
@@ -39,30 +38,32 @@ class UserCreate(BaseModel):
     email: str
     name: str
     role: str = "analyst"
-    assigned_county: Optional[str] = None
-    initial_password: Optional[str] = None
+    assigned_county: str | None = None
+    initial_password: str | None = None
 
 
 class UserUpdate(BaseModel):
-    name: Optional[str] = None
-    role: Optional[str] = None
-    assigned_county: Optional[str] = None
-    is_active: Optional[bool] = None
+    name: str | None = None
+    role: str | None = None
+    assigned_county: str | None = None
+    is_active: bool | None = None
 
 
 @router.get("/users")
 async def list_users(
-    search: Optional[str] = None,
+    search: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
     q = db.query(User)
     if search:
         like = f"%{search.lower()}%"
-        q = q.filter(or_(
-            func.lower(User.email).like(like),
-            func.lower(User.name).like(like),
-        ))
+        q = q.filter(
+            or_(
+                func.lower(User.email).like(like),
+                func.lower(User.name).like(like),
+            )
+        )
     rows = q.order_by(desc(User.created_at)).all()
     return [_serialize(u) for u in rows]
 
@@ -102,18 +103,20 @@ async def create_user(
     db.commit()
     db.refresh(user)
 
-    db.add(AuditEvent(
-        actor_id=current_user.id,
-        actor_email=current_user.email,
-        actor_role=current_user.role,
-        action="create",
-        resource="user",
-        resource_id=str(user.id),
-        method="POST",
-        path="/admin/users",
-        status_code=201,
-        result="success",
-    ))
+    db.add(
+        AuditEvent(
+            actor_id=current_user.id,
+            actor_email=current_user.email,
+            actor_role=current_user.role,
+            action="create",
+            resource="user",
+            resource_id=str(user.id),
+            method="POST",
+            path="/admin/users",
+            status_code=201,
+            result="success",
+        )
+    )
     db.commit()
 
     return {
@@ -134,7 +137,7 @@ async def update_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     if payload.role is not None and payload.role not in VALID_ROLES:
-        raise HTTPException(status_code=400, detail=f"Invalid role")
+        raise HTTPException(status_code=400, detail="Invalid role")
 
     # Prevent admin from disabling or demoting themselves
     if user.id == current_user.id:
@@ -159,18 +162,20 @@ async def update_user(
     db.commit()
     db.refresh(user)
 
-    db.add(AuditEvent(
-        actor_id=current_user.id,
-        actor_email=current_user.email,
-        actor_role=current_user.role,
-        action="update",
-        resource="user",
-        resource_id=str(user.id),
-        method="PATCH",
-        path=f"/admin/users/{user_id}",
-        status_code=200,
-        result="success",
-    ))
+    db.add(
+        AuditEvent(
+            actor_id=current_user.id,
+            actor_email=current_user.email,
+            actor_role=current_user.role,
+            action="update",
+            resource="user",
+            resource_id=str(user.id),
+            method="PATCH",
+            path=f"/admin/users/{user_id}",
+            status_code=200,
+            result="success",
+        )
+    )
     db.commit()
 
     return _serialize(user)
@@ -192,18 +197,20 @@ async def reset_password(
     user.token_version = (user.token_version or 1) + 1
     db.commit()
 
-    db.add(AuditEvent(
-        actor_id=current_user.id,
-        actor_email=current_user.email,
-        actor_role=current_user.role,
-        action="update",
-        resource="user_password",
-        resource_id=str(user.id),
-        method="POST",
-        path=f"/admin/users/{user_id}/reset-password",
-        status_code=200,
-        result="success",
-    ))
+    db.add(
+        AuditEvent(
+            actor_id=current_user.id,
+            actor_email=current_user.email,
+            actor_role=current_user.role,
+            action="update",
+            resource="user_password",
+            resource_id=str(user.id),
+            method="POST",
+            path=f"/admin/users/{user_id}/reset-password",
+            status_code=200,
+            result="success",
+        )
+    )
     db.commit()
 
     return {"user_id": user.id, "temp_password": temp}
@@ -225,17 +232,19 @@ async def disable_user(
     user.token_version = (user.token_version or 1) + 1
     db.commit()
 
-    db.add(AuditEvent(
-        actor_id=current_user.id,
-        actor_email=current_user.email,
-        actor_role=current_user.role,
-        action="delete",
-        resource="user",
-        resource_id=str(user.id),
-        method="DELETE",
-        path=f"/admin/users/{user_id}",
-        status_code=204,
-        result="success",
-    ))
+    db.add(
+        AuditEvent(
+            actor_id=current_user.id,
+            actor_email=current_user.email,
+            actor_role=current_user.role,
+            action="delete",
+            resource="user",
+            resource_id=str(user.id),
+            method="DELETE",
+            path=f"/admin/users/{user_id}",
+            status_code=204,
+            result="success",
+        )
+    )
     db.commit()
     return None

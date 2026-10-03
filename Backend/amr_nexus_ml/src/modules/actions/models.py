@@ -1,4 +1,5 @@
 """SQLAlchemy model for the Action layer."""
+
 from datetime import UTC, datetime
 
 from sqlalchemy import (
@@ -45,9 +46,7 @@ class ActionPlan(Base):
         index=True,
     )
 
-    created_at = Column(
-        DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True
-    )
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True)
     updated_at = Column(
         DateTime,
         default=lambda: datetime.now(UTC),

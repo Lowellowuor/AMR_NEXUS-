@@ -6,6 +6,7 @@ from src.db.models, plus any module models, so autogenerate sees the full
 schema. Uses batch mode for SQLite compatibility (SQLite cannot ALTER
 columns in place).
 """
+
 from logging.config import fileConfig
 
 from alembic import context
