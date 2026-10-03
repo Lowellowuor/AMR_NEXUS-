@@ -165,3 +165,16 @@ def top_drugs(
         end=end,
         limit=limit,
     )
+
+
+@router.get("/aware-breakdown")
+def aware_breakdown_endpoint(
+    county: str | None = Query(None),
+    sector: str | None = Query(None),
+    start: datetime | None = Query(None),
+    end: datetime | None = Query(None),
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    """Consumption aggregated by WHO AWaRe category."""
+    return service.aware_breakdown(db, county=county, sector=sector, start=start, end=end)

@@ -240,3 +240,72 @@ def top_drugs(
         for did, name, q, r in rows
     ]
     return TopDrugsResponse(items=items, limit=limit)
+
+
+def aware_breakdown(
+    db: Session,
+    county: str | None = None,
+    sector: str | None = None,
+    start: datetime | None = None,
+    end: datetime | None = None,
+) -> dict:
+    """Aggregate consumption by WHO AWaRe category.
+
+    Access / Watch / Reserve are the WHO 2017 classification tiers.
+    Any drug without a who_category set is bucketed as Unclassified so the
+    Access percentage remains honest.
+    """
+    # Join consumption to drug reference to get the WHO category
+    stmt = (
+        select(
+            AMUDrug.who_category,
+            func.sum(AMUConsumption.quantity),
+            func.count(AMUConsumption.id),
+        )
+        .join(AMUConsumption, AMUConsumption.drug_id == AMUDrug.id)
+        .group_by(AMUDrug.who_category)
+    )
+
+    if county:
+        stmt = stmt.where(AMUConsumption.county == county)
+    if sector:
+        stmt = stmt.where(AMUConsumption.sector == sector)
+    if start:
+        stmt = stmt.where(AMUConsumption.period_start >= start)
+    if end:
+        stmt = stmt.where(AMUConsumption.period_start <= end)
+
+    rows = db.execute(stmt).all()
+
+    buckets = {"Access": 0.0, "Watch": 0.0, "Reserve": 0.0, "Unclassified": 0.0}
+    records = {"Access": 0, "Watch": 0, "Reserve": 0, "Unclassified": 0}
+
+    for category, quantity, n in rows:
+        key = category if category in ("Access", "Watch", "Reserve") else "Unclassified"
+        buckets[key] += float(quantity or 0.0)
+        records[key] += int(n or 0)
+
+    total = sum(buckets.values())
+    total_records = sum(records.values())
+
+    # Access% is only meaningful if we exclude Unclassified from the denominator.
+    classified_total = buckets["Access"] + buckets["Watch"] + buckets["Reserve"]
+
+    return {
+        "totals": {k: round(v, 2) for k, v in buckets.items()},
+        "records": records,
+        "total_quantity": round(total, 2),
+        "total_records": total_records,
+        "classified_total": round(classified_total, 2),
+        "access_percent": round((buckets["Access"] / classified_total) * 100, 1)
+        if classified_total > 0
+        else 0.0,
+        "watch_percent": round((buckets["Watch"] / classified_total) * 100, 1)
+        if classified_total > 0
+        else 0.0,
+        "reserve_percent": round((buckets["Reserve"] / classified_total) * 100, 1)
+        if classified_total > 0
+        else 0.0,
+        "unclassified_percent": round((buckets["Unclassified"] / total) * 100, 1) if total > 0 else 0.0,
+        "who_target_access_percent": 60.0,
+    }

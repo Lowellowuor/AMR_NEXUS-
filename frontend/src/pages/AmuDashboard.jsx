@@ -7,6 +7,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import DrugForm from '../components/amu/DrugForm';
 import ConsumptionForm from '../components/amu/ConsumptionForm';
+import AwareBreakdownPanel from '../components/amu/AwareBreakdownPanel';
 import { useAuth } from '../contexts/AuthContext';
 
 const DIMENSIONS = [
@@ -165,6 +166,8 @@ export default function AmuDashboard() {
           icon={MapPinIcon}
         />
       </div>
+
+      <AwareBreakdownPanel />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-[var(--bg-secondary)]/80 p-5 rounded-2xl">

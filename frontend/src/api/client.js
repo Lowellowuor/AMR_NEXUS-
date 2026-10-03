@@ -228,6 +228,8 @@ export const api = {
     authFetch(`${API_BASE}/modules/amu/trend?${params}`).then(handleResponse),
   getAmuTopDrugs: (params = '') =>
     authFetch(`${API_BASE}/modules/amu/top-drugs?${params}`).then(handleResponse),
+  getAmuAwareBreakdown: (params = '') =>
+    authFetch(`${API_BASE}/modules/amu/aware-breakdown?${params}`).then(handleResponse),
 
   // ---- Sampling Sites module ----
   getSamplingSites: (params = '') =>
