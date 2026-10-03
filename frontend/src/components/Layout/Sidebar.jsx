@@ -59,6 +59,7 @@ export default function Sidebar({ role = 'national', mobile = false, onNavigate 
       label: 'Analytics',
       items: [
         { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
+        { name: 'EWS Forecast', href: '/ews-forecast', icon: ChartBarIcon },
         { name: 'Reports', href: '/reports', icon: DocumentChartBarIcon },
       ],
     },

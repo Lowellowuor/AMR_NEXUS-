@@ -31,6 +31,7 @@ import RoleRouting from './pages/RoleRouting';
 import Landing from './pages/Landing';
 import ActivityLog from './pages/ActivityLog';
 import OneHealth from './pages/OneHealth';
+import EwsForecast from './pages/EwsForecast';
 
 const wrap = (el) => <ErrorBoundary>{el}</ErrorBoundary>;
 
@@ -78,6 +79,7 @@ function AppRoutes() {
         <Route path="compare" element={wrap(<Compare />)} />
         <Route path="pathogen-explorer" element={wrap(<PathogenExplorer />)} />
             <Route path="one-health" element={wrap(<OneHealth />)} />
+            <Route path="ews-forecast" element={wrap(<EwsForecast />)} />
         <Route path="bulk-import" element={wrap(<BulkImport />)} />
         <Route path="compare-analytics" element={wrap(<CompareAnalytics />)} />
         <Route path="data-quality" element={wrap(<DataQuality />)} />
