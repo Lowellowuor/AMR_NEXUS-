@@ -13,6 +13,7 @@ import {
   ShieldCheckIcon,
   UsersIcon,
   ShieldExclamationIcon,
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -49,6 +50,7 @@ export default function Sidebar({ role = 'national', mobile = false, onNavigate 
     {
       label: 'One Health',
       items: [
+        { name: 'One Health Overview', href: '/one-health', icon: GlobeAltIcon },
         { name: 'Antimicrobial Use', href: '/amu', icon: BeakerIcon },
         { name: 'Sampling Sites', href: '/sampling-sites', icon: MapPinIcon },
       ],
