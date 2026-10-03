@@ -16,16 +16,34 @@ _cache = {}
 CACHE_TTL = 3600
 
 
+# NOTE: uses SQLite strftime for month bucketing. On PostgreSQL this must be
+# switched to to_char(created_at, ''YYYY-MM''). See ADR-0003 for migration
+# strategy; a dialect-aware helper is planned.
 def get_monthly_rates(db: Session, county: str = None, months_back: int = 24):
     query = db.query(
-        func.date_trunc("month", AMRIsolateRecord.created_at).label("month"),
+        func.strftime("%Y-%m", AMRIsolateRecord.created_at).label("month"),
         func.avg(AMRIsolateRecord.mdr_flag).label("rate"),
+        func.count(AMRIsolateRecord.record_id).label("n"),
     )
     if county:
         query = query.filter(AMRIsolateRecord.county == county)
     query = query.group_by("month").order_by("month").limit(months_back)
     rows = query.all()
-    return [(row.month, float(row.rate)) for row in rows]
+    return [{"month": row.month, "rate": float(row.rate) * 100, "samples": int(row.n)} for row in rows]
+
+
+def _next_months_from(last_month: str, count: int) -> list[str]:
+    """Given a 'YYYY-MM' string, return the next `count` months."""
+    y, m = last_month.split("-")
+    y, m = int(y), int(m)
+    out = []
+    for _ in range(count):
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+        out.append(f"{y:04d}-{m:02d}")
+    return out
 
 
 def generate_time_series_forecast(db: Session, county: str = None, forecast_months: int = 6):
@@ -33,15 +51,39 @@ def generate_time_series_forecast(db: Session, county: str = None, forecast_mont
     if len(monthly) < 3:
         raise ValueError(f"Insufficient historical data for forecast (county={county})")
 
-    rates = [rate for _, rate in monthly]
+    rates = [point["rate"] for point in monthly]
     X = np.arange(len(rates)).reshape(-1, 1)
     y = np.array(rates).reshape(-1, 1)
 
     model = LinearRegression().fit(X, y)
     future_indices = np.arange(len(rates), len(rates) + forecast_months).reshape(-1, 1)
     predictions = model.predict(future_indices).flatten()
-    predictions = np.clip(predictions, 0, 1) * 100
-    return [{"predicted_mdr_rate": round(float(p), 2)} for p in predictions]
+    predictions = np.clip(predictions, 0, 100)
+
+    # Residual standard deviation as a rough confidence band
+    fitted = model.predict(X).flatten()
+    residuals = np.array(rates) - fitted
+    band = float(np.std(residuals)) if len(residuals) > 1 else 0.0
+
+    last_month = monthly[-1]["month"] if monthly else None
+    future_months = _next_months_from(last_month, forecast_months) if last_month else []
+
+    forecast_points = [
+        {
+            "month": future_months[i] if i < len(future_months) else f"+{i + 1}",
+            "predicted_mdr_rate": round(float(p), 2),
+            "lower": round(max(0.0, float(p) - 1.96 * band), 2),
+            "upper": round(min(100.0, float(p) + 1.96 * band), 2),
+        }
+        for i, p in enumerate(predictions)
+    ]
+
+    return {
+        "county": county,
+        "history": monthly,
+        "forecast": forecast_points,
+        "band": round(band, 2),
+    }
 
 
 @ews_router.get("/forecast")
