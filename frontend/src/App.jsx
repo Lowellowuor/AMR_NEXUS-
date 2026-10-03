@@ -28,6 +28,8 @@ import AmuDashboard from './pages/AmuDashboard';
 import SamplingSites from './pages/SamplingSites';
 import Actions from './pages/Actions';
 import RoleRouting from './pages/RoleRouting';
+import Landing from './pages/Landing';
+import ActivityLog from './pages/ActivityLog';
 
 const wrap = (el) => <ErrorBoundary>{el}</ErrorBoundary>;
 
@@ -48,7 +50,8 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      <Route path="/welcome" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
 
       <Route
         element={
@@ -70,6 +73,7 @@ function AppRoutes() {
         <Route path="alerts" element={wrap(<Alerts />)} />
         <Route path="reports" element={wrap(<Reports />)} />
         <Route path="settings" element={wrap(<Settings />)} />
+            <Route path="activity" element={wrap(<ActivityLog />)} />
         <Route path="compare" element={wrap(<Compare />)} />
         <Route path="pathogen-explorer" element={wrap(<PathogenExplorer />)} />
         <Route path="bulk-import" element={wrap(<BulkImport />)} />
