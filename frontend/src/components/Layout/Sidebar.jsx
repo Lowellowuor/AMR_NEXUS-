@@ -14,6 +14,7 @@ import {
   UsersIcon,
   ShieldExclamationIcon,
   GlobeAltIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -35,6 +36,7 @@ export default function Sidebar({ role = 'national', mobile = false, onNavigate 
       label: 'Clinical',
       items: [
         { name: 'Predict', href: '/predict', icon: BeakerIcon },
+        { name: 'Clinical Guidance', href: '/guidance', icon: SparklesIcon },
         { name: 'History', href: '/history', icon: ClockIcon },
         { name: 'Pathogen Explorer', href: '/pathogen-explorer', icon: MagnifyingGlassIcon },
       ],

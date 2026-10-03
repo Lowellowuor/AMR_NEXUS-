@@ -141,6 +141,14 @@ export const api = {
   }).then(handleResponse),
   getForecast: (params = '') => authFetch(`${API_BASE}/ews/forecast?${params}`).then(handleResponse),
   getRecommendations: (pathogen, antibioticClass) => authFetch(`${API_BASE}/recommendations/${pathogen}/${antibioticClass}`).then(handleResponse),
+
+  // Clinical guidance: ranked drug alternatives from the ML model
+  getGuidanceRecommendation: (payload) =>
+    authFetch(`${API_BASE}/recommend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(handleResponse),
   getAlertExplanation: (alertId) => authFetch(`${API_BASE}/alerts/${alertId}/explanation`).then(handleResponse),
   getAlertDetail: (alertId) => authFetch(`${API_BASE}/alerts/${alertId}`).then(handleResponse),
   getPredictionExplanation: (recordId) => authFetch(`${API_BASE}/predictions/${recordId}/explanation`).then(handleResponse),
