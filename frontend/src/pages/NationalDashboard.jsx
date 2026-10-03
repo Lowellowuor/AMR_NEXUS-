@@ -7,7 +7,7 @@ import { TrendingUp, TrendingDown, Minus, Globe2, Beaker, AlertTriangle, Activit
 
 import _api from '../api/client';
 import {
-  getDashboardSummary, getGlassIndicators, getTopCountiesWithTrend, getMDRTrend,
+  getDashboardSummary, getTopCountiesWithTrend, getMDRTrend,
   getResistanceByPathogen, fetchAlerts, getCountyDetail,
 } from '../api/endpoints';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -25,6 +25,7 @@ import AlertDetailDrawer from '../components/alerts/AlertsDetailDrawer';
 import AnomalySummary from '../components/trends/AnomalySummary';
 import CriticalAlertBanner from '../components/alerts/CriticalAlertBanner';
 import LLMInsight from '../components/ui/LLMInsight';
+import GlassIndicatorStrip from '../components/dashboard/GlassIndicatorStrip';
 import EmptyState from '../components/ui/EmptyState';
 import { Skeleton } from '../components/ui/Skeleton';
 
@@ -87,24 +88,6 @@ function MetricCard({ label, value, delta, hint, tone = 'default', icon: Icon })
   );
 }
 
-function GlassCard({ label, data }) {
-  const tone = data.rate >= 60 ? 'critical' : data.rate >= 30 ? 'warning' : 'success';
-  const toneClass = {
-    critical: 'text-[var(--status-critical)]',
-    warning: 'text-[var(--status-warning)]',
-    success: 'text-[var(--status-success)]',
-  }[tone];
-  return (
-    <div className="rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{label}</p>
-      <p className={`text-xl font-bold tabular-nums mt-1 ${toneClass}`}>{formatPercent(data.rate)}</p>
-      <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
-        {data.mdr} MDR of {data.samples} samples
-      </p>
-    </div>
-  );
-}
-
 export default function NationalDashboard() {
   usePageTitle('National Dashboard');
   const [range, setRange] = useState(defaultRange);
@@ -138,12 +121,6 @@ export default function NationalDashboard() {
     staleTime: 60_000,
   });
 
-  const glassQuery = useQuery({
-    queryKey: ['national-glass', qs],
-    queryFn: () => getGlassIndicators(qs),
-    staleTime: 60_000,
-  });
-
   const alertsQuery = useQuery({
     queryKey: ['national-alerts'],
     queryFn: fetchAlerts,
@@ -165,7 +142,6 @@ export default function NationalDashboard() {
   const trend = trendQuery.data || [];
   const pathogens = pathogensQuery.data || [];
   const counties = countiesQuery.data || [];
-  const glass = glassQuery.data || null;
 
   return (
     <div className="space-y-5">
@@ -209,19 +185,7 @@ export default function NationalDashboard() {
         />
       )}
 
-      {glass && (
-        <div className="rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">WHO GLASS priority pathogens</h3>
-            <span className="text-xs text-[var(--text-muted)]">Aligned with national reporting</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <GlassCard label="E. coli" data={glass.e_coli} />
-            <GlassCard label="Klebsiella pneumoniae" data={glass.klebsiella} />
-            <GlassCard label="Staphylococcus aureus" data={glass.staph_aureus} />
-          </div>
-        </div>
-      )}
+      <GlassIndicatorStrip county={selectedCounty?.county} />
 
       {/* Map + Alerts row */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
