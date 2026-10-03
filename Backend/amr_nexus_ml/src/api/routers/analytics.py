@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import sqlalchemy as sa
@@ -1345,4 +1345,211 @@ async def compare_periods(
         "by_pathogen": delta_table(side_a["by_pathogen"], side_b["by_pathogen"]),
         "by_sector": delta_table(side_a["by_sector"], side_b["by_sector"]),
         "by_county": delta_table(side_a["by_county"], side_b["by_county"]),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Root cause / contributing factor synthesis
+#
+# Honest framing: this endpoint surfaces CONTRIBUTING FACTORS observed in the
+# data, not proven causal claims. Causal attribution would require controlled
+# study design and clinical outcome data. The structure of factors below is
+# informed by the WHO GLASS framework, the Quadripartite One Health integrated
+# surveillance guidance (2026), and the participatory systems analysis
+# literature (Senegal 2025; East Africa CBN 2025).
+# ---------------------------------------------------------------------------
+
+
+@analytics_router.get("/root-cause-factors", response_model=dict)
+async def root_cause_factors(
+    county: str | None = None,
+    days: int = 180,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Synthesise contributing factors for MDR in the selected scope."""
+    since = datetime.now(UTC) - timedelta(days=days)
+
+    def scope(q):
+        q = q.filter(AMRIsolateRecord.created_at >= since)
+        if county:
+            q = q.filter(AMRIsolateRecord.county == county)
+        return q
+
+    # ---- 1. Pathogen pressure: top pathogens by volume and MDR rate ----
+    pathogen_rows = (
+        scope(
+            db.query(
+                AMRIsolateRecord.pathogen_code,
+                func.count(AMRIsolateRecord.record_id).label("total"),
+                func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)).label("mdr"),
+            )
+        )
+        .group_by(AMRIsolateRecord.pathogen_code)
+        .all()
+    )
+
+    pathogens = []
+    for r in pathogen_rows:
+        if not r.pathogen_code:
+            continue
+        total = int(r.total or 0)
+        mdr = int(r.mdr or 0)
+        pathogens.append(
+            {
+                "code": r.pathogen_code,
+                "samples": total,
+                "mdr_rate": round((mdr / total) * 100, 1) if total else 0.0,
+            }
+        )
+    pathogens.sort(key=lambda x: x["samples"], reverse=True)
+
+    # ---- 2. Sector pressure ----
+    sector_rows = (
+        scope(
+            db.query(
+                AMRIsolateRecord.sector,
+                func.count(AMRIsolateRecord.record_id).label("total"),
+                func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)).label("mdr"),
+            )
+        )
+        .group_by(AMRIsolateRecord.sector)
+        .all()
+    )
+
+    sectors = []
+    for r in sector_rows:
+        if not r.sector:
+            continue
+        total = int(r.total or 0)
+        mdr = int(r.mdr or 0)
+        sectors.append(
+            {
+                "sector": r.sector,
+                "samples": total,
+                "mdr_rate": round((mdr / total) * 100, 1) if total else 0.0,
+            }
+        )
+    sectors.sort(key=lambda x: x["mdr_rate"], reverse=True)
+
+    # ---- 3. Specimen pressure ----
+    specimen_rows = (
+        scope(
+            db.query(
+                AMRIsolateRecord.specimen_type,
+                func.count(AMRIsolateRecord.record_id).label("total"),
+                func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)).label("mdr"),
+            )
+        )
+        .group_by(AMRIsolateRecord.specimen_type)
+        .all()
+    )
+
+    specimens = []
+    for r in specimen_rows:
+        if not r.specimen_type:
+            continue
+        total = int(r.total or 0)
+        mdr = int(r.mdr or 0)
+        specimens.append(
+            {
+                "specimen": r.specimen_type,
+                "samples": total,
+                "mdr_rate": round((mdr / total) * 100, 1) if total else 0.0,
+            }
+        )
+    specimens.sort(key=lambda x: x["mdr_rate"], reverse=True)
+
+    # ---- 4. Alert pressure: what is triggering alerts ----
+    alert_rows = (
+        scope(
+            db.query(
+                AMRIsolateRecord.anomaly_flag,
+                func.count(AMRIsolateRecord.record_id).label("total"),
+            )
+        )
+        .group_by(AMRIsolateRecord.anomaly_flag)
+        .all()
+    )
+
+    anomaly_flagged = 0
+    total_in_scope = 0
+    for r in alert_rows:
+        n = int(r.total or 0)
+        total_in_scope += n
+        if r.anomaly_flag:
+            anomaly_flagged = n
+
+    # ---- 5. Top SHAP features (aggregate of most recent predictions) ----
+    shap_rows = (
+        scope(db.query(AMRIsolateRecord.shap_top_feature, AMRIsolateRecord.shap_value))
+        .filter(AMRIsolateRecord.shap_top_feature.isnot(None))
+        .order_by(desc(AMRIsolateRecord.created_at))
+        .limit(500)
+        .all()
+    )
+
+    shap_by_feature = {}
+    for feature, value in shap_rows:
+        if not feature:
+            continue
+        if feature not in shap_by_feature:
+            shap_by_feature[feature] = {"feature": feature, "count": 0, "sum_abs": 0.0}
+        shap_by_feature[feature]["count"] += 1
+        shap_by_feature[feature]["sum_abs"] += abs(float(value or 0))
+
+    shap_summary = []
+    for entry in shap_by_feature.values():
+        shap_summary.append(
+            {
+                "feature": entry["feature"],
+                "count": entry["count"],
+                "mean_abs_shap": round(entry["sum_abs"] / entry["count"], 4) if entry["count"] else 0.0,
+            }
+        )
+    shap_summary.sort(key=lambda x: x["count"], reverse=True)
+
+    return {
+        "scope": {"county": county, "days": days, "samples": total_in_scope},
+        "pathogen_pressure": pathogens[:10],
+        "sector_pressure": sectors,
+        "specimen_pressure": specimens[:10],
+        "alert_pressure": {
+            "total": total_in_scope,
+            "anomaly_flagged": anomaly_flagged,
+            "anomaly_rate": round((anomaly_flagged / total_in_scope) * 100, 1) if total_in_scope else 0.0,
+        },
+        "shap_features": shap_summary[:10],
+        "frameworks": {
+            "glass_priority_pathogens": [
+                "Escherichia coli",
+                "Klebsiella pneumoniae",
+                "Acinetobacter baumannii",
+                "Staphylococcus aureus",
+                "Salmonella spp.",
+            ],
+            "glass_priority_specimens": ["Blood", "Urine", "Stool"],
+            "one_health_feedback_loops": [
+                "Demand for antibiotics",
+                "Misinformation and public perception",
+                "Development of context-appropriate regulations",
+                "Enforcement of regulations",
+            ],
+            "intervention_points": [
+                "Laboratory capacity investment",
+                "Infection prevention and control",
+                "Rational antimicrobial use",
+                "Coordination and communication",
+                "Genomic surveillance",
+                "Data harmonisation across sectors",
+            ],
+        },
+        "disclaimer": (
+            "Contributing factors, not proven causes. Causal attribution "
+            "requires clinical outcome data and controlled analysis. "
+            "Factors are derived from the last "
+            f"{days} days of isolate data and structured according to the "
+            "WHO GLASS, Quadripartite One Health, and COM-B behavioural "
+            "frameworks."
+        ),
     }
