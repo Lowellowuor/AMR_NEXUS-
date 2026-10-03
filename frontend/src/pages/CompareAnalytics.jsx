@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import api from '../api/client';
+import {} from 'recharts';
+import _api from '../api/client';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function CompareAnalytics() {

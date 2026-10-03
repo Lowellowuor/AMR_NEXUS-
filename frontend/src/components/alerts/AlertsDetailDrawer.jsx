@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
   X, AlertTriangle, MapPin, Beaker, Clock, Check, User as UserIcon,
-  ExternalLink, Send, Sparkles, Brain, TrendingUp, TrendingDown, Loader2,
+  ExternalLink, Send, Sparkles, Brain, Loader2,
 } from 'lucide-react';
 import api from '../../api/client';
 import { formatPercent, formatDateTime, timeAgo } from '../../lib/format';

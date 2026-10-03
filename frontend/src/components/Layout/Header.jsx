@@ -21,7 +21,7 @@ export default function Header({
   onCountyChange,
 }) {
   const searchInputRef = useRef(null);
-  const { user } = useAuth();
+  useAuth();
 
   const focusSearch = () => {
     searchInputRef.current?.querySelector('input')?.focus();

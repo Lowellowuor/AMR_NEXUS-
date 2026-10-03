@@ -5,7 +5,7 @@ export default function SHAPExplanation({ shapTopFeature, shapValue, probability
 
   const impactColor = shapValue > 0 ? 'text-[var(--status-critical)]' : 'text-[var(--status-success)]';
   const impactText = shapValue > 0 ? 'increases resistance risk' : 'decreases resistance risk';
-  const baseProbability = probability < 0.1 ? 0.1 : (probability - shapValue).toFixed(3);
+  const _baseProbability = probability < 0.1 ? 0.1 : (probability - shapValue).toFixed(3);
 
   return (
     <div className="mt-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-[var(--border-primary)]">

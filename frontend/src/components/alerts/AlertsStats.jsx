@@ -28,7 +28,7 @@ function StatCard({ icon: Icon, label, value, hint, tone = 'default', pulse = fa
   );
 }
 
-export default function AlertsStats({ stats, hasNew, connected }) {
+export default function AlertsStats({ stats, hasNew}) {
   if (!stats) return null;
   const by = stats.by_severity || {};
   const total = stats.total || 0;

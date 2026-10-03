@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { SignalIcon, CloudArrowDownIcon } from '@heroicons/react/24/outline';
+import { CloudArrowDownIcon } from '@heroicons/react/24/outline';
 
 export default function OfflineIndicator() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);

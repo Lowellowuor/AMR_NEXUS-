@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import {} from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Clock, ChevronRight } from 'lucide-react';
 import api from '../../api/client';

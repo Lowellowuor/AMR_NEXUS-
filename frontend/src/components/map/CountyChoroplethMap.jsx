@@ -60,7 +60,7 @@ function MapResizer() {
   return null;
 }
 
-const riskColor = (level) => {
+const _riskColor = (level) => {
   switch (level) {
     case 'high': return '#DC2626';
     case 'medium': return '#D97706';
@@ -147,7 +147,7 @@ export default function CountyChoroplethMap({
   });
 
   // Filter hotspots client-side to the selected county as a defensive layer
-  const filteredHotspots = (() => {
+  const _filteredHotspots = (() => {
     if (!Array.isArray(hotspotsData)) return [];
     if (!county) return hotspotsData;
     const target = String(county).toLowerCase();

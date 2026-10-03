@@ -1,13 +1,13 @@
 ﻿import { useState } from 'react';
 import { DocumentTextIcon, ChevronDownIcon, ChevronRightIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useOfflineDrafts } from '../../hooks/useOfflineDrafts';
-import ConfirmDialog from '../ui/ConfirmDialog';
+import _ConfirmDialog from '../ui/ConfirmDialog';
 
 export default function DraftsManager({ onLoadDraft, onSubmitDraft }) {
   const { drafts, removeDraft, syncDraft, clearDrafts } = useOfflineDrafts();
   const [isOpen, setIsOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
+  const [_confirmClear, _setConfirmClear] = useState(false);
 
   if (drafts.length === 0) return null;
 

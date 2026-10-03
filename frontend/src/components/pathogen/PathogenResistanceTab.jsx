@@ -42,7 +42,7 @@ export default function PathogenResistanceTab({ data }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-primary)]">
-              {rows.map((row, idx) => {
+              {rows.map((row, _idx) => {
                 const aware = classifyAntibiotic(row.antibiotic_class);
                 const tone = toneForRate(row.resistance);
                 const isOpen = !!expanded[row.antibiotic_class];

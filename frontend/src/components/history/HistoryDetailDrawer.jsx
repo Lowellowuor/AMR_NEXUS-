@@ -10,7 +10,7 @@ import {
 
 import api from '../../api/client';
 import LLMInsight from '../ui/LLMInsight';
-import { formatPercent, formatDateTime, formatNumber, timeAgo } from '../../lib/format';
+import { formatDateTime, formatNumber, timeAgo } from '../../lib/format';
 
 function Badge({ tone = 'neutral', children }) {
   const tones = {

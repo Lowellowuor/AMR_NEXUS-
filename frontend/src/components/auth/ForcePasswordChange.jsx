@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { KeyRound, Check, X, Loader2, ShieldAlert } from 'lucide-react';
+import { KeyRound, X, Loader2, ShieldAlert } from 'lucide-react';
 import { forceChangePassword } from '../../api/endpoints';
 import { useAuth } from '../../contexts/AuthContext';
 

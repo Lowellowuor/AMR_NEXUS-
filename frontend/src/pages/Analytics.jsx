@@ -44,7 +44,7 @@ const PIE_COLORS = ['var(--accent-blue)', 'var(--accent-teal)', 'var(--status-su
 export default function Analytics() {
   usePageTitle('Analytics');
   const { filters, update, queryParams } = useAnalyticsFilters();
-  const [compareRecords] = useState([]);
+  const [_compareRecords] = useState([]);
   const [selectedRegion, setSelectedRegion] = useState(null);
   const { select: selectRegion, clear: clearRegion } = useRegionSelection();
 
@@ -63,7 +63,7 @@ export default function Analytics() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const { data: monthRange } = useQuery({
+  const { data: _monthRange } = useQuery({
     queryKey: ['month-range'],
     queryFn: getMonthRange,
     staleTime: 10 * 60 * 1000,
@@ -231,7 +231,7 @@ export default function Analytics() {
         ...detail,
         fallback_note: 'No isolates recorded for this county under any filter.',
       });
-    } catch (e) { /* keep basic */ }
+    } catch (_e) { /* keep basic */ }
   };
   const trend = trendQuery.data || [];
   const pathogens = pathogenQuery.data || [];

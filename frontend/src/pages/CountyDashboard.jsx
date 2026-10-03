@@ -264,7 +264,7 @@ export default function CountyDashboard() {
                   try {
                     const detail = await getCountyDetail(selectedCounty, qs);
                     setSelectedRegion((prev) => ({ ...prev, ...detail, sub_county: props.sub_county }));
-                  } catch (e) { /* keep basic */ }
+                  } catch (_e) { /* keep basic */ }
                 }}
               />
             </div>
@@ -380,7 +380,7 @@ export default function CountyDashboard() {
                             try {
                               const detail = await getCountyDetail(p.county, qs);
                               setSelectedRegion((prev) => prev ? { ...prev, ...detail, sub_county: p.sub_county } : prev);
-                            } catch (e) { /* keep basic */ }
+                            } catch (_e) { /* keep basic */ }
                           }}
                           className="hover:bg-[var(--bg-tertiary)]/40 cursor-pointer"
                         >

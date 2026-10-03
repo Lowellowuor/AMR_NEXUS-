@@ -29,7 +29,7 @@ export function useAuditFilters() {
 
   useEffect(() => {
     setSearchInput(filters.search);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [filters.search]);
 
   const updateFilter = useCallback(

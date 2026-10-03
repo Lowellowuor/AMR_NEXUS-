@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, Globe2, Beaker, AlertTriangle, Activity } from 'lucide-react';
 
-import api from '../api/client';
+import _api from '../api/client';
 import {
   getDashboardSummary, getGlassIndicators, getTopCountiesWithTrend, getMDRTrend,
   getResistanceByPathogen, fetchAlerts, getCountyDetail,
@@ -247,7 +247,7 @@ export default function NationalDashboard() {
                   try {
                     const detail = await getCountyDetail(props.county, qs);
                     setSelectedCounty((prev) => ({ ...prev, ...detail }));
-                  } catch (e) { /* keep basic region */ }
+                  } catch (_e) { /* keep basic region */ }
                 }}
               />
             </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Beaker } from 'lucide-react';
 
@@ -138,7 +138,7 @@ export default function PathogenExplorer() {
                       const params = (queryParams ? queryParams + '&' : '') + 'pathogen=' + encodeURIComponent(data?.code || '');
                       const detail = await getCountyDetail(props.county, params);
                       setSelectedRegion((prev) => prev ? { ...prev, ...detail } : prev);
-                    } catch (e) { /* keep basic */ }
+                    } catch (_e) { /* keep basic */ }
                   }}
                 />
                 <PathogenRegionDrawer

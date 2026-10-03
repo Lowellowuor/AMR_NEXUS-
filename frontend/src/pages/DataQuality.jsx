@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { ChartBarIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import {} from '@heroicons/react/24/outline';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function DataQuality() {

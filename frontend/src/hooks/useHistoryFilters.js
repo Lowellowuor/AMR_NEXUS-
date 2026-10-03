@@ -54,7 +54,7 @@ export function useHistoryFilters() {
   }, [debouncedSearch]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setSearchInput(filters.search);
   }, [filters.search]);
 

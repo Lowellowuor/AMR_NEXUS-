@@ -1,7 +1,7 @@
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Beaker, TrendingUp, TrendingDown, Layers } from 'lucide-react';
+import { Beaker, TrendingUp, Layers } from 'lucide-react';
 import { formatNumber, formatPercent } from '../../lib/format';
 import { toneForRate } from '../../lib/pathogenConfig';
 

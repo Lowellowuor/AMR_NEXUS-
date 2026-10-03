@@ -91,7 +91,7 @@ export default function AlertFeedPanel({ alerts = [], onAlertClick, maxItems = 6
         <ul className="divide-y divide-[var(--border-primary)]">
           {sorted.map((alert) => {
             const cfg = SEVERITY[alert.severity] || SEVERITY.medium;
-            const Icon = cfg.icon;
+            const _Icon = cfg.icon;
             return (
               <li key={alert.id}>
                 <button

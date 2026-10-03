@@ -28,7 +28,7 @@ function Bar({ label, value, max, tone = 'teal' }) {
   );
 }
 
-export default function AnomalySummary({ anomalies = [], onAnomalyClick }) {
+export default function AnomalySummary({ anomalies = []}) {
   const stats = useMemo(() => {
     const total = anomalies.length;
     const last24h = anomalies.filter((a) => {

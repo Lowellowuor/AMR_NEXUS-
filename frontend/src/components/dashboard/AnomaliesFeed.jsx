@@ -172,7 +172,7 @@ export default function AnomaliesFeed({
       {activeAlerts.length > 0 && (
         <div className="mt-3 text-right">
           <a href="/alerts" className="text-xs text-[var(--accent-teal)] hover:underline">
-            View all >
+            View all &gt;
           </a>
         </div>
       )}

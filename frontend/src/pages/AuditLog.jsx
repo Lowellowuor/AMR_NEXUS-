@@ -1,12 +1,12 @@
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import {
-  Shield, Search, X, Filter, Download, RefreshCw, Activity,
+  Shield, Search, X, Download, RefreshCw, Activity,
   Calendar, User as UserIcon, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
-import { getAuditEvents, getAuditStats, getAuditMeta, exportAuditCSV } from '../api/endpoints';
+import { getAuditEvents, getAuditStats, getAuditMeta} from '../api/endpoints';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuditFilters } from '../hooks/useAuditFilters';
 import { useAuth } from '../contexts/AuthContext';

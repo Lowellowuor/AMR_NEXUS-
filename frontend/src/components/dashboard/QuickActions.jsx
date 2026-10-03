@@ -13,7 +13,7 @@ export default function QuickActions() {
       a.download = `amr_export_${new Date().toISOString().slice(0,10)}.csv`;
       a.click();
       a.remove();
-    } catch (err) {
+    } catch (_err) {
       alert('Export failed');
     }
   };

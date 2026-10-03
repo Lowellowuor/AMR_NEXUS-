@@ -8,17 +8,14 @@ function ConfidenceBadge({ probability }) {
   const p = probability ?? 0;
   const dist = Math.abs(p - 0.5);
 
-  let tier, tone, text;
+  let tone, text;
   if (dist >= 0.35) {
-    tier = 'high';
     tone = p >= 0.5 ? 'critical' : 'success';
     text = 'High confidence';
   } else if (dist >= 0.15) {
-    tier = 'moderate';
     tone = p >= 0.5 ? 'warning' : 'success';
     text = 'Moderate confidence';
   } else {
-    tier = 'borderline';
     tone = 'warning';
     text = 'Borderline - interpret with caution';
   }
@@ -89,7 +86,6 @@ export default function ResultCard({ result }) {
     }
   };
 
-  const tone = isMdr ? 'critical' : 'success';
   const toneColor = isMdr ? 'text-[var(--status-critical)]' : 'text-[var(--status-success)]';
   const toneBg = isMdr ? 'bg-[var(--status-critical-bg)]' : 'bg-[var(--status-success-bg)]';
 
