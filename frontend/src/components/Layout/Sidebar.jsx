@@ -47,6 +47,7 @@ export default function Sidebar({ role = 'national', mobile = false, onNavigate 
         { name: 'Alerts', href: '/alerts', icon: BellIcon },
         { name: 'Actions', href: '/actions', icon: ClipboardDocumentListIcon },
         { name: 'Alert Routing', href: '/role-routing', icon: ShieldCheckIcon },
+        { name: 'Hotspots', href: '/hotspots', icon: MapPinIcon },
       ],
     },
     {
