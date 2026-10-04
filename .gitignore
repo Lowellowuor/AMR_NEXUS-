@@ -59,3 +59,7 @@ _*.py
 _err.txt
 venv.old/
 venv*/
+
+# local smoke-test artifacts
+_sample_*.pdf
+_api_summary*.pdf
