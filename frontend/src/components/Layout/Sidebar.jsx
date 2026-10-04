@@ -16,6 +16,7 @@ import {
   GlobeAltIcon,
   SparklesIcon,
   BookOpenIcon,
+  FolderIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -40,6 +41,7 @@ export default function Sidebar({ role = 'national', mobile = false, onNavigate 
         { name: 'Clinical Guidance', href: '/guidance', icon: SparklesIcon },
         { name: 'Contributing Factors', href: '/root-causes', icon: MagnifyingGlassIcon },
         { name: 'History', href: '/history', icon: ClockIcon },
+        { name: 'Cases', href: '/cases', icon: FolderIcon },
         { name: 'Pathogen Explorer', href: '/pathogen-explorer', icon: MagnifyingGlassIcon },
       ],
     },

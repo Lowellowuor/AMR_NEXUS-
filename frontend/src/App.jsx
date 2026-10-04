@@ -34,6 +34,8 @@ import OneHealth from './pages/OneHealth';
 import EwsForecast from './pages/EwsForecast';
 import Guidance from './pages/Guidance';
 import Hotspots from './pages/Hotspots';
+import Cases from './pages/Cases';
+import CaseDetail from './pages/CaseDetail';
 import RootCauses from './pages/RootCauses';
 import AmuResistance from './pages/AmuResistance';
 import ModellingApproach from './pages/ModellingApproach';
@@ -87,6 +89,8 @@ function AppRoutes() {
             <Route path="ews-forecast" element={wrap(<EwsForecast />)} />
             <Route path="guidance" element={wrap(<Guidance />)} />
             <Route path="hotspots" element={wrap(<Hotspots />)} />
+            <Route path="cases" element={wrap(<Cases />)} />
+            <Route path="cases/:id" element={wrap(<CaseDetail />)} />
             <Route path="root-causes" element={wrap(<RootCauses />)} />
             <Route path="amu-resistance" element={wrap(<AmuResistance />)} />
             <Route path="modelling" element={wrap(<ModellingApproach />)} />

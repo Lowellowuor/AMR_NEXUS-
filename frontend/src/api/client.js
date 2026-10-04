@@ -304,6 +304,24 @@ export const api = {
     authFetch(`${API_BASE}/analytics/cross-pillar-signals?${params}`).then(handleResponse),
   getHotspotClassification: (params = '') =>
     authFetch(`${API_BASE}/analytics/hotspot-classification?${params}`).then(handleResponse),
+
+  // ---- Case entity ----
+  getCases: (params = '') =>
+    authFetch(`${API_BASE}/cases?${params}`).then(handleResponse),
+  getCase: (id) =>
+    authFetch(`${API_BASE}/cases/${id}`).then(handleResponse),
+  linkIsolateToCase: (caseId, recordId) =>
+    authFetch(`${API_BASE}/cases/${caseId}/link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record_id: recordId }),
+    }).then(handleResponse),
+  detachIsolateFromCase: (caseId, recordId) =>
+    authFetch(`${API_BASE}/cases/${caseId}/detach`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record_id: recordId }),
+    }).then(handleResponse),
 };
 
 export default api;
