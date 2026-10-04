@@ -119,6 +119,38 @@ export const api = {
   getFacilityCoverage: (params = '') => authFetch(`${API_BASE}/analytics/facility_coverage?${params}`).then(handleResponse),
   getTopCountiesWithTrend: (limit = 8, params = '') => authFetch(`${API_BASE}/analytics/top_counties_with_trend?limit=${limit}&${params}`).then(handleResponse),
   getGlassIndicators: (params = '') => authFetch(`${API_BASE}/analytics/glass-indicators?${params}`).then(handleResponse),
+  getCountyOverview: (county, params = '') =>
+    authFetch(
+      `${API_BASE}/county/${encodeURIComponent(county)}/overview?${params}`,
+    ).then(handleResponse),
+  getCountyCoverage: (county, params = '') =>
+    authFetch(
+      `${API_BASE}/county/${encodeURIComponent(county)}/coverage?${params}`,
+    ).then(handleResponse),
+  getCountySituation: (county, params = '') =>
+    authFetch(
+      `${API_BASE}/county/${encodeURIComponent(county)}/situation?${params}`,
+    ).then(handleResponse),
+  getCountyRanking: (county, params = '') =>
+    authFetch(
+      `${API_BASE}/county/${encodeURIComponent(county)}/sub-county-ranking?${params}`,
+    ).then(handleResponse),
+  getCountyBurden: (county, params = '') =>
+    authFetch(
+      `${API_BASE}/county/${encodeURIComponent(county)}/burden?${params}`,
+    ).then(handleResponse),
+  getCountyActionPlan: (county) =>
+    authFetch(
+      `${API_BASE}/county/${encodeURIComponent(county)}/action-plan-status`,
+    ).then(handleResponse),
+  getCountyInterventions: (county, params = '') =>
+    authFetch(
+      `${API_BASE}/county/${encodeURIComponent(county)}/intervention-tracker?${params}`,
+    ).then(handleResponse),
+  getCountyPriorityIsolates: (county, params = '') =>
+    authFetch(
+      `${API_BASE}/county/${encodeURIComponent(county)}/priority-isolates?${params}`,
+    ).then(handleResponse),
   getRootCauseDrivers: (params = '') =>
     authFetch(`${API_BASE}/analytics/root-cause-drivers?${params}`).then(handleResponse),
   listDriverAnnotations: (params = '') =>

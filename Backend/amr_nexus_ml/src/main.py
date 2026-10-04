@@ -47,6 +47,7 @@ from src.api.routers import (
     cases_router,
     glass_router,
     labs_router,
+    county_router,
 )
 from src.services.forecast_utils import generate_time_series_forecast
 from src.api.routers import (
@@ -158,6 +159,7 @@ def create_app() -> FastAPI:
     app.include_router(cases_router, prefix="/api/v1/cases", tags=["cases"])
     app.include_router(glass_router, prefix="/api/v1/glass", tags=["glass"])
     app.include_router(labs_router, prefix="/api/v1/labs", tags=["labs"])
+    app.include_router(county_router, prefix="/api/v1/county", tags=["county"])
 
     # Non-versioned routes (legacy / direct)
     app.include_router(health_router, tags=["health"])
@@ -174,6 +176,7 @@ def create_app() -> FastAPI:
     app.include_router(cases_router, prefix="/cases", tags=["cases"])
     app.include_router(glass_router, prefix="/glass", tags=["glass"])
     app.include_router(labs_router, prefix="/labs", tags=["labs"])
+    app.include_router(county_router, prefix="/county", tags=["county"])
 
     @app.get("/ews/forecast")
     async def direct_ews_forecast(county: str = Query(None), db: Session = Depends(get_db)):
