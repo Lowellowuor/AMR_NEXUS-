@@ -57,6 +57,7 @@ export default function Sidebar({ role = 'national', mobile = false, onNavigate 
       items: [
         { name: 'One Health Overview', href: '/one-health', icon: GlobeAltIcon },
         { name: 'Antimicrobial Use', href: '/amu', icon: BeakerIcon },
+        { name: 'AMU & Resistance', href: '/amu-resistance', icon: ChartBarIcon },
         { name: 'Sampling Sites', href: '/sampling-sites', icon: MapPinIcon },
       ],
     },

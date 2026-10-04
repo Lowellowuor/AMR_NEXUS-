@@ -3,7 +3,7 @@ from typing import Any
 
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import desc, extract, func, or_
+from sqlalchemy import case, desc, extract, func, or_
 from sqlalchemy.orm import Session
 
 from src.api.deps import get_current_user, get_db
@@ -1659,4 +1659,162 @@ async def glass_indicators(
                 "Populate `sir_result` to report true class-level resistance."
             ),
         },
+    }
+
+
+# ---------------------------------------------------------------------------
+# AMU / resistance correlation by sector
+#
+# Compares antimicrobial consumption (quantity) against observed MDR rate
+# within each sector. Answers the county ask: "is high use associated with
+# high resistance in the same sector?"
+#
+# This is descriptive, not causal. A correlation coefficient is provided
+# as a hint, not a conclusion.
+# ---------------------------------------------------------------------------
+
+
+@analytics_router.get("/amu-resistance-correlation", response_model=dict[str, Any])
+async def amu_resistance_correlation(
+    county: str | None = None,
+    days: int = 365,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Return per-sector AMU quantity and observed MDR rate side by side."""
+    # Import lazily so this router stays usable even if the AMU module is
+    # not yet loaded.
+    from src.modules.amu.models import AMUConsumption
+
+    since = datetime.now(UTC) - timedelta(days=days)
+
+    def amu_scope(q):
+        q = q.filter(AMUConsumption.period_start >= since)
+        if county:
+            q = q.filter(AMUConsumption.county == county)
+        return q
+
+    def iso_scope(q):
+        q = q.filter(AMRIsolateRecord.created_at >= since)
+        if county:
+            q = q.filter(AMRIsolateRecord.county == county)
+        return q
+
+    # AMU by sector
+    amu_rows = (
+        amu_scope(
+            db.query(
+                AMUConsumption.sector,
+                func.sum(AMUConsumption.quantity).label("quantity"),
+                func.count(AMUConsumption.id).label("records"),
+            )
+        )
+        .group_by(AMUConsumption.sector)
+        .all()
+    )
+
+    amu_by_sector: dict[str, dict[str, float | int]] = {}
+    for r in amu_rows:
+        key = (r.sector or "unknown").lower()
+        amu_by_sector[key] = {
+            "quantity": float(r.quantity or 0.0),
+            "records": int(r.records or 0),
+        }
+
+    # Isolates by sector. The isolate taxonomy is finer than the AMU one
+    # (livestock, poultry) than AMU (animal), so we normalise both sides
+    # to a common three-sector view.
+    SECTOR_ALIAS = {
+        "livestock": "animal",
+        "poultry": "animal",
+        "cattle": "animal",
+        "goat": "animal",
+        "pig": "animal",
+    }
+
+    iso_rows = (
+        iso_scope(
+            db.query(
+                AMRIsolateRecord.sector,
+                func.count(AMRIsolateRecord.record_id).label("total"),
+                func.sum(case((AMRIsolateRecord.mdr_flag.is_(True), 1), else_=0)).label("mdr"),
+            )
+        )
+        .group_by(AMRIsolateRecord.sector)
+        .all()
+    )
+
+    iso_by_sector: dict[str, dict[str, float | int]] = {}
+    for r in iso_rows:
+        raw = (r.sector or "unknown").lower()
+        key = SECTOR_ALIAS.get(raw, raw)
+        total = int(r.total or 0)
+        mdr = int(r.mdr or 0)
+        if key not in iso_by_sector:
+            iso_by_sector[key] = {"isolates": 0, "mdr_count": 0, "mdr_rate": 0.0}
+        iso_by_sector[key]["isolates"] = int(iso_by_sector[key]["isolates"]) + total
+        iso_by_sector[key]["mdr_count"] = int(iso_by_sector[key]["mdr_count"]) + mdr
+        iso_by_sector[key]["mdr_rate"] = (
+            round((iso_by_sector[key]["mdr_count"] / iso_by_sector[key]["isolates"]) * 100, 1)
+            if iso_by_sector[key]["isolates"]
+            else 0.0
+        )
+
+    # Merge
+    sectors = sorted(set(amu_by_sector.keys()) | set(iso_by_sector.keys()))
+    result: list[dict[str, Any]] = []
+    for s in sectors:
+        if s == "unknown":
+            continue
+        a = amu_by_sector.get(s, {"quantity": 0.0, "records": 0})
+        i = iso_by_sector.get(s, {"isolates": 0, "mdr_count": 0, "mdr_rate": 0.0})
+        quantity = float(a["quantity"])
+        isolates = int(i["isolates"])
+        result.append(
+            {
+                "sector": s,
+                "amu_quantity": round(quantity, 2),
+                "amu_records": int(a["records"]),
+                "isolates": isolates,
+                "mdr_count": int(i["mdr_count"]),
+                "mdr_rate": float(i["mdr_rate"]),
+                "quantity_per_isolate": round(quantity / isolates, 2) if isolates else 0.0,
+            }
+        )
+
+    # Simple Pearson correlation between amu_quantity and mdr_rate
+    # across the sectors we have (n is small, this is descriptive only).
+    correlation: float | None = None
+    comparable = [r for r in result if r["amu_quantity"] > 0 and r["isolates"] > 0]
+    xs = [r["amu_quantity"] for r in comparable]
+    ys = [r["mdr_rate"] for r in comparable]
+    if len(comparable) >= 3:
+        mx = sum(xs) / len(xs)
+        my = sum(ys) / len(ys)
+        num = sum((x - mx) * (y - my) for x, y in zip(xs, ys, strict=False))
+        den_x = sum((x - mx) ** 2 for x in xs) ** 0.5
+        den_y = sum((y - my) ** 2 for y in ys) ** 0.5
+        if den_x > 0 and den_y > 0:
+            correlation = round(num / (den_x * den_y), 3)
+
+    if correlation is None:
+        note = (
+            "Not enough overlap between sectors with both AMU data and "
+            "isolate data to compute a meaningful correlation. Populate "
+            "AMU records for more sectors to enable this view."
+        )
+    else:
+        note = (
+            "Pearson r between sector-level AMU quantity and MDR rate. "
+            f"Computed across {len(comparable)} sectors. "
+            "Descriptive only; a small number of sectors cannot support a "
+            "causal claim."
+        )
+
+    return {
+        "scope": {"county": county, "days": days},
+        "sectors": result,
+        "correlation": correlation,
+        "correlation_note": note,
+        "sectors_with_both": len(comparable),
     }

@@ -35,6 +35,7 @@ import EwsForecast from './pages/EwsForecast';
 import Guidance from './pages/Guidance';
 import Hotspots from './pages/Hotspots';
 import RootCauses from './pages/RootCauses';
+import AmuResistance from './pages/AmuResistance';
 import ModellingApproach from './pages/ModellingApproach';
 
 const wrap = (el) => <ErrorBoundary>{el}</ErrorBoundary>;
@@ -87,6 +88,7 @@ function AppRoutes() {
             <Route path="guidance" element={wrap(<Guidance />)} />
             <Route path="hotspots" element={wrap(<Hotspots />)} />
             <Route path="root-causes" element={wrap(<RootCauses />)} />
+            <Route path="amu-resistance" element={wrap(<AmuResistance />)} />
             <Route path="modelling" element={wrap(<ModellingApproach />)} />
         <Route path="bulk-import" element={wrap(<BulkImport />)} />
         <Route path="compare-analytics" element={wrap(<CompareAnalytics />)} />
