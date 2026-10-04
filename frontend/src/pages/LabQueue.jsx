@@ -8,6 +8,28 @@ import { Skeleton } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import { usePageTitle } from '../hooks/usePageTitle';
 
+const SLA_TONE = {
+  on_track: 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]',
+  at_risk: 'bg-[var(--status-warning-bg)] text-[var(--status-warning)]',
+  breached: 'bg-[var(--status-critical-bg)] text-[var(--status-critical)]',
+  met: 'bg-[var(--status-success-bg)] text-[var(--status-success)]',
+  missed: 'bg-[var(--status-critical-bg)] text-[var(--status-critical)]',
+  unknown: 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]',
+};
+
+function SlaBadge({ label, sla }) {
+  if (!sla || !sla.state) return null;
+  const tone = SLA_TONE[sla.state] || SLA_TONE.unknown;
+  return (
+    <span
+      className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${tone}`}
+      title={`${label}: ${sla.hours_elapsed}h of ${sla.hours_allowed}h`}
+    >
+      {label} {sla.state.replace('_', ' ')}
+    </span>
+  );
+}
+
 const STATUS_OPTIONS = [
   { value: '', label: 'All' },
   { value: 'pending', label: 'Pending' },
@@ -266,6 +288,13 @@ export default function LabQueue() {
                     >
                       {req.status}
                     </span>
+                    {req.escalation_level > 0 && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--status-critical-bg)] text-[var(--status-critical)]">
+                        Escalated L{req.escalation_level}
+                      </span>
+                    )}
+                    <SlaBadge label="Ack" sla={req.sla_acknowledge} />
+                    <SlaBadge label="Complete" sla={req.sla_complete} />
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
                     <span>{req.isolate?.county || '—'}</span>
@@ -283,6 +312,18 @@ export default function LabQueue() {
                       <>
                         <span>·</span>
                         <span>{new Date(req.requested_at).toLocaleString()}</span>
+                      </>
+                    )}
+                    {req.assigned_to_name && (
+                      <>
+                        <span>·</span>
+                        <span>assigned to {req.assigned_to_name}</span>
+                      </>
+                    )}
+                    {req.acknowledged_by_name && (
+                      <>
+                        <span>·</span>
+                        <span>acked by {req.acknowledged_by_name}</span>
                       </>
                     )}
                   </div>

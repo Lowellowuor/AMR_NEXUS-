@@ -375,6 +375,20 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }).then(handleResponse),
+  acknowledgeLabRequest: (id) =>
+    authFetch(`${API_BASE}/labs/requests/${id}/acknowledge`, {
+      method: 'POST',
+    }).then(handleResponse),
+  assignLabRequest: (id, assigneeId) =>
+    authFetch(`${API_BASE}/labs/requests/${id}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignee_id: assigneeId }),
+    }).then(handleResponse),
+  escalateBreachedLabs: () =>
+    authFetch(`${API_BASE}/labs/escalate-breached`, { method: 'POST' }).then(
+      handleResponse,
+    ),
   updateLabRequest: (id, data) =>
     authFetch(`${API_BASE}/labs/requests/${id}`, {
       method: 'PATCH',
