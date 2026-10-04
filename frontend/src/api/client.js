@@ -353,6 +353,18 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }).then(handleResponse),
+  mergeCase: (targetId, sourceId) =>
+    authFetch(`${API_BASE}/cases/${targetId}/merge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source_case_id: sourceId }),
+    }).then(handleResponse),
+  splitCase: (caseId, recordId) =>
+    authFetch(`${API_BASE}/cases/${caseId}/split`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record_id: recordId }),
+    }).then(handleResponse),
   linkIsolateToCase: (caseId, recordId) =>
     authFetch(`${API_BASE}/cases/${caseId}/link`, {
       method: 'POST',

@@ -19,6 +19,7 @@ import HistoryFilterBar from '../components/history/HistoryFilterBar';
 import HistoryAdvancedFilters from '../components/history/HistoryAdvancedFilters';
 import HistoryBulkActions from '../components/history/HistoryBulkActions';
 import HistoryCaseGroupView from '../components/history/HistoryCaseGroupView';
+import SavedSearchesMenu from '../components/history/SavedSearchesMenu';
 import HistoryTable from '../components/history/HistoryTable';
 import HistoryPagination from '../components/history/HistoryPagination';
 import HistoryDetailDrawer from '../components/history/HistoryDetailDrawer';
@@ -212,6 +213,16 @@ export default function History() {
       />
 
       <HistoryStats stats={stats} />
+
+      <div className="flex items-center justify-end gap-2">
+        <SavedSearchesMenu
+          currentFilters={filters}
+          hasActiveFilters={hasActiveFilters}
+          onApply={(saved) => {
+            updateFilter(saved, true);
+          }}
+        />
+      </div>
 
       <HistoryFilterBar
         filters={filters}

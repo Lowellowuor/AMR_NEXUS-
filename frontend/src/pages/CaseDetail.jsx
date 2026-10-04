@@ -9,6 +9,8 @@ import {
   MapPinIcon,
   BeakerIcon,
   PencilSquareIcon,
+  ArrowsPointingOutIcon,
+  ArrowsPointingInIcon,
 } from '@heroicons/react/24/outline';
 import api from '../api/client';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -20,6 +22,153 @@ const STATUS_TONE = {
   open: 'bg-[var(--status-info-bg)] text-[var(--status-info)]',
   closed: 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]',
 };
+
+function SplitButton({ caseId, recordId, recordLabel, onDone }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: () => api.splitCase(caseId, recordId),
+    onSuccess: (data) => {
+      toast.success(`Split into ${data.new_case_code}`);
+      qc.invalidateQueries({ queryKey: ['case', String(caseId)] });
+      qc.invalidateQueries({ queryKey: ['cases'] });
+      setOpen(false);
+      onDone?.();
+    },
+    onError: () => toast.error('Failed to split'),
+  });
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="text-xs px-2 py-0.5 rounded-md text-[var(--text-muted)] hover:text-[var(--accent-teal)] hover:bg-[var(--accent-teal)]/10 transition"
+        title="Detach this isolate into a new case"
+      >
+        <ArrowsPointingOutIcon className="w-3.5 h-3.5" />
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-primary)] p-5 max-w-md w-full space-y-3">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+              Detach isolate to a new case?
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)]">
+              {recordLabel} will be removed from this case and given its own case code.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setOpen(false)}
+                className="px-3 py-1.5 rounded-lg text-xs text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => mutation.mutate()}
+                disabled={mutation.isPending}
+                className="px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-teal)] text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {mutation.isPending ? 'Splitting…' : 'Detach'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function MergeButton({ caseId, onDone }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [sourceId, setSourceId] = useState('');
+
+  const casesQuery = useQuery({
+    queryKey: ['cases-list-for-merge'],
+    queryFn: () => api.getCases('limit=200'),
+    enabled: open,
+    staleTime: 30_000,
+  });
+
+  const candidates = (casesQuery.data ?? []).filter((c) => c.id !== caseId);
+
+  const mutation = useMutation({
+    mutationFn: () => api.mergeCase(caseId, Number(sourceId)),
+    onSuccess: (data) => {
+      toast.success(`Merged ${data.isolates_moved} isolate(s)`);
+      qc.invalidateQueries({ queryKey: ['case', String(caseId)] });
+      qc.invalidateQueries({ queryKey: ['cases'] });
+      setOpen(false);
+      setSourceId('');
+      onDone?.();
+    },
+    onError: (e) => toast.error(e.message || 'Failed to merge'),
+  });
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition"
+        title="Merge another case into this one"
+      >
+        <ArrowsPointingInIcon className="w-3.5 h-3.5" />
+        Merge case
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-primary)] p-5 max-w-md w-full space-y-3">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+              Merge another case into this one
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)]">
+              All isolates from the selected case will move here. The other case is deleted.
+            </p>
+            {casesQuery.isLoading ? (
+              <Skeleton className="h-10" />
+            ) : candidates.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] italic">
+                No other cases available to merge.
+              </p>
+            ) : (
+              <select
+                value={sourceId}
+                onChange={(e) => setSourceId(e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-lg bg-[var(--bg-primary)] border border-[var(--border-primary)]/40 text-[var(--text-primary)]"
+              >
+                <option value="">Select a case…</option>
+                {candidates.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.case_code} — {c.isolate_count} isolate(s), {c.county}
+                  </option>
+                ))}
+              </select>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  setSourceId('');
+                }}
+                className="px-3 py-1.5 rounded-lg text-xs text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => mutation.mutate()}
+                disabled={!sourceId || mutation.isPending}
+                className="px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-teal)] text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {mutation.isPending ? 'Merging…' : 'Merge'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 function CaseNotes({ caseId, initialNotes }) {
   const qc = useQueryClient();
@@ -155,6 +304,7 @@ export default function CaseDetail() {
         >
           {c.status}
         </span>
+        <MergeButton caseId={Number(id)} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -202,6 +352,7 @@ export default function CaseDetail() {
                   <th className="px-3 py-2 font-medium text-[var(--text-muted)]">MDR</th>
                   <th className="px-3 py-2 font-medium text-[var(--text-muted)]">Collected</th>
                   <th className="px-3 py-2 font-medium text-[var(--text-muted)] text-right">Summary</th>
+                  <th className="px-3 py-2 font-medium text-[var(--text-muted)] text-right">Detach</th>
                 </tr>
               </thead>
               <tbody>
@@ -227,6 +378,14 @@ export default function CaseDetail() {
                     </td>
                     <td className="px-3 py-2 text-xs text-[var(--text-muted)]">
                       {r.created_at ? new Date(r.created_at).toLocaleString() : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <SplitButton
+                        caseId={Number(id)}
+                        recordId={r.record_id}
+                        recordLabel={r.pathogen_code || r.record_id.slice(0, 8)}
+                        onDone={() => window.location.reload()}
+                      />
                     </td>
                     <td className="px-3 py-2 text-right">
                       <button

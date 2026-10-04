@@ -5,6 +5,7 @@ import {
   SparklesIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
+  PrinterIcon,
 } from '@heroicons/react/24/outline';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuth } from '../contexts/AuthContext';
@@ -60,10 +61,25 @@ export default function Guidance() {
     });
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const result = mutation.data;
 
   return (
     <div className="space-y-6">
+
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          .print-area, .print-area * { visibility: visible !important; }
+          .print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
+          .no-print, .no-print * { display: none !important; }
+          .print-hide-sidebar { display: none !important; }
+          @page { margin: 15mm; }
+        }
+      `}</style>
       <div>
         <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
           <BeakerIcon className="h-6 w-6 text-[var(--accent-teal)]" />
@@ -186,9 +202,19 @@ export default function Guidance() {
             <p className="text-xs font-semibold uppercase tracking-wider text-[var(--accent-teal)]">
               Primary recommendation
             </p>
-            <p className="text-3xl font-bold text-[var(--text-primary)] mt-1">
-              {result.primary_recommendation}
-            </p>
+            <div className="print-area flex items-start justify-between gap-3">
+              <p className="text-3xl font-bold text-[var(--text-primary)] mt-1">
+                {result.primary_recommendation}
+              </p>
+              <button
+                onClick={handlePrint}
+                className="no-print inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition"
+                title="Print or save as PDF"
+              >
+                <PrinterIcon className="w-3.5 h-3.5" />
+                Print
+              </button>
+            </div>
             <p className="text-sm text-[var(--text-secondary)] mt-2">
               Based on pathogen{' '}
               <span className="font-mono font-medium">{result.pathogen_code}</span>{' '}
