@@ -24,6 +24,11 @@ class AMRRecordIn(BaseModel):
     sample_collection_date: date | None = None
     phone_number: str | None = Field(default=None, max_length=20)
     site_id: int | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    qualitative_context: str | None = Field(default=None, max_length=2000)
+    suspected_driver: str | None = Field(default=None, max_length=100)
+    treatment_history: str | None = Field(default=None, max_length=2000)
 
 
 class PredictionResponse(BaseModel):
@@ -43,6 +48,11 @@ class PredictionResponse(BaseModel):
     record_id: str | None = None
     case_id: int | None = None
     case_code: str | None = None
+    confidence_tier: str | None = None
+    next_actions: list[dict] | None = None
+    contributing_factors: list[dict] | None = None
+    outbreak_context: dict | None = None
+    data_quality: dict | None = None
 
 
 class EmailReportRequest(BaseModel):

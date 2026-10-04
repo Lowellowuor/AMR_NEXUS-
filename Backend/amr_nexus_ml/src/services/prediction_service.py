@@ -16,7 +16,7 @@ from src.db.models import (
     PredictionLog,
     SubCountyLocation,
 )
-from src.services import case_service
+from src.services import case_service, next_actions_service
 from src.services.model_health import confidence_tier, deterministic_fallback
 from src.services.notification_service import dispatch_prediction_alert
 from src.utils.logger import logger
@@ -319,10 +319,68 @@ class PredictionService:
             except Exception:
                 case_code = None
 
+        try:
+            next_actions = next_actions_service.build_next_actions(
+                self.db,
+                mdr_flag=bool(mdr_prob >= 0.5),
+                mdr_probability=mdr_prob,
+                anomaly_flag=anomaly_flag,
+                anomaly_score=anomaly_score,
+                pathogen_code=data.get("pathogen_code"),
+                county=county,
+            )
+        except Exception:
+            logger.exception("build_next_actions failed")
+            next_actions = []
+
+        try:
+            contributing_factors = next_actions_service.build_contributing_factors(
+                prior_antibiotic_exposure=data.get("prior_antibiotic_exposure"),
+                infection_origin=data.get("infection_origin"),
+                ward_type=data.get("ward_type"),
+                animal_species=data.get("animal_species"),
+                production_system=data.get("production_system"),
+                suspected_driver=data.get("suspected_driver"),
+                treatment_history=data.get("treatment_history"),
+            )
+        except Exception:
+            logger.exception("build_contributing_factors failed")
+            contributing_factors = []
+
+        try:
+            outbreak_context = next_actions_service.build_outbreak_context(
+                self.db,
+                pathogen_code=data.get("pathogen_code"),
+                county=county,
+            )
+        except Exception:
+            logger.exception("build_outbreak_context failed")
+            outbreak_context = None
+
+        try:
+            data_quality = next_actions_service.build_data_quality(
+                specimen_type=data.get("specimen_type"),
+                antibiotic_class=data.get("antibiotic_class"),
+                test_method=data.get("test_method"),
+                site_id=data.get("site_id"),
+                sample_collection_date=str(data.get("sample_collection_date") or ""),
+                latitude=data.get("latitude"),
+                longitude=data.get("longitude"),
+                patient_age_years=data.get("patient_age_years"),
+                patient_sex=data.get("patient_sex"),
+            )
+        except Exception:
+            logger.exception("build_data_quality failed")
+            data_quality = None
+
         return {
             "record_id": str(db_record.record_id),
             "case_id": db_record.case_id,
             "case_code": case_code,
+            "next_actions": next_actions,
+            "contributing_factors": contributing_factors,
+            "outbreak_context": outbreak_context,
+            "data_quality": data_quality,
             "mdr_probability": mdr_prob,
             "mdr_flag": bool(mdr_prob >= 0.5),
             "anomaly_detected": anomaly_flag,
