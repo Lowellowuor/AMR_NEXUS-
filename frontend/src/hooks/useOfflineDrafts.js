@@ -5,17 +5,17 @@ export function useOfflineDrafts() {
   const [drafts, setDrafts] = useState([]);
   const [isReady, setIsReady] = useState(false);
 
+  const loadDrafts = useCallback(async () => {
+    const all = await getDrafts();
+    setDrafts(all);
+  }, []);
+
   useEffect(() => {
     initDB().then(() => {
       loadDrafts();
       setIsReady(true);
     });
-  }, []);
-
-  const loadDrafts = useCallback(async () => {
-    const all = await getDrafts();
-    setDrafts(all);
-  }, []);
+  }, [loadDrafts]);
 
   const addDraft = useCallback(async (data) => {
     await saveDraft(data);

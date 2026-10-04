@@ -25,8 +25,8 @@ export default function Layout({ role, onToggleRole, darkMode, onToggleDark }) {
           return { code: c, name: c };
         });
         setCounties(normalized);
-        if (!selectedCounty && normalized.length > 0) {
-          setSelectedCounty(normalized[0].code);
+        if (normalized.length > 0) {
+          setSelectedCounty((prev) => prev || normalized[0].code);
         }
       })
       .catch(err => {

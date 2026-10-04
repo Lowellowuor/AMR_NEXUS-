@@ -98,12 +98,13 @@ export function AuthProvider({ children }) {
       refreshUser,
       token: typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null,
     }),
-    [user, loading, mustChangePassword, login, logout],
+    [user, loading, mustChangePassword, login, logout, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used inside AuthProvider');

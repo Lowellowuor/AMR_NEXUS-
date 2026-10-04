@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { History as HistoryIcon } from 'lucide-react';
@@ -75,7 +75,10 @@ export default function History() {
     staleTime: 30_000,
   });
 
-  const records = data?.records ?? (Array.isArray(data) ? data : []);
+  const records = useMemo(
+    () => data?.records ?? (Array.isArray(data) ? data : []),
+    [data],
+  );
   const total = data?.total ?? records.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 

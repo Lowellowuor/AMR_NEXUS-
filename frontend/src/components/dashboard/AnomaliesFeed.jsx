@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BellAlertIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import api from '../../api/client';
 import { timeAgo } from '../../lib/format';
@@ -16,7 +16,7 @@ export default function AnomaliesFeed({
   const [error, setError] = useState(null);
   const [dismissing, setDismissing] = useState({});
 
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -33,7 +33,7 @@ export default function AnomaliesFeed({
     } finally {
       setLoading(false);
     }
-  };
+  }, [county, startDate, endDate, limit]);
 
   useEffect(() => {
     fetchAlerts();
@@ -41,7 +41,7 @@ export default function AnomaliesFeed({
       const interval = setInterval(fetchAlerts, refreshInterval);
       return () => clearInterval(interval);
     }
-  }, [county, startDate, endDate, limit, autoRefresh, refreshInterval]);
+  }, [fetchAlerts, autoRefresh, refreshInterval]);
 
   const handleDismiss = async (id) => {
     setDismissing((prev) => ({ ...prev, [id]: true }));
