@@ -39,6 +39,7 @@ def _serialize_record(r, full: bool = False) -> dict:
         "shap_top_feature": r.shap_top_feature or "",
         "shap_value": float(r.shap_value) if r.shap_value is not None else 0.0,
         "model_version": r.model_version or "",
+        "case_id": r.case_id,
     }
     if full:
         base.update(
@@ -63,6 +64,7 @@ def _serialize_record(r, full: bool = False) -> dict:
                 else False,
                 "gene_marker_mcr1": bool(r.gene_marker_mcr1) if r.gene_marker_mcr1 is not None else False,
                 "hotspot_id": r.hotspot_id,
+                "case_id": r.case_id,
                 "updated_at": r.updated_at.isoformat() if r.updated_at else None,
             }
         )
@@ -157,11 +159,27 @@ async def list_predictions(
     total = q.count()
     rows = q.offset(skip).limit(limit).all()
 
+    case_ids = [r.case_id for r in rows if r.case_id is not None]
+    case_codes: dict[int, str] = {}
+    if case_ids:
+        from src.db.models import Case
+
+        case_codes = dict(db.query(Case.id, Case.case_code).filter(Case.id.in_(case_ids)).all())
+
+    records = []
+    for r in rows:
+        serialized = _serialize_record(r)
+        if r.case_id is not None:
+            serialized["case_code"] = case_codes.get(r.case_id)
+        else:
+            serialized["case_code"] = None
+        records.append(serialized)
+
     return {
         "total": total,
         "limit": limit,
         "skip": skip,
-        "records": [_serialize_record(r) for r in rows],
+        "records": records,
     }
 
 
