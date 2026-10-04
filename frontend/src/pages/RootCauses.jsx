@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   BeakerIcon,
@@ -15,6 +16,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import api from '../api/client';
 import { Skeleton } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
+import DriverAttributionPanel from '../components/rootcauses/DriverAttributionPanel';
 import { formatNumber, formatPercent } from '../lib/format';
 
 const RANGE_OPTIONS = [
@@ -69,7 +71,8 @@ function PressureRow({ label, value, rate, n, max }) {
 export default function RootCauses() {
   usePageTitle('Contributing Factors');
   const [days, setDays] = useState(180);
-  const [county, setCounty] = useState('');
+  const [searchParams] = useSearchParams();
+  const [county, setCounty] = useState(searchParams.get('county') || '');
 
   const optionsQuery = useQuery({
     queryKey: ['rc-options'],
@@ -145,6 +148,8 @@ export default function RootCauses() {
           investigation, not a conclusion.
         </p>
       </div>
+
+      <DriverAttributionPanel county={county} days={days} />
 
       {query.isLoading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -309,14 +314,29 @@ export default function RootCauses() {
             ) : (
               <div className="space-y-3">
                 {data.shap_features.map((f) => (
-                  <PressureRow
-                    key={f.feature}
-                    label={f.feature}
-                    value={f.count}
-                    rate={f.mean_abs_shap * 100}
-                    n={f.count}
-                    max={maxShap}
-                  />
+                  <div key={f.feature} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-mono text-[var(--text-primary)] truncate max-w-[55%]">
+                        {f.feature}
+                      </span>
+                      <span className="text-[var(--text-muted)] tabular-nums text-xs">
+                        {formatNumber(f.count)}× top · Mean |SHAP|{' '}
+                        {(f.mean_abs_shap ?? 0).toFixed(3)}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-[var(--accent-teal)]"
+                        style={{
+                          width: `${
+                            maxShap > 0
+                              ? Math.max((f.count / maxShap) * 100, 3)
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+                  </div>
                 ))}
                 <p className="text-xs text-[var(--text-muted)] pt-2">
                   Frequency (how often a feature appears as the top driver)

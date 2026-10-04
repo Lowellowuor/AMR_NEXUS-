@@ -2019,3 +2019,152 @@ async def hotspot_classification(
 
     result.sort(key=lambda x: (-x["mdr_rate"], -x["samples"]))
     return result
+
+
+@analytics_router.get("/root-cause-drivers", response_model=dict[str, Any])
+async def root_cause_drivers(
+    county: str | None = None,
+    pathogen: str | None = None,
+    days: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    from src.services import driver_service
+
+    return driver_service.compute_drivers(
+        db,
+        county=county,
+        pathogen_code=pathogen,
+        window_days=days,
+    )
+
+
+@analytics_router.get("/root-cause-scopes", response_model=dict[str, Any])
+async def root_cause_scopes(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    from src.services import driver_service
+
+    return driver_service.list_available_scopes(db)
+
+
+from pydantic import BaseModel as _PydBase
+
+
+class DriverAnnotationIn(_PydBase):
+    driver_id: str
+    scope_county: str | None = None
+    scope_pathogen: str | None = None
+    note: str
+    event_date: str | None = None
+
+
+@analytics_router.get("/driver-annotations", response_model=list[dict[str, Any]])
+async def list_driver_annotations(
+    driver_id: str | None = None,
+    county: str | None = None,
+    pathogen: str | None = None,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    from src.db.models import DriverAnnotation
+
+    q = db.query(DriverAnnotation).order_by(DriverAnnotation.created_at.desc())
+    if driver_id:
+        q = q.filter(DriverAnnotation.driver_id == driver_id)
+    if county:
+        q = q.filter((DriverAnnotation.scope_county == county) | (DriverAnnotation.scope_county.is_(None)))
+    if pathogen:
+        q = q.filter(
+            (DriverAnnotation.scope_pathogen == pathogen) | (DriverAnnotation.scope_pathogen.is_(None))
+        )
+    rows = q.limit(limit).all()
+
+    user_ids = {r.created_by for r in rows if r.created_by}
+    users = {}
+    if user_ids:
+        users = {u.id: (u.name or u.email) for u in db.query(User).filter(User.id.in_(user_ids)).all()}
+
+    return [
+        {
+            "id": r.id,
+            "driver_id": r.driver_id,
+            "scope_county": r.scope_county,
+            "scope_pathogen": r.scope_pathogen,
+            "note": r.note,
+            "event_date": r.event_date.isoformat() if r.event_date else None,
+            "created_by": r.created_by,
+            "created_by_name": users.get(r.created_by),
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
+@analytics_router.post("/driver-annotations", response_model=dict[str, Any], status_code=201)
+async def create_driver_annotation(
+    payload: DriverAnnotationIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    from datetime import UTC, date, datetime
+
+    from src.db.models import DriverAnnotation
+
+    if not payload.driver_id or not payload.note.strip():
+        raise HTTPException(status_code=400, detail="driver_id and note are required")
+
+    event_date = None
+    if payload.event_date:
+        try:
+            event_date = date.fromisoformat(payload.event_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="event_date must be YYYY-MM-DD") from None
+
+    note = DriverAnnotation(
+        driver_id=payload.driver_id,
+        scope_county=payload.scope_county,
+        scope_pathogen=payload.scope_pathogen,
+        note=payload.note.strip(),
+        event_date=event_date,
+        created_by=current_user.id,
+        created_at=datetime.now(UTC),
+    )
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+
+    return {
+        "id": note.id,
+        "driver_id": note.driver_id,
+        "scope_county": note.scope_county,
+        "scope_pathogen": note.scope_pathogen,
+        "note": note.note,
+        "event_date": note.event_date.isoformat() if note.event_date else None,
+        "created_by": note.created_by,
+        "created_by_name": current_user.name or current_user.email,
+        "created_at": note.created_at.isoformat() if note.created_at else None,
+    }
+
+
+@analytics_router.delete("/driver-annotations/{annotation_id}", status_code=204)
+async def delete_driver_annotation(
+    annotation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from fastapi.responses import Response
+
+    from src.db.models import DriverAnnotation
+
+    row = db.get(DriverAnnotation, annotation_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="annotation not found")
+    if row.created_by != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="not permitted")
+
+    db.delete(row)
+    db.commit()
+    return Response(status_code=204)

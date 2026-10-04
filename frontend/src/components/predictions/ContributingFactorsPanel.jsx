@@ -1,4 +1,8 @@
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { Link } from 'react-router-dom';
+import {
+  ExclamationTriangleIcon,
+  ArrowRightIcon,
+} from '@heroicons/react/24/outline';
 
 const STRENGTH_TONE = {
   high: 'text-[var(--status-critical)] bg-[var(--status-critical-bg)]/30',
@@ -6,7 +10,7 @@ const STRENGTH_TONE = {
   low: 'text-[var(--text-muted)] bg-[var(--bg-tertiary)]',
 };
 
-export default function ContributingFactorsPanel({ factors }) {
+export default function ContributingFactorsPanel({ factors, county }) {
   if (!factors || factors.length === 0) return null;
 
   return (
@@ -41,6 +45,16 @@ export default function ContributingFactorsPanel({ factors }) {
           );
         })}
       </ul>
+
+      <div className="px-4 py-3 border-t border-[var(--border-primary)]/40">
+        <Link
+          to={county ? `/root-causes?county=${encodeURIComponent(county)}` : '/root-causes'}
+          className="inline-flex items-center gap-1 text-xs text-[var(--accent-teal)] hover:underline"
+        >
+          See driver attribution for {county || 'all counties'}
+          <ArrowRightIcon className="w-3 h-3" />
+        </Link>
+      </div>
     </div>
   );
 }

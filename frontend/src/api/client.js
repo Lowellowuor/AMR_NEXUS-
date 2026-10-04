@@ -119,6 +119,22 @@ export const api = {
   getFacilityCoverage: (params = '') => authFetch(`${API_BASE}/analytics/facility_coverage?${params}`).then(handleResponse),
   getTopCountiesWithTrend: (limit = 8, params = '') => authFetch(`${API_BASE}/analytics/top_counties_with_trend?limit=${limit}&${params}`).then(handleResponse),
   getGlassIndicators: (params = '') => authFetch(`${API_BASE}/analytics/glass-indicators?${params}`).then(handleResponse),
+  getRootCauseDrivers: (params = '') =>
+    authFetch(`${API_BASE}/analytics/root-cause-drivers?${params}`).then(handleResponse),
+  listDriverAnnotations: (params = '') =>
+    authFetch(`${API_BASE}/analytics/driver-annotations?${params}`).then(handleResponse),
+  createDriverAnnotation: (data) =>
+    authFetch(`${API_BASE}/analytics/driver-annotations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  deleteDriverAnnotation: (id) =>
+    authFetch(`${API_BASE}/analytics/driver-annotations/${id}`, {
+      method: 'DELETE',
+    }),
+  getRootCauseScopes: () =>
+    authFetch(`${API_BASE}/analytics/root-cause-scopes`).then(handleResponse),
   getRootCauseFactors: (params = '') =>
     authFetch(`${API_BASE}/analytics/root-cause-factors?${params}`).then(handleResponse),
 

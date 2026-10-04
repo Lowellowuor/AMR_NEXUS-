@@ -425,3 +425,16 @@ class LabRequest(Base):
         onupdate=lambda: datetime.now(UTC),
         nullable=False,
     )
+
+
+class DriverAnnotation(Base):
+    __tablename__ = "driver_annotations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    driver_id = Column(String(50), nullable=False, index=True)
+    scope_county = Column(String(100), nullable=True, index=True)
+    scope_pathogen = Column(String(100), nullable=True, index=True)
+    note = Column(Text, nullable=False)
+    event_date = Column(Date, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True)
