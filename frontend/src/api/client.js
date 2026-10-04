@@ -339,6 +339,18 @@ export const api = {
     authFetch(`${API_BASE}/labs/requests?${params}`).then(handleResponse),
   getLabRequest: (id) =>
     authFetch(`${API_BASE}/labs/requests/${id}`).then(handleResponse),
+  validateRecord: (recordId, data) =>
+    authFetch(`${API_BASE}/predictions/${recordId}/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  setInvestigation: (recordId, data) =>
+    authFetch(`${API_BASE}/predictions/${recordId}/investigation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
   getPendingLabRequest: (recordId) =>
     authFetch(`${API_BASE}/labs/requests/for-record/${recordId}`).then(handleResponse),
   createLabRequest: (data) =>

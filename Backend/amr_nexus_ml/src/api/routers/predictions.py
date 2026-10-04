@@ -40,6 +40,8 @@ def _serialize_record(r, full: bool = False) -> dict:
         "shap_value": float(r.shap_value) if r.shap_value is not None else 0.0,
         "model_version": r.model_version or "",
         "case_id": r.case_id,
+        "validation_state": r.validation_state or "unverified",
+        "investigation_status": r.investigation_status or "none",
     }
     if full:
         base.update(
@@ -65,6 +67,12 @@ def _serialize_record(r, full: bool = False) -> dict:
                 "gene_marker_mcr1": bool(r.gene_marker_mcr1) if r.gene_marker_mcr1 is not None else False,
                 "hotspot_id": r.hotspot_id,
                 "case_id": r.case_id,
+                "validation_state": r.validation_state or "unverified",
+                "validated_at": r.validated_at.isoformat() if r.validated_at else None,
+                "validated_by": r.validated_by,
+                "validation_notes": r.validation_notes,
+                "investigation_status": r.investigation_status or "none",
+                "investigation_notes": r.investigation_notes,
                 "lab_confirmed_mdr": r.lab_confirmed_mdr,
                 "outcome_confirmed_at": r.outcome_confirmed_at.isoformat()
                 if r.outcome_confirmed_at
@@ -116,6 +124,16 @@ def _apply_filters(q, search, mdr, anomaly, pathogen, county, sector, species, s
 
 
 from pydantic import BaseModel
+
+
+class ValidationPayload(BaseModel):
+    state: str
+    notes: str | None = None
+
+
+class InvestigationPayload(BaseModel):
+    status: str
+    notes: str | None = None
 
 
 class OutcomeIn(BaseModel):
@@ -685,3 +703,83 @@ async def download_clinical_summary(
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
     )
+
+
+@router.post("/predictions/{record_id}/validate", response_model=dict)
+async def validate_record(
+    record_id: str,
+    payload: ValidationPayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        uid = uuid.UUID(record_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid record ID") from None
+
+    allowed = {"unverified", "verified", "flagged", "rejected"}
+    if payload.state not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"state must be one of {sorted(allowed)}",
+        )
+
+    record = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.record_id == uid).first()
+    if record is None:
+        raise HTTPException(status_code=404, detail="record not found")
+
+    from datetime import UTC, datetime
+
+    record.validation_state = payload.state
+    record.validation_notes = payload.notes
+    if payload.state == "unverified":
+        record.validated_at = None
+        record.validated_by = None
+    else:
+        record.validated_at = datetime.now(UTC)
+        record.validated_by = current_user.id
+
+    db.commit()
+    db.refresh(record)
+    return {
+        "record_id": str(record.record_id),
+        "validation_state": record.validation_state,
+        "validated_at": record.validated_at.isoformat() if record.validated_at else None,
+        "validated_by": record.validated_by,
+        "validation_notes": record.validation_notes,
+    }
+
+
+@router.post("/predictions/{record_id}/investigation", response_model=dict)
+async def set_investigation(
+    record_id: str,
+    payload: InvestigationPayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        uid = uuid.UUID(record_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid record ID") from None
+
+    allowed = {"none", "open", "in_progress", "closed"}
+    if payload.status not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"status must be one of {sorted(allowed)}",
+        )
+
+    record = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.record_id == uid).first()
+    if record is None:
+        raise HTTPException(status_code=404, detail="record not found")
+
+    record.investigation_status = payload.status
+    record.investigation_notes = payload.notes
+    db.commit()
+    db.refresh(record)
+
+    return {
+        "record_id": str(record.record_id),
+        "investigation_status": record.investigation_status,
+        "investigation_notes": record.investigation_notes,
+    }

@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { confirmOutcome } from '../../api/endpoints';
 import PriorPredictionsInCase from './PriorPredictionsInCase';
 import LabRequestAction from './LabRequestAction';
+import ValidationBadge from './ValidationBadge';
+import ValidateActions from './ValidateActions';
 import { FolderOpen, Copy, Download, CheckCircle2, XCircle, Microscope } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -279,6 +281,13 @@ export default function HistoryDetailDrawer({ recordId, isAdmin, onClose, onDele
                   <MessageSquare className="w-3.5 h-3.5" />
                   Comments
                 </button>
+                <div className="ml-auto flex items-center gap-2">
+                  <ValidationBadge state={data.validation_state || 'unverified'} />
+                  <ValidateActions
+                    recordId={data.record_id}
+                    currentState={data.validation_state || 'unverified'}
+                  />
+                </div>
               </div>
 
               {data.case_id != null && (

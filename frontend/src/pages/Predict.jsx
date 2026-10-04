@@ -208,7 +208,7 @@ export default function Predict() {
           <div ref={resultRef}>
             {currentResult && <ResultCard result={currentResult} />}
             {currentResult && <StewardshipTip result={currentResult} antibioticClass={currentFormData?.antibiotic_class} />}
-            {currentResult && <NextActionsPanel actions={currentResult.next_actions} />}
+            {currentResult && <NextActionsPanel actions={currentResult.next_actions} recordId={currentResult.record_id} />}
             {currentResult && <OutbreakContextPanel context={currentResult.outbreak_context} />}
             {currentResult && <ContributingFactorsPanel factors={currentResult.contributing_factors} />}
             {currentResult && <DataQualityPanel quality={currentResult.data_quality} />}

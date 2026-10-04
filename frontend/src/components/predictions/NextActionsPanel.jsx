@@ -1,4 +1,7 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 import {
   ExclamationTriangleIcon,
   BeakerIcon,
@@ -7,6 +10,7 @@ import {
   ShieldCheckIcon,
   ArrowRightIcon,
 } from '@heroicons/react/24/outline';
+import api from '../../api/client';
 
 const PRIORITY_STYLES = {
   critical: {
@@ -46,7 +50,18 @@ function linkFor(route) {
   return null;
 }
 
-export default function NextActionsPanel({ actions }) {
+export default function NextActionsPanel({ actions, recordId }) {
+  const [savedIds, setSavedIds] = useState({});
+  const investigationMutation = useMutation({
+    mutationFn: ({ id, status }) =>
+      api.setInvestigation(id, { status, notes: null }),
+    onSuccess: (_, vars) => {
+      setSavedIds((prev) => ({ ...prev, [vars.id]: true }));
+      toast.success('Investigation opened');
+    },
+    onError: () => toast.error('Failed to open investigation'),
+  });
+
   if (!actions || actions.length === 0) return null;
 
   return (
@@ -86,7 +101,25 @@ export default function NextActionsPanel({ actions }) {
                   <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
                     {a.detail}
                   </p>
-                  {link && (
+                  {a.route === 'investigation' && recordId && (
+                    <button
+                      onClick={() =>
+                        investigationMutation.mutate({ id: recordId, status: 'open' })
+                      }
+                      disabled={
+                        investigationMutation.isPending || savedIds[a.id]
+                      }
+                      className="inline-flex items-center gap-1 text-xs text-[var(--accent-teal)] hover:underline mt-2 disabled:opacity-50"
+                    >
+                      {savedIds[a.id]
+                        ? 'Investigation opened'
+                        : investigationMutation.isPending
+                          ? 'Opening…'
+                          : 'Open investigation'}
+                      <ArrowRightIcon className="w-3 h-3" />
+                    </button>
+                  )}
+                  {link && a.route !== 'investigation' && (
                     <Link
                       to={link}
                       className="inline-flex items-center gap-1 text-xs text-[var(--accent-teal)] hover:underline mt-2"

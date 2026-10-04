@@ -22,6 +22,7 @@ export const ALL_COLUMNS = [
   { id: 'mdr_flag', label: 'MDR' },
   { id: 'mdr_probability', label: 'Probability' },
   { id: 'anomaly_flag', label: 'Anomaly' },
+  { id: 'validation_state', label: 'Status' },
   { id: 'created_at', label: 'Date', alwaysOn: true },
 ];
 

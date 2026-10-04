@@ -15,6 +15,7 @@ import {
 import api from '../api/client';
 import { Skeleton } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
+import ValidationBadge from '../components/history/ValidationBadge';
 import { formatNumber, formatPercent } from '../lib/format';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -351,6 +352,7 @@ export default function CaseDetail() {
                   <th className="px-3 py-2 font-medium text-[var(--text-muted)]">Site</th>
                   <th className="px-3 py-2 font-medium text-[var(--text-muted)]">MDR</th>
                   <th className="px-3 py-2 font-medium text-[var(--text-muted)]">Collected</th>
+                  <th className="px-3 py-2 font-medium text-[var(--text-muted)]">Status</th>
                   <th className="px-3 py-2 font-medium text-[var(--text-muted)] text-right">Summary</th>
                   <th className="px-3 py-2 font-medium text-[var(--text-muted)] text-right">Detach</th>
                 </tr>
@@ -378,6 +380,9 @@ export default function CaseDetail() {
                     </td>
                     <td className="px-3 py-2 text-xs text-[var(--text-muted)]">
                       {r.created_at ? new Date(r.created_at).toLocaleString() : '—'}
+                    </td>
+                    <td className="px-3 py-2">
+                      <ValidationBadge state={r.validation_state || 'unverified'} size="sm" />
                     </td>
                     <td className="px-3 py-2 text-right">
                       <SplitButton

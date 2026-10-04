@@ -208,6 +208,8 @@ def _isolate_summary(r: AMRIsolateRecord) -> dict[str, Any]:
         "site_id": r.site_id,
         "mdr_flag": bool(r.mdr_flag) if r.mdr_flag is not None else None,
         "created_at": r.created_at.isoformat() if r.created_at else None,
+        "validation_state": r.validation_state or "unverified",
+        "investigation_status": r.investigation_status or "none",
     }
 
 
