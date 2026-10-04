@@ -7,6 +7,7 @@ from sqlalchemy import case, desc, extract, func, or_
 from sqlalchemy.orm import Session
 
 from src.api.deps import get_current_user, get_db
+from src.db import dialect
 from src.db.models import AMRIsolateRecord, DashboardNotification, Hotspot, SubCountyLocation, User
 from src.services.forecast_service import generate_prophet_forecast
 from src.services.geospatial_service import get_mdr_difference, get_sub_county_mdr
@@ -97,12 +98,12 @@ async def get_sector_monthly(months: int = 12, db: Session = Depends(get_db)) ->
     results = (
         db.query(
             AMRIsolateRecord.sector,
-            func.strftime("%Y-%m", AMRIsolateRecord.sample_collection_date).label("month"),
+            dialect.year_month(db, AMRIsolateRecord.sample_collection_date).label("month"),
             func.count(AMRIsolateRecord.record_id).label("total"),
             func.sum(func.cast(AMRIsolateRecord.mdr_flag, sa.Integer)).label("mdr_count"),
         )
         .filter(AMRIsolateRecord.sample_collection_date >= datetime.now() - timedelta(days=months * 30))
-        .group_by(AMRIsolateRecord.sector, func.strftime("%Y-%m", AMRIsolateRecord.sample_collection_date))
+        .group_by(AMRIsolateRecord.sector, dialect.year_month(db, AMRIsolateRecord.sample_collection_date))
         .all()
     )
 

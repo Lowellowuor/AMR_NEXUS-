@@ -7,6 +7,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.api.deps import get_db
+from src.db import dialect
 from src.db.models import AMRIsolateRecord
 from src.utils.logger import logger
 
@@ -16,12 +17,9 @@ _cache = {}
 CACHE_TTL = 3600
 
 
-# NOTE: uses SQLite strftime for month bucketing. On PostgreSQL this must be
-# switched to to_char(created_at, ''YYYY-MM''). See ADR-0003 for migration
-# strategy; a dialect-aware helper is planned.
 def get_monthly_rates(db: Session, county: str = None, months_back: int = 24):
     query = db.query(
-        func.strftime("%Y-%m", AMRIsolateRecord.created_at).label("month"),
+        dialect.year_month(db, AMRIsolateRecord.created_at).label("month"),
         func.avg(AMRIsolateRecord.mdr_flag).label("rate"),
         func.count(AMRIsolateRecord.record_id).label("n"),
     )

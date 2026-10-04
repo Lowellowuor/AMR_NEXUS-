@@ -10,6 +10,7 @@ from datetime import datetime
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
+from src.db import dialect
 from src.modules.amu.models import AMUConsumption, AMUDrug
 from src.modules.amu.schemas import (
     ConsumptionCreate,
@@ -170,10 +171,7 @@ def trend(
     start: datetime | None = None,
     end: datetime | None = None,
 ) -> TrendResponse:
-    # Group by YYYY-MM using SQLite-compatible strftime; if running on
-    # PostgreSQL this would be to_char(period_start, 'YYYY-MM'). Kept
-    # simple and portable via func.strftime for the pilot.
-    period_col = func.strftime("%Y-%m", AMUConsumption.period_start).label("period")
+    period_col = dialect.year_month(db, AMUConsumption.period_start).label("period")
 
     stmt = (
         select(

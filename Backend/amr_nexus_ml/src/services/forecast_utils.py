@@ -5,12 +5,13 @@ from sklearn.linear_model import LinearRegression
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from src.db import dialect
 from src.db.models import AMRIsolateRecord
 
 
 def get_monthly_rates(db: Session, county: str = None, months_back: int = 24):
     query = db.query(
-        func.strftime("%Y-%m", AMRIsolateRecord.created_at).label("month"),
+        dialect.year_month(db, AMRIsolateRecord.created_at).label("month"),
         func.avg(AMRIsolateRecord.mdr_flag).label("rate"),
     )
     if county:
