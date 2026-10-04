@@ -250,46 +250,254 @@ export default function Guidance() {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.ranked_treatment_alternatives.map((a, i) => (
-                    <tr
-                      key={a.antibiotic_agent}
-                      className={`border-t border-[var(--border-primary)]/40 ${
-                        i === 0 ? 'bg-[var(--accent-teal)]/5' : ''
-                      }`}
-                    >
-                      <td className="px-4 py-3 text-[var(--text-muted)] tabular-nums">
-                        {i + 1}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
-                        {a.antibiotic_agent}
-                        {i === 0 && (
-                          <span className="ml-2 text-[10px] uppercase tracking-wide text-[var(--accent-teal)] font-semibold">
-                            top pick
+                  {result.ranked_treatment_alternatives.map((a, i) => {
+                    const rate = a.resistance_rate ?? 0;
+                    const susceptible = a.susceptible_rate ?? (100 - rate);
+                    const band = a.confidence_band || null;
+                    return (
+                      <tr
+                        key={a.antibiotic_agent}
+                        className={`border-t border-[var(--border-primary)]/40 ${
+                          i === 0 ? 'bg-[var(--accent-teal)]/5' : ''
+                        }`}
+                      >
+                        <td className="px-4 py-3 text-[var(--text-muted)] tabular-nums">
+                          {i + 1}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
+                          {a.antibiotic_agent}
+                          {a.who_category && a.who_category !== 'Unclassified' && (
+                            <span className="ml-2 text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
+                              {a.who_category}
+                            </span>
+                          )}
+                          {i === 0 && (
+                            <span className="ml-2 text-[10px] uppercase tracking-wide text-[var(--accent-teal)] font-semibold">
+                              top pick
+                            </span>
+                          )}
+                          {a.small_sample && (
+                            <span className="ml-2 text-[10px] uppercase tracking-wide text-[var(--status-warning)]">
+                              small sample
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-[var(--text-secondary)]">
+                          {formatPercent(rate)}
+                          {band && (
+                            <span className="block text-[10px] text-[var(--text-muted)]">
+                              {formatPercent(band.lower)}–{formatPercent(band.upper)}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-semibold">
+                          <span
+                            className={
+                              susceptible >= 70
+                                ? 'text-[var(--status-success)]'
+                                : susceptible >= 50
+                                ? 'text-[var(--status-warning)]'
+                                : 'text-[var(--status-critical)]'
+                            }
+                          >
+                            {formatPercent(susceptible)}
                           </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-[var(--text-secondary)]">
-                        {formatPercent(a.predicted_resistance_probability * 100)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                        <span
-                          className={
-                            a.estimated_efficacy_percentage >= 70
-                              ? 'text-[var(--status-success)]'
-                              : a.estimated_efficacy_percentage >= 50
-                              ? 'text-[var(--status-warning)]'
-                              : 'text-[var(--status-critical)]'
-                          }
-                        >
-                          {a.estimated_efficacy_percentage}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                          <span className="block text-[10px] text-[var(--text-muted)]">
+                            {a.samples} samples
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
+
+          {/* Cross-resistance warnings */}
+          {result.cross_resistance_warnings?.length > 0 && (
+            <div className="rounded-2xl border border-[var(--status-warning)]/40 bg-[var(--status-warning-bg)]/20 p-5 space-y-3">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <ExclamationTriangleIcon className="w-4 h-4 text-[var(--status-warning)]" />
+                Cross-resistance warnings
+              </h2>
+              {result.cross_resistance_warnings.map((w, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-wider flex-shrink-0 mt-0.5 ${
+                      w.severity === 'high'
+                        ? 'text-[var(--status-critical)]'
+                        : 'text-[var(--status-warning)]'
+                    }`}
+                  >
+                    {w.severity}
+                  </span>
+                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                    {w.message}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* AWaRe disclaimer */}
+          {result.aware_disclaimer && (
+            <div className="rounded-2xl border border-[var(--status-critical)]/40 bg-[var(--status-critical-bg)]/20 p-4 flex items-start gap-3">
+              <ExclamationTriangleIcon className="w-5 h-5 text-[var(--status-critical)] flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                {result.aware_disclaimer}
+              </p>
+            </div>
+          )}
+
+          {/* Allergies blocked */}
+          {result.blocked_by_allergy?.length > 0 && (
+            <div className="rounded-2xl border border-[var(--border-primary)]/40 bg-[var(--bg-secondary)]/60 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+                Excluded by patient allergy
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {result.blocked_by_allergy.map((b) => (
+                  <span
+                    key={b.antibiotic_agent}
+                    className="text-xs px-2 py-0.5 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-muted)] line-through"
+                  >
+                    {b.antibiotic_agent}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Outbreak context */}
+          {result.outbreak_context && (
+            <div className="rounded-2xl border border-[var(--border-primary)]/40 bg-[var(--bg-secondary)]/80 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+                Outbreak context
+              </h3>
+              <div className="grid grid-cols-3 gap-3 text-xs">
+                <div>
+                  <p className="text-[10px] text-[var(--text-muted)]">National</p>
+                  <p className="font-semibold tabular-nums text-[var(--text-primary)]">
+                    {result.outbreak_context.national_isolates}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[var(--text-muted)]">Local</p>
+                  <p className="font-semibold tabular-nums text-[var(--text-primary)]">
+                    {result.outbreak_context.local_isolates}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[var(--text-muted)]">Local share</p>
+                  <p
+                    className={`font-semibold tabular-nums ${
+                      result.outbreak_context.elevated
+                        ? 'text-[var(--status-warning)]'
+                        : 'text-[var(--text-primary)]'
+                    }`}
+                  >
+                    {result.outbreak_context.local_share_pct}%
+                  </p>
+                </div>
+              </div>
+              {result.outbreak_context.elevated && (
+                <p className="text-[10px] text-[var(--status-warning)] mt-2">
+                  Elevated locally — coordinate with county surveillance.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Cross-sector signal */}
+          {result.cross_sector?.length > 0 && (
+            <div className="rounded-2xl border border-[var(--border-primary)]/40 bg-[var(--bg-secondary)]/80 overflow-hidden">
+              <div className="px-4 py-3 border-b border-[var(--border-primary)]/40">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                  Cross-sector signal
+                </h3>
+                <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                  Same pathogen, all sectors, last {result.data_window_days} days
+                </p>
+              </div>
+              <ul className="divide-y divide-[var(--border-primary)]/30">
+                {result.cross_sector.map((s) => (
+                  <li
+                    key={s.sector}
+                    className="flex items-center justify-between px-4 py-2 text-xs"
+                  >
+                    <span className="capitalize text-[var(--text-secondary)]">
+                      {s.sector}
+                    </span>
+                    <span className="flex items-center gap-3">
+                      <span className="text-[var(--text-muted)] tabular-nums">
+                        {s.samples} samples
+                      </span>
+                      <span className="tabular-nums font-semibold text-[var(--text-primary)]">
+                        {formatPercent(s.resistance_rate)} R
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Subgroups */}
+          {result.subgroups && (
+            <div className="rounded-2xl border border-[var(--border-primary)]/40 bg-[var(--bg-secondary)]/80 p-4 space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                Subgroup breakdown
+              </h3>
+              {[
+                ['by_age', 'Age'],
+                ['by_sex', 'Sex'],
+                ['by_origin', 'Infection origin'],
+                ['by_ward', 'Ward type'],
+              ].map(([key, label]) => {
+                const rows = result.subgroups[key] || [];
+                const onlyUnknown =
+                  rows.length === 1 && rows[0].bucket === 'unknown';
+                return (
+                  <div key={key}>
+                    <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                      {label}
+                    </p>
+                    {onlyUnknown ? (
+                      <p className="text-[10px] text-[var(--text-muted)] italic">
+                        No subgroup data recorded — capture patient context at
+                        submission to enable breakdown.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {rows.map((r) => (
+                          <span
+                            key={r.bucket}
+                            className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
+                          >
+                            {r.bucket} · {r.samples} ·{' '}
+                            <span className="tabular-nums font-semibold">
+                              {formatPercent(r.resistance_rate)}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Counterfactual note */}
+          {result.counterfactual_note && (
+            <div className="rounded-2xl border border-[var(--border-primary)]/40 bg-[var(--bg-secondary)]/60 p-4 text-xs text-[var(--text-secondary)]">
+              <span className="font-semibold text-[var(--text-primary)]">
+                Counterfactual.{' '}
+              </span>
+              {result.counterfactual_note}
+            </div>
+          )}
 
           {/* Annotation */}
           <div className="flex items-start gap-3 rounded-2xl border border-[var(--border-primary)]/40 bg-[var(--bg-secondary)]/60 p-4">

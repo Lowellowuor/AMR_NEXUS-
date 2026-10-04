@@ -1,7 +1,9 @@
 """Clinical guidance based on observed resistance data.
 
-Delegates to src.services.guidance_service, which falls back to mdr_flag
-when sir_result is missing (as it is for the majority of current isolates).
+Delegates to src.services.guidance_service.build_patient_filtered, which
+returns the ranking enriched with confidence bands, AWaRe disclaimers,
+cross-resistance warnings, subgroup breakdowns, cross-sector signals,
+outbreak context, and allergy filtering.
 """
 
 from typing import Any
@@ -29,10 +31,14 @@ async def get_clinical_guidance_recommendation(
         raise HTTPException(status_code=400, detail="pathogen_code is required")
 
     try:
-        result = guidance_service.observed_resistance_for_pathogen(
+        result = guidance_service.build_patient_filtered(
             db,
             pathogen_code=payload.pathogen_code,
             county=payload.county or None,
+            allergy_classes=payload.allergy_classes,
+            include_subgroups=payload.include_subgroups,
+            include_cross_sector=payload.include_cross_sector,
+            include_outbreak=payload.include_outbreak,
         )
     except Exception as e:
         raise HTTPException(

@@ -70,3 +70,7 @@ class GuidanceRequest(BaseModel):
     resistance_pattern: str = Field(..., max_length=200)
     user_role: str = Field(..., max_length=50)
     county: str | None = Field(default=None, max_length=100)
+    allergy_classes: list[str] | None = Field(default=None, max_length=20)
+    include_subgroups: bool = True
+    include_cross_sector: bool = True
+    include_outbreak: bool = True
