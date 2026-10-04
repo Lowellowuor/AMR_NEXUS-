@@ -391,3 +391,31 @@ class GlassReferenceMapping(Base):
             name="uq_glass_mapping_type_value",
         ),
     )
+
+
+class LabRequest(Base):
+    __tablename__ = "lab_requests"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    record_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("amr_isolate_records.record_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status = Column(String(20), nullable=False, default="pending", index=True)
+    priority = Column(String(20), nullable=False, default="routine", index=True)
+    requested_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    requested_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True)
+    assigned_to = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    notes = Column(Text, nullable=True)
+    result_notes = Column(Text, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    completed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )

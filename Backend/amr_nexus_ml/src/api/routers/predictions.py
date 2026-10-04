@@ -65,6 +65,12 @@ def _serialize_record(r, full: bool = False) -> dict:
                 "gene_marker_mcr1": bool(r.gene_marker_mcr1) if r.gene_marker_mcr1 is not None else False,
                 "hotspot_id": r.hotspot_id,
                 "case_id": r.case_id,
+                "lab_confirmed_mdr": r.lab_confirmed_mdr,
+                "outcome_confirmed_at": r.outcome_confirmed_at.isoformat()
+                if r.outcome_confirmed_at
+                else None,
+                "outcome_confirmed_by": r.outcome_confirmed_by,
+                "outcome_notes": r.outcome_notes,
                 "updated_at": r.updated_at.isoformat() if r.updated_at else None,
             }
         )

@@ -22,6 +22,14 @@ class CaseUpdate(BaseModel):
     status: str | None = None
 
 
+class MergePayload(BaseModel):
+    source_case_id: int
+
+
+class SplitPayload(BaseModel):
+    record_id: str
+
+
 @cases_router.get("", response_model=list[dict[str, Any]])
 async def list_cases(
     county: str | None = None,
@@ -121,3 +129,39 @@ async def update_case(
     if detail is None:
         raise HTTPException(status_code=404, detail="case not found")
     return detail
+
+
+@cases_router.post("/{case_id}/merge", response_model=dict[str, Any])
+async def merge_case(
+    case_id: int,
+    payload: MergePayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    try:
+        return case_service.merge_cases(
+            db,
+            target_case_id=case_id,
+            source_case_id=payload.source_case_id,
+            user_id=current_user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@cases_router.post("/{case_id}/split", response_model=dict[str, Any])
+async def split_case(
+    case_id: int,
+    payload: SplitPayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    try:
+        return case_service.split_isolate(
+            db,
+            record_id=payload.record_id,
+            source_case_id=case_id,
+            user_id=current_user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e

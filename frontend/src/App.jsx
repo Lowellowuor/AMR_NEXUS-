@@ -25,6 +25,7 @@ import Privacy from './pages/Privacy';
 import AuditLog from './pages/AuditLog';
 import AdminUsers from './pages/AdminUsers';
 import AdminGlass from './pages/AdminGlass';
+import LabQueue from './pages/LabQueue';
 import AmuDashboard from './pages/AmuDashboard';
 import SamplingSites from './pages/SamplingSites';
 import Actions from './pages/Actions';
@@ -103,6 +104,7 @@ function AppRoutes() {
         <Route path="admin/audit" element={wrap(<AuditLog />)} />
             <Route path="admin/users" element={wrap(<AdminUsers />)} />
             <Route path="admin/glass" element={wrap(<AdminGlass />)} />
+            <Route path="lab-queue" element={wrap(<LabQueue />)} />
             <Route path="amu" element={wrap(<AmuDashboard />)} />
             <Route path="sampling-sites" element={wrap(<SamplingSites />)} />
             <Route path="actions" element={wrap(<Actions />)} />

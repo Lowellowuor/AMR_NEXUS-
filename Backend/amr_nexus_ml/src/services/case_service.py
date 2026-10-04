@@ -318,3 +318,123 @@ def list_cases(
             }
         )
     return out
+
+
+def merge_cases(
+    db: Session,
+    *,
+    target_case_id: int,
+    source_case_id: int,
+    user_id: int | None = None,
+) -> dict[str, Any]:
+    if target_case_id == source_case_id:
+        raise ValueError("target and source must differ")
+
+    target = db.get(Case, target_case_id)
+    if target is None:
+        raise ValueError("target case not found")
+    source = db.get(Case, source_case_id)
+    if source is None:
+        raise ValueError("source case not found")
+
+    moved = (
+        db.query(AMRIsolateRecord)
+        .filter(AMRIsolateRecord.case_id == source_case_id)
+        .update({AMRIsolateRecord.case_id: target_case_id})
+    )
+
+    db.flush()
+
+    isolates = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.case_id == target_case_id).all()
+    if isolates:
+        dates = [r.created_at for r in isolates if r.created_at]
+        if dates:
+            target.first_isolate_at = min(dates)
+            target.latest_isolate_at = max(dates)
+        target.sector = target.sector or (isolates[0].sector if isolates else None)
+        target.species = target.species or (isolates[0].animal_species if isolates else None)
+        target.site_id = target.site_id or (isolates[0].site_id if isolates else None)
+
+    if source.notes:
+        merged_note = f"[merged from {source.case_code}] {source.notes}"
+        if target.notes:
+            target.notes = f"{target.notes}\n{merged_note}"
+        else:
+            target.notes = merged_note
+
+    target.updated_at = datetime.now(UTC)
+
+    db.delete(source)
+    db.commit()
+    db.refresh(target)
+
+    return {
+        "target_case_id": target.id,
+        "target_case_code": target.case_code,
+        "source_case_id": source_case_id,
+        "isolates_moved": int(moved),
+    }
+
+
+def split_isolate(
+    db: Session,
+    *,
+    record_id: int | str,
+    source_case_id: int,
+    user_id: int | None = None,
+) -> dict[str, Any]:
+    from uuid import UUID as _UUID
+
+    source = db.get(Case, source_case_id)
+    if source is None:
+        raise ValueError("source case not found")
+
+    if isinstance(record_id, str):
+        try:
+            record_uuid = _UUID(record_id)
+        except ValueError as e:
+            raise ValueError("invalid record id") from e
+    else:
+        record_uuid = record_id
+
+    isolate = db.get(AMRIsolateRecord, record_uuid)
+    if isolate is None:
+        raise ValueError("isolate not found")
+    if isolate.case_id != source_case_id:
+        raise ValueError("isolate is not in the source case")
+
+    when = isolate.created_at or datetime.now(UTC)
+    new_case = create_case(
+        db,
+        county=source.county,
+        sub_county=source.sub_county,
+        sector=source.sector,
+        species=source.species,
+        site_id=source.site_id,
+        created_by=user_id,
+        first_isolate_at=when,
+        notes=f"[split from {source.case_code}]",
+    )
+
+    isolate.case_id = new_case.id
+    db.flush()
+
+    remaining = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.case_id == source_case_id).all()
+    if remaining:
+        dates = [r.created_at for r in remaining if r.created_at]
+        if dates:
+            source.first_isolate_at = min(dates)
+            source.latest_isolate_at = max(dates)
+        source.updated_at = datetime.now(UTC)
+    else:
+        source.updated_at = datetime.now(UTC)
+
+    db.commit()
+    db.refresh(new_case)
+
+    return {
+        "new_case_id": new_case.id,
+        "new_case_code": new_case.case_code,
+        "from_case_id": source_case_id,
+        "record_id": str(isolate.record_id),
+    }

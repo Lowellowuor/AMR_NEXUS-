@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { confirmOutcome } from '../../api/endpoints';
+import PriorPredictionsInCase from './PriorPredictionsInCase';
+import LabRequestAction from './LabRequestAction';
 import { FolderOpen, Copy, Download, CheckCircle2, XCircle, Microscope } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -278,6 +280,18 @@ export default function HistoryDetailDrawer({ recordId, isAdmin, onClose, onDele
                   Comments
                 </button>
               </div>
+
+              {data.case_id != null && (
+                <PriorPredictionsInCase
+                  caseId={data.case_id}
+                  excludeRecordId={data.record_id}
+                />
+              )}
+
+              <LabRequestAction
+                recordId={data.record_id}
+                labConfirmed={data.lab_confirmed_mdr}
+              />
 
               <div className="rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-5 flex flex-col sm:flex-row items-center gap-5">
                 <RiskDial value={(data.mdr_probability ?? 0) * 100} />

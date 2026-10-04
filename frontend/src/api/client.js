@@ -333,6 +333,26 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }).then(handleResponse),
+
+  // ---- Lab confirmation workflow ----
+  listLabRequests: (params = '') =>
+    authFetch(`${API_BASE}/labs/requests?${params}`).then(handleResponse),
+  getLabRequest: (id) =>
+    authFetch(`${API_BASE}/labs/requests/${id}`).then(handleResponse),
+  getPendingLabRequest: (recordId) =>
+    authFetch(`${API_BASE}/labs/requests/for-record/${recordId}`).then(handleResponse),
+  createLabRequest: (data) =>
+    authFetch(`${API_BASE}/labs/requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  updateLabRequest: (id, data) =>
+    authFetch(`${API_BASE}/labs/requests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
   linkIsolateToCase: (caseId, recordId) =>
     authFetch(`${API_BASE}/cases/${caseId}/link`, {
       method: 'POST',

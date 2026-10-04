@@ -42,6 +42,7 @@ export default function Sidebar({ role = 'national', mobile = false, onNavigate 
         { name: 'Contributing Factors', href: '/root-causes', icon: MagnifyingGlassIcon },
         { name: 'History', href: '/history', icon: ClockIcon },
         { name: 'Cases', href: '/cases', icon: FolderIcon },
+        { name: 'Lab Queue', href: '/lab-queue', icon: BeakerIcon },
         { name: 'Pathogen Explorer', href: '/pathogen-explorer', icon: MagnifyingGlassIcon },
       ],
     },
