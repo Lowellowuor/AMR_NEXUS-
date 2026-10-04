@@ -8,6 +8,7 @@ from src.api.routers.auth import router as auth_router
 from src.api.routers.cases import cases_router
 from src.api.routers.comments_router import comments_router
 from src.api.routers.ews import ews_router
+from src.api.routers.glass import glass_router
 from src.api.routers.guidance_router import guidance_router
 from src.api.routers.health_router import health_router
 from src.api.routers.hotspots import router as hotspot_router
