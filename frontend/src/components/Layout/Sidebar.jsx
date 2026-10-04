@@ -79,6 +79,7 @@ export default function Sidebar({ role = 'national', mobile = false, onNavigate 
             items: [
               { name: 'Users', href: '/admin/users', icon: UsersIcon },
               { name: 'Audit Log', href: '/admin/audit', icon: ShieldExclamationIcon },
+              { name: 'GLASS Reference', href: '/admin/glass', icon: FolderIcon },
             ],
           },
         ]

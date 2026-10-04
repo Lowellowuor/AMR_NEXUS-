@@ -322,6 +322,28 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ record_id: recordId }),
     }).then(handleResponse),
+
+  // ---- GLASS reference data ----
+  getGlassUnmapped: (params = '') =>
+    authFetch(`${API_BASE}/glass/unmapped?${params}`).then(handleResponse),
+  getGlassExport: (params = '') =>
+    authFetch(`${API_BASE}/glass/export?${params}`).then(handleResponse),
+  getGlassMappings: (params = '') =>
+    authFetch(`${API_BASE}/glass/mappings?${params}`).then(handleResponse),
+  createGlassMapping: (data) =>
+    authFetch(`${API_BASE}/glass/mappings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  updateGlassMapping: (id, data) =>
+    authFetch(`${API_BASE}/glass/mappings/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  deleteGlassMapping: (id) =>
+    authFetch(`${API_BASE}/glass/mappings/${id}`, { method: 'DELETE' }),
 };
 
 export default api;
