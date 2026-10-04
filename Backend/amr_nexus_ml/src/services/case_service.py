@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from src.db.models import AMRIsolateRecord, Case
+from src.db.models import AMRIsolateRecord, Case, CaseEvent, User
 from src.modules.sampling_sites.models import SamplingSite  # noqa: F401
 
 
@@ -56,6 +56,7 @@ def create_case(
     )
     db.add(case)
     db.flush()
+    record_event(db, case_id=case.id, event_type="created", note=None)
     return case
 
 
@@ -183,6 +184,12 @@ def link_isolate(db: Session, record_id: int, case_id: int) -> AMRIsolateRecord:
         if target.first_isolate_at is None or record.created_at < target.first_isolate_at:
             target.first_isolate_at = record.created_at
     target.updated_at = datetime.now(UTC)
+    record_event(
+        db,
+        case_id=target.id,
+        event_type="isolate_linked",
+        note=f"isolate {record.record_id}",
+    )
     db.flush()
     return record
 
@@ -191,7 +198,15 @@ def detach_isolate(db: Session, record_id: int) -> AMRIsolateRecord:
     record = db.get(AMRIsolateRecord, record_id)
     if record is None:
         raise ValueError(f"isolate {record_id} not found")
+    old_case_id = record.case_id
     record.case_id = None
+    if old_case_id is not None:
+        record_event(
+            db,
+            case_id=old_case_id,
+            event_type="isolate_detached",
+            note=f"isolate {record.record_id}",
+        )
     db.flush()
     return record
 
@@ -244,10 +259,15 @@ def get_case_detail(db: Session, case_id: int) -> dict[str, Any] | None:
         "notes": case.notes,
         "created_at": case.created_at.isoformat() if case.created_at else None,
         "updated_at": case.updated_at.isoformat() if case.updated_at else None,
+        "closed_at": case.closed_at.isoformat() if case.closed_at else None,
+        "closed_by": case.closed_by,
+        "closed_reason": case.closed_reason,
+        "closed_note": case.closed_note,
         "isolate_count": total,
         "mdr_count": mdr,
         "mdr_rate": round((mdr / total) * 100, 1) if total else 0.0,
         "isolates": [_isolate_summary(r) for r in isolates],
+        "events": get_case_events(db, case.id),
     }
 
 
@@ -366,6 +386,12 @@ def merge_cases(
 
     target.updated_at = datetime.now(UTC)
 
+    record_event(
+        db,
+        case_id=target.id,
+        event_type="merged_in",
+        note=f"merged {source.case_code} ({moved} isolates)",
+    )
     db.delete(source)
     db.commit()
     db.refresh(target)
@@ -431,6 +457,12 @@ def split_isolate(
     else:
         source.updated_at = datetime.now(UTC)
 
+    record_event(
+        db,
+        case_id=source.id,
+        event_type="split_out",
+        note=f"isolate {isolate.record_id} -> {new_case.case_code}",
+    )
     db.commit()
     db.refresh(new_case)
 
@@ -440,3 +472,123 @@ def split_isolate(
         "from_case_id": source_case_id,
         "record_id": str(isolate.record_id),
     }
+
+
+CLOSE_REASONS = (
+    "resolved",
+    "referred",
+    "duplicate",
+    "insufficient_data",
+    "no_action",
+    "other",
+)
+
+
+def record_event(
+    db: Session,
+    *,
+    case_id: int,
+    event_type: str,
+    note: str | None = None,
+    actor: User | None = None,
+) -> CaseEvent:
+    event = CaseEvent(
+        case_id=case_id,
+        event_type=event_type,
+        note=note,
+        actor_id=actor.id if actor else None,
+        actor_name=(actor.name or actor.email) if actor else None,
+        created_at=datetime.now(UTC),
+    )
+    db.add(event)
+    return event
+
+
+def get_case_events(db: Session, case_id: int) -> list[dict[str, Any]]:
+    rows = (
+        db.execute(
+            select(CaseEvent).where(CaseEvent.case_id == case_id).order_by(CaseEvent.created_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "case_id": r.case_id,
+            "event_type": r.event_type,
+            "note": r.note,
+            "actor_id": r.actor_id,
+            "actor_name": r.actor_name,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
+def close_case(
+    db: Session,
+    *,
+    case_id: int,
+    reason: str,
+    note: str | None,
+    actor: User | None = None,
+) -> dict[str, Any]:
+    case = db.get(Case, case_id)
+    if case is None:
+        raise ValueError("case not found")
+    if case.status == "closed":
+        raise ValueError("case is already closed")
+    if reason not in CLOSE_REASONS:
+        raise ValueError(f"reason must be one of {sorted(CLOSE_REASONS)}")
+
+    case.status = "closed"
+    case.closed_at = datetime.now(UTC)
+    case.closed_by = actor.id if actor else None
+    case.closed_reason = reason
+    case.closed_note = note
+    case.updated_at = datetime.now(UTC)
+
+    record_event(
+        db,
+        case_id=case.id,
+        event_type="closed",
+        note=f"Reason: {reason}" + (f". {note}" if note else ""),
+        actor=actor,
+    )
+
+    db.commit()
+    db.refresh(case)
+    return get_case_detail(db, case_id)
+
+
+def reopen_case(
+    db: Session,
+    *,
+    case_id: int,
+    actor: User | None = None,
+) -> dict[str, Any]:
+    case = db.get(Case, case_id)
+    if case is None:
+        raise ValueError("case not found")
+    if case.status != "closed":
+        raise ValueError("case is not closed")
+
+    case.status = "open"
+    case.closed_at = None
+    case.closed_by = None
+    case.closed_reason = None
+    case.closed_note = None
+    case.updated_at = datetime.now(UTC)
+
+    record_event(
+        db,
+        case_id=case.id,
+        event_type="reopened",
+        note=None,
+        actor=actor,
+    )
+
+    db.commit()
+    db.refresh(case)
+    return get_case_detail(db, case_id)

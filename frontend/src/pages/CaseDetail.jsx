@@ -16,6 +16,9 @@ import api from '../api/client';
 import { Skeleton } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import ValidationBadge from '../components/history/ValidationBadge';
+import CaseTimeline from '../components/cases/CaseTimeline';
+import CloseCaseDialog from '../components/cases/CloseCaseDialog';
+import { LockClosedIcon, LockOpenIcon } from '@heroicons/react/24/outline';
 import { formatNumber, formatPercent } from '../lib/format';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -246,8 +249,32 @@ function CaseNotes({ caseId, initialNotes }) {
   );
 }
 
+function ReopenButton({ caseId }) {
+  const qc = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: () => api.reopenCase(caseId),
+    onSuccess: () => {
+      toast.success('Case reopened');
+      qc.invalidateQueries({ queryKey: ['case', String(caseId)] });
+      qc.invalidateQueries({ queryKey: ['cases'] });
+    },
+    onError: () => toast.error('Failed to reopen case'),
+  });
+  return (
+    <button
+      onClick={() => mutation.mutate()}
+      disabled={mutation.isPending}
+      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition disabled:opacity-50"
+    >
+      <LockOpenIcon className="w-3.5 h-3.5" />
+      {mutation.isPending ? 'Reopening…' : 'Reopen case'}
+    </button>
+  );
+}
+
 export default function CaseDetail() {
   const { id } = useParams();
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
   const query = useQuery({
     queryKey: ['case', id],
     queryFn: () => api.getCase(id),
@@ -298,14 +325,27 @@ export default function CaseDetail() {
             <span className="capitalize">{c.sector || '—'}{c.species ? ` · ${c.species}` : ''}</span>
           </div>
         </div>
-        <span
-          className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-            STATUS_TONE[c.status] || STATUS_TONE.closed
-          }`}
-        >
-          {c.status}
-        </span>
-        <MergeButton caseId={Number(id)} />
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+              STATUS_TONE[c.status] || STATUS_TONE.closed
+            }`}
+          >
+            {c.status}
+          </span>
+          {c.status === 'open' ? (
+            <button
+              onClick={() => setShowCloseDialog(true)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition"
+            >
+              <LockClosedIcon className="w-3.5 h-3.5" />
+              Close case
+            </button>
+          ) : (
+            <ReopenButton caseId={Number(id)} />
+          )}
+          <MergeButton caseId={Number(id)} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -419,7 +459,15 @@ export default function CaseDetail() {
         )}
       </div>
 
+      <CaseTimeline events={c.events} />
+
       <CaseNotes caseId={Number(id)} initialNotes={c.notes} />
+
+      <CloseCaseDialog
+        caseId={Number(id)}
+        open={showCloseDialog}
+        onClose={() => setShowCloseDialog(false)}
+      />
     </div>
   );
 }

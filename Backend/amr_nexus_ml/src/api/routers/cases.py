@@ -30,6 +30,11 @@ class SplitPayload(BaseModel):
     record_id: str
 
 
+class ClosePayload(BaseModel):
+    reason: str
+    note: str | None = None
+
+
 @cases_router.get("", response_model=list[dict[str, Any]])
 async def list_cases(
     county: str | None = None,
@@ -165,3 +170,47 @@ async def split_case(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@cases_router.post("/{case_id}/close", response_model=dict[str, Any])
+async def close_case(
+    case_id: int,
+    payload: ClosePayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    try:
+        return case_service.close_case(
+            db,
+            case_id=case_id,
+            reason=payload.reason,
+            note=payload.note,
+            actor=current_user,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@cases_router.post("/{case_id}/reopen", response_model=dict[str, Any])
+async def reopen_case(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    try:
+        return case_service.reopen_case(
+            db,
+            case_id=case_id,
+            actor=current_user,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@cases_router.get("/{case_id}/events", response_model=list[dict[str, Any]])
+async def list_case_events(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    return case_service.get_case_events(db, case_id)

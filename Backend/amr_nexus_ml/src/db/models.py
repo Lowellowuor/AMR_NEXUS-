@@ -361,6 +361,10 @@ class Case(Base):
     latest_isolate_at = Column(DateTime, nullable=True, index=True)
 
     notes = Column(Text, nullable=True)
+    closed_at = Column(DateTime, nullable=True)
+    closed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    closed_reason = Column(String(50), nullable=True)
+    closed_note = Column(Text, nullable=True)
     created_by = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -441,4 +445,16 @@ class DriverAnnotation(Base):
     note = Column(Text, nullable=False)
     event_date = Column(Date, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True)
+
+
+class CaseEvent(Base):
+    __tablename__ = "case_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=False, index=True)
+    event_type = Column(String(40), nullable=False, index=True)
+    note = Column(Text, nullable=True)
+    actor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    actor_name = Column(String(200), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True)

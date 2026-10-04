@@ -343,6 +343,18 @@ export const api = {
     authFetch(`${API_BASE}/cases?${params}`).then(handleResponse),
   getCase: (id) =>
     authFetch(`${API_BASE}/cases/${id}`).then(handleResponse),
+  closeCase: (id, data) =>
+    authFetch(`${API_BASE}/cases/${id}/close`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  reopenCase: (id) =>
+    authFetch(`${API_BASE}/cases/${id}/reopen`, {
+      method: 'POST',
+    }).then(handleResponse),
+  getCaseEvents: (id) =>
+    authFetch(`${API_BASE}/cases/${id}/events`).then(handleResponse),
   updateCase: (id, data) =>
     authFetch(`${API_BASE}/cases/${id}`, {
       method: 'PATCH',
