@@ -74,6 +74,12 @@ class AMRIsolateRecord(Base):
     hotspot_id = Column(Integer, ForeignKey("hotspots.id"), nullable=True)
     site_id = Column(Integer, ForeignKey("sampling_sites.id", ondelete="SET NULL"), nullable=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.id", ondelete="SET NULL"), nullable=True, index=True)
+    validation_state = Column(String(20), nullable=False, default="unverified", index=True)
+    validated_at = Column(DateTime, nullable=True)
+    validated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    validation_notes = Column(Text, nullable=True)
+    investigation_status = Column(String(20), nullable=False, default="none", index=True)
+    investigation_notes = Column(Text, nullable=True)
 
 
 class SubCountyLocation(Base):

@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from src.db.models import AMRIsolateRecord, Hotspot
+from src.services import config_service
 
 
 def _mdr_action(mdr_flag: bool, prob: float) -> dict[str, Any]:
@@ -100,7 +101,8 @@ def _outbreak_action(db: Session, pathogen: str | None, county: str | None) -> d
         .scalar()
         or 0
     )
-    if recent < 20:
+    min_isolates = int(config_service.get_config(db, "outbreak_min_isolates", 20))
+    if recent < min_isolates:
         return None
     return {
         "id": "notify_county",
@@ -169,6 +171,7 @@ def build_outbreak_context(
         local_count = national_count
 
     share = round((local_count / national_count) * 100, 1) if national_count else 0.0
+    threshold = float(config_service.get_config(db, "outbreak_local_share_pct", 20.0))
 
     return {
         "pathogen": pathogen_code,
@@ -176,7 +179,7 @@ def build_outbreak_context(
         "national_isolates": national_count,
         "local_isolates": local_count,
         "local_share_pct": share,
-        "elevated": share >= 20.0,
+        "elevated": share >= threshold,
     }
 
 

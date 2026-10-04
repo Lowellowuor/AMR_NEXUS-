@@ -26,6 +26,11 @@ const schema = z.object({
   hospitalised: z.boolean().optional(),
   facility: z.string().optional(),
   site_id: z.number().nullable().optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+  suspected_driver: z.string().optional(),
+  treatment_history: z.string().optional(),
+  qualitative_context: z.string().optional(),
 });
 
 const genderOptions = [

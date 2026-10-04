@@ -14,6 +14,10 @@ import ModelInfoStrip from '../components/predictions/ModelInfoStrip';
 import PredictModeToggle from '../components/predictions/PredictModeToggle';
 import SimilarCasesPanel from '../components/predictions/SimilarCasesPanel';
 import PatientEpisodePanel from '../components/predictions/PatientEpisodePanel';
+import NextActionsPanel from '../components/predictions/NextActionsPanel';
+import ContributingFactorsPanel from '../components/predictions/ContributingFactorsPanel';
+import OutbreakContextPanel from '../components/predictions/OutbreakContextPanel';
+import DataQualityPanel from '../components/predictions/DataQualityPanel';
 
 import api from '../api/client';
 import { isDuplicate } from '../utils/duplicateDetection';
@@ -204,6 +208,10 @@ export default function Predict() {
           <div ref={resultRef}>
             {currentResult && <ResultCard result={currentResult} />}
             {currentResult && <StewardshipTip result={currentResult} antibioticClass={currentFormData?.antibiotic_class} />}
+            {currentResult && <NextActionsPanel actions={currentResult.next_actions} />}
+            {currentResult && <OutbreakContextPanel context={currentResult.outbreak_context} />}
+            {currentResult && <ContributingFactorsPanel factors={currentResult.contributing_factors} />}
+            {currentResult && <DataQualityPanel quality={currentResult.data_quality} />}
             {currentResult && (
               <PatientEpisodePanel
                 caseId={currentResult.case_id}
