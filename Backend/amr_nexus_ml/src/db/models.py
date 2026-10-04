@@ -296,3 +296,29 @@ class NotificationLog(Base):
     error = Column(Text, nullable=True)
     provider_ref = Column(String(200), nullable=True)
     sent_at = Column(DateTime, nullable=True)
+
+
+class SystemConfig(Base):
+    __tablename__ = "system_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key = Column(String(100), unique=True, nullable=False, index=True)
+    value = Column(Text, nullable=False)
+    value_type = Column(String(20), nullable=False, default="string")
+    description = Column(Text, nullable=True)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class SectorTaxonomy(Base):
+    __tablename__ = "sector_taxonomy"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    raw_sector = Column(String(50), unique=True, nullable=False, index=True)
+    canonical_sector = Column(String(50), nullable=False, index=True)
+    is_canonical = Column(Boolean, nullable=False, default=False)
+    display_label = Column(String(50), nullable=True)
+    display_order = Column(Integer, nullable=False, default=100)

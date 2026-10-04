@@ -1818,3 +1818,203 @@ async def amu_resistance_correlation(
         "correlation_note": note,
         "sectors_with_both": len(comparable),
     }
+
+
+@analytics_router.get("/ecoli-sentinel", response_model=dict[str, Any])
+async def ecoli_sentinel(
+    county: str | None = None,
+    days: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    from src.services import config_service
+
+    sentinel = config_service.get_config(db, "sentinel_pathogen", "E. coli")
+    window = days or config_service.get_config(db, "sentinel_lookback_days", 180)
+    canonical = config_service.get_canonical_sectors(db)
+    alias = config_service.get_sector_alias_map(db)
+    since = datetime.now(UTC) - timedelta(days=int(window))
+
+    base = db.query(AMRIsolateRecord).filter(
+        AMRIsolateRecord.created_at >= since,
+        func.lower(AMRIsolateRecord.pathogen_code).like(f"%{sentinel.lower()}%"),
+    )
+    if county:
+        base = base.filter(AMRIsolateRecord.county == county)
+
+    rows = (
+        base.with_entities(
+            AMRIsolateRecord.sector,
+            func.count(AMRIsolateRecord.record_id).label("total"),
+            func.sum(case((AMRIsolateRecord.mdr_flag.is_(True), 1), else_=0)).label("mdr"),
+        )
+        .group_by(AMRIsolateRecord.sector)
+        .all()
+    )
+
+    merged: dict[str, dict[str, int]] = {}
+    for r in rows:
+        key = alias.get((r.sector or "").lower(), (r.sector or "unknown").lower())
+        entry = merged.setdefault(key, {"samples": 0, "mdr_count": 0})
+        entry["samples"] += int(r.total or 0)
+        entry["mdr_count"] += int(r.mdr or 0)
+
+    sectors = []
+    for c in canonical:
+        e = merged.get(c["sector"], {"samples": 0, "mdr_count": 0})
+        sectors.append(
+            {
+                "sector": c["sector"],
+                "label": c["label"],
+                "samples": e["samples"],
+                "mdr_count": e["mdr_count"],
+                "mdr_rate": round((e["mdr_count"] / e["samples"]) * 100, 1) if e["samples"] else 0.0,
+            }
+        )
+
+    return {
+        "pathogen": sentinel,
+        "scope": {"county": county, "days": int(window)},
+        "sectors": sectors,
+        "sectors_with_data": sum(1 for s in sectors if s["samples"] > 0),
+    }
+
+
+@analytics_router.get("/cross-pillar-signals", response_model=dict[str, Any])
+async def cross_pillar_signals(
+    county: str | None = None,
+    days: int | None = None,
+    min_sectors: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    from src.services import config_service
+
+    window = days or config_service.get_config(db, "sentinel_lookback_days", 180)
+    min_s = min_sectors or config_service.get_config(db, "cross_pillar_min_sectors", 2)
+    canonical = config_service.get_canonical_sectors(db)
+    alias = config_service.get_sector_alias_map(db)
+    since = datetime.now(UTC) - timedelta(days=int(window))
+
+    base = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.created_at >= since)
+    if county:
+        base = base.filter(AMRIsolateRecord.county == county)
+
+    rows = (
+        base.with_entities(
+            AMRIsolateRecord.pathogen_code,
+            AMRIsolateRecord.sector,
+            func.count(AMRIsolateRecord.record_id).label("total"),
+            func.sum(case((AMRIsolateRecord.mdr_flag.is_(True), 1), else_=0)).label("mdr"),
+        )
+        .group_by(AMRIsolateRecord.pathogen_code, AMRIsolateRecord.sector)
+        .all()
+    )
+
+    grouped: dict[str, dict[str, dict[str, int]]] = {}
+    for r in rows:
+        pathogen = (r.pathogen_code or "").strip()
+        if not pathogen:
+            continue
+        sector = alias.get((r.sector or "").lower(), (r.sector or "unknown").lower())
+        entry = grouped.setdefault(pathogen, {}).setdefault(sector, {"samples": 0, "mdr_count": 0})
+        entry["samples"] += int(r.total or 0)
+        entry["mdr_count"] += int(r.mdr or 0)
+
+    signals = []
+    for pathogen, sector_map in grouped.items():
+        if len(sector_map) < int(min_s):
+            continue
+        sector_entries = []
+        total_across = 0
+        mdr_across = 0
+        for c in canonical:
+            e = sector_map.get(c["sector"])
+            if not e:
+                continue
+            total_across += e["samples"]
+            mdr_across += e["mdr_count"]
+            sector_entries.append(
+                {
+                    "sector": c["sector"],
+                    "label": c["label"],
+                    "samples": e["samples"],
+                    "mdr_count": e["mdr_count"],
+                    "mdr_rate": round((e["mdr_count"] / e["samples"]) * 100, 1) if e["samples"] else 0.0,
+                }
+            )
+        signals.append(
+            {
+                "pathogen": pathogen,
+                "sectors_present": len(sector_entries),
+                "total_samples": total_across,
+                "overall_mdr_rate": round((mdr_across / total_across) * 100, 1) if total_across else 0.0,
+                "sector_breakdown": sector_entries,
+            }
+        )
+
+    signals.sort(key=lambda x: (-x["sectors_present"], -x["total_samples"]))
+
+    return {
+        "scope": {"county": county, "days": int(window), "min_sectors": int(min_s)},
+        "signals": signals,
+        "signal_count": len(signals),
+    }
+
+
+@analytics_router.get("/hotspot-classification", response_model=list[dict[str, Any]])
+async def hotspot_classification(
+    county: str | None = None,
+    lookback_days: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    from src.db.models import Hotspot
+    from src.services import config_service
+
+    window = lookback_days or config_service.get_config(db, "sentinel_lookback_days", 180)
+    persistent_rate = float(config_service.get_config(db, "hotspot_threshold_persistent_rate", 40))
+    episodic_rate = float(config_service.get_config(db, "hotspot_threshold_episodic_rate", 25))
+    min_samples = int(config_service.get_config(db, "hotspot_min_samples", 10))
+    since = datetime.now(UTC) - timedelta(days=int(window))
+
+    hs_q = db.query(Hotspot).filter(Hotspot.is_active.is_(True))
+    if county:
+        hs_q = hs_q.filter(Hotspot.county == county)
+    hotspots = hs_q.all()
+
+    result = []
+    for h in hotspots:
+        iso_q = db.query(AMRIsolateRecord).filter(
+            AMRIsolateRecord.hotspot_id == h.id,
+            AMRIsolateRecord.created_at >= since,
+        )
+        total = iso_q.count()
+        mdr = iso_q.filter(AMRIsolateRecord.mdr_flag.is_(True)).count()
+        rate = round((mdr / total) * 100, 1) if total else 0.0
+
+        if rate > persistent_rate and total >= min_samples:
+            label = "Persistent"
+        elif rate > persistent_rate and total < min_samples:
+            label = "Emerging"
+        elif rate >= episodic_rate:
+            label = "Episodic"
+        else:
+            label = "Baseline"
+
+        result.append(
+            {
+                "id": h.id,
+                "name": h.name,
+                "county": h.county,
+                "sub_county": h.sub_county,
+                "type": h.type,
+                "samples": total,
+                "mdr_count": mdr,
+                "mdr_rate": rate,
+                "classification": label,
+            }
+        )
+
+    result.sort(key=lambda x: (-x["mdr_rate"], -x["samples"]))
+    return result
