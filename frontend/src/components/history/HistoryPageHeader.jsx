@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { RefreshCw, Download } from 'lucide-react';
+import { RefreshCw, Download, Layers } from 'lucide-react';
 
-export default function HistoryPageHeader({ onRefresh, isFetching, onExportCSV, onExportJSON }) {
+export default function HistoryPageHeader({ onRefresh, isFetching, onExportCSV, onExportJSON, groupByCase, onToggleGroup }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -13,6 +13,19 @@ export default function HistoryPageHeader({ onRefresh, isFetching, onExportCSV, 
         </p>
       </div>
       <div className="flex gap-2">
+        <button
+          onClick={onToggleGroup}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-btn)] border text-sm font-medium transition ${
+            groupByCase
+              ? 'border-[var(--accent-teal)] bg-[var(--accent-teal)]/10 text-[var(--accent-teal)]'
+              : 'border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
+          }`}
+          title="Group isolates by case"
+        >
+          <Layers className="w-4 h-4" />
+          {groupByCase ? 'Grouped by case' : 'Group by case'}
+        </button>
+
         <button
           onClick={onRefresh}
           disabled={isFetching}

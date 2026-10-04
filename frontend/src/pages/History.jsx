@@ -18,6 +18,7 @@ import HistoryStats from '../components/history/HistoryStats';
 import HistoryFilterBar from '../components/history/HistoryFilterBar';
 import HistoryAdvancedFilters from '../components/history/HistoryAdvancedFilters';
 import HistoryBulkActions from '../components/history/HistoryBulkActions';
+import HistoryCaseGroupView from '../components/history/HistoryCaseGroupView';
 import HistoryTable from '../components/history/HistoryTable';
 import HistoryPagination from '../components/history/HistoryPagination';
 import HistoryDetailDrawer from '../components/history/HistoryDetailDrawer';
@@ -41,6 +42,7 @@ export default function History() {
   } = useHistoryFilters();
 
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [groupByCase, setGroupByCase] = useState(false);
   const [columnPrefs, setColumnPrefs] = useState(loadColumnPrefs);
   const [density, setDensity] = useState(loadDensity);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -219,6 +221,8 @@ export default function History() {
         searchRef={searchRef}
         showAdvanced={showAdvanced}
         onToggleAdvanced={() => setShowAdvanced((v) => !v)}
+        groupByCase={groupByCase}
+        onToggleGroup={() => setGroupByCase((v) => !v)}
         hasActiveFilters={hasActiveFilters}
         onReset={resetFilters}
         density={density}
@@ -265,6 +269,8 @@ export default function History() {
                 : 'Submit a new prediction to see records here.'
             }
           />
+        ) : groupByCase ? (
+          <HistoryCaseGroupView records={records} />
         ) : (
           <>
             <HistoryTable
