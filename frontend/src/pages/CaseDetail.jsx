@@ -2,10 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeftIcon,
+  ArrowDownTrayIcon,
   DocumentDuplicateIcon,
   MapPinIcon,
   BeakerIcon,
 } from '@heroicons/react/24/outline';
+import { toast } from 'react-hot-toast';
 import api from '../api/client';
 import { Skeleton } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
@@ -122,6 +124,7 @@ export default function CaseDetail() {
                   <th className="px-3 py-2 font-medium text-[var(--text-muted)]">Site</th>
                   <th className="px-3 py-2 font-medium text-[var(--text-muted)]">MDR</th>
                   <th className="px-3 py-2 font-medium text-[var(--text-muted)]">Collected</th>
+                  <th className="px-3 py-2 font-medium text-[var(--text-muted)] text-right">Summary</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,6 +150,25 @@ export default function CaseDetail() {
                     </td>
                     <td className="px-3 py-2 text-xs text-[var(--text-muted)]">
                       {r.created_at ? new Date(r.created_at).toLocaleString() : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        onClick={() => {
+                          api.downloadPredictionPdf(r.record_id)
+                            .then((blob) => {
+                              const a = document.createElement('a');
+                              a.href = URL.createObjectURL(blob);
+                              a.download = `amr_summary_${String(r.record_id).slice(0, 8)}.pdf`;
+                              a.click();
+                              URL.revokeObjectURL(a.href);
+                            })
+                            .catch(() => toast.error('PDF download failed'));
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs text-[var(--accent-teal)] hover:bg-[var(--accent-teal)]/10 transition"
+                        title="Download clinical summary (PDF)"
+                      >
+                        <ArrowDownTrayIcon className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}
