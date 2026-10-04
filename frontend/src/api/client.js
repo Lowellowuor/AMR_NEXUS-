@@ -135,6 +135,10 @@ export const api = {
     authFetch(
       `${API_BASE}/county/${encodeURIComponent(county)}/sub-county-ranking?${params}`,
     ).then(handleResponse),
+  getCountyTrendComparison: (county, params = '') =>
+    authFetch(
+      `${API_BASE}/county/${encodeURIComponent(county)}/trend-comparison?${params}`,
+    ).then(handleResponse),
   getCountyBurden: (county, params = '') =>
     authFetch(
       `${API_BASE}/county/${encodeURIComponent(county)}/burden?${params}`,

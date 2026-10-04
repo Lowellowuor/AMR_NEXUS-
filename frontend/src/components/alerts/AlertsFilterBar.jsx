@@ -1,5 +1,4 @@
 import { Search, X, Filter, AlignJustify, AlignVerticalSpaceAround } from 'lucide-react';
-import { STATUS_TABS } from '../../lib/alertsConfig';
 
 export default function AlertsFilterBar({
   filters,
@@ -16,26 +15,6 @@ export default function AlertsFilterBar({
 }) {
   return (
     <div className="rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-4 space-y-3">
-      {/* Status tabs */}
-      <div className="flex flex-wrap gap-2 pb-3 border-b border-[var(--border-primary)]">
-        {STATUS_TABS.map((tab) => {
-          const active = filters.status === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onChange({ status: tab.id })}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
-                active
-                  ? 'bg-[var(--accent-teal)] text-white'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />

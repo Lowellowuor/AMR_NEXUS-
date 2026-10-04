@@ -17,6 +17,7 @@ import CriticalAlertBanner from '../components/alerts/CriticalAlertBanner';
 import AlertsPageHeader from '../components/alerts/AlertsPageHeader';
 import AlertsStats, { LiveIndicator } from '../components/alerts/AlertsStats';
 import AlertsFilterBar from '../components/alerts/AlertsFilterBar';
+import AlertsTabs from '../components/alerts/AlertsTabs';
 import AlertsAdvancedFilters from '../components/alerts/AlertsAdvancedFilters';
 import AlertsBulkActions from '../components/alerts/AlertsBulkActions';
 import AlertsList from '../components/alerts/AlertsList';
@@ -224,6 +225,13 @@ export default function Alerts() {
 
   return (
     <div className="space-y-5">
+      <AlertsPageHeader
+        onRefresh={() => refetch()}
+        isFetching={isFetching}
+        onExport={exportCSV}
+        alertCount={alerts.length}
+      />
+
       {criticalAlerts.length > 0 && <CriticalAlertBanner alerts={criticalAlerts} />}
 
       {bannerCount > 0 && (
@@ -242,48 +250,10 @@ export default function Alerts() {
         </div>
       )}
 
-      {showPrompt && (
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-[var(--radius-card)] bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
-          <Bell className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" />
-          <p className="text-sm text-[var(--text-secondary)] flex-1">
-            Enable desktop notifications to be alerted about critical events even when this tab isn't focused.
-          </p>
-          <button
-            onClick={requestPermission}
-            className="text-sm px-3 py-1.5 rounded-[var(--radius-btn)] bg-[var(--accent-teal)] text-white hover:bg-[var(--accent-teal-hover)] transition"
-          >
-            Enable
-          </button>
-          <button
-            onClick={dismissPrompt}
-            className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-          >
-            Not now
-          </button>
-        </div>
-      )}
-
-      <AlertsPageHeader
-        onRefresh={() => refetch()}
-        isFetching={isFetching}
-        onExport={exportCSV}
-        alertCount={alerts.length}
+      <AlertsTabs
+        active={filters.status}
+        onChange={updateFilter}
       />
-
-      <div className="flex items-center justify-between">
-        <AlertsStats stats={stats} hasNew={hasNewHighlights} connected={connected} />
-      </div>
-
-      <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-        <LiveIndicator connected={connected} />
-        <span>
-          {permission === 'granted'
-            ? 'Desktop notifications enabled'
-            : permission === 'denied'
-              ? 'Desktop notifications blocked'
-              : 'Desktop notifications off'}
-        </span>
-      </div>
 
       <AlertsFilterBar
         filters={filters}
@@ -307,12 +277,49 @@ export default function Alerts() {
         />
       )}
 
-      <AlertsBulkActions
-        count={selectedIds.length}
-        onClear={() => setSelectedIds([])}
-        onAcknowledge={() => bulkMutation.mutate(selectedIds)}
-        loading={bulkMutation.isPending}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <AlertsStats stats={stats} hasNew={hasNewHighlights} connected={connected} />
+        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+          <LiveIndicator connected={connected} />
+          <span>
+            {permission === 'granted'
+              ? 'Desktop notifications on'
+              : permission === 'denied'
+                ? 'Desktop notifications blocked'
+                : 'Desktop notifications off'}
+          </span>
+        </div>
+      </div>
+
+      {showPrompt && (
+        <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 rounded-[var(--radius-card)] bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
+          <Bell className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" />
+          <p className="text-xs text-[var(--text-secondary)] flex-1">
+            Enable desktop notifications to be alerted about critical events even when this tab isn't focused.
+          </p>
+          <button
+            onClick={requestPermission}
+            className="text-xs px-3 py-1 rounded-[var(--radius-btn)] bg-[var(--accent-teal)] text-white hover:bg-[var(--accent-teal-hover)] transition"
+          >
+            Enable
+          </button>
+          <button
+            onClick={dismissPrompt}
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+          >
+            Not now
+          </button>
+        </div>
+      )}
+
+      {selectedIds.length > 0 && (
+        <AlertsBulkActions
+          count={selectedIds.length}
+          onClear={() => setSelectedIds([])}
+          onAcknowledge={() => bulkMutation.mutate(selectedIds)}
+          loading={bulkMutation.isPending}
+        />
+      )}
 
       {isLoading ? (
         <div className="space-y-2">

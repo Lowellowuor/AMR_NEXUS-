@@ -30,7 +30,7 @@ def coverage(db: Session, *, county: str, days: int | None = None) -> dict[str, 
         db.query(func.count(func.distinct(AMRIsolateRecord.site_id)))
         .filter(
             AMRIsolateRecord.county == county,
-            AMRIsolateRecord.created_at >= since,
+            AMRIsolateRecord.sample_collection_date >= since,
             AMRIsolateRecord.site_id.isnot(None),
         )
         .scalar()
@@ -46,7 +46,7 @@ def coverage(db: Session, *, county: str, days: int | None = None) -> dict[str, 
         )
         .filter(
             AMRIsolateRecord.county == county,
-            AMRIsolateRecord.created_at >= since,
+            AMRIsolateRecord.sample_collection_date >= since,
             AMRIsolateRecord.site_id.isnot(None),
         )
         .group_by(AMRIsolateRecord.site_id)
@@ -94,7 +94,7 @@ def situation(
 
     q = db.query(AMRIsolateRecord).filter(
         AMRIsolateRecord.county == county,
-        AMRIsolateRecord.created_at >= since,
+        AMRIsolateRecord.sample_collection_date >= since,
     )
 
     total = q.count()
@@ -105,7 +105,7 @@ def situation(
         db.query(func.count(func.distinct(AMRIsolateRecord.site_id)))
         .filter(
             AMRIsolateRecord.county == county,
-            AMRIsolateRecord.created_at >= since,
+            AMRIsolateRecord.sample_collection_date >= since,
             AMRIsolateRecord.site_id.isnot(None),
         )
         .scalar()
@@ -146,7 +146,7 @@ def sub_county_ranking(
         )
         .filter(
             AMRIsolateRecord.county == county,
-            AMRIsolateRecord.created_at >= since,
+            AMRIsolateRecord.sample_collection_date >= since,
             AMRIsolateRecord.sub_county.isnot(None),
         )
         .group_by(AMRIsolateRecord.sub_county)
@@ -206,7 +206,7 @@ def burden(
         db.query(func.count(AMRIsolateRecord.record_id))
         .filter(
             AMRIsolateRecord.county == county,
-            AMRIsolateRecord.created_at >= since,
+            AMRIsolateRecord.sample_collection_date >= since,
         )
         .scalar()
         or 0
@@ -215,7 +215,7 @@ def burden(
         db.query(func.count(AMRIsolateRecord.record_id))
         .filter(
             AMRIsolateRecord.county == county,
-            AMRIsolateRecord.created_at >= since,
+            AMRIsolateRecord.sample_collection_date >= since,
             AMRIsolateRecord.mdr_flag.is_(True),
         )
         .scalar()
@@ -225,14 +225,15 @@ def burden(
         db.query(func.count(func.distinct(AMRIsolateRecord.pathogen_code)))
         .filter(
             AMRIsolateRecord.county == county,
-            AMRIsolateRecord.created_at >= since,
+            AMRIsolateRecord.sample_collection_date >= since,
             AMRIsolateRecord.mdr_flag.is_(True),
         )
         .scalar()
         or 0
     )
 
-    population = float(config_service.get_config(db, f"county_population_{county.lower()}", 0) or 0)
+    slug = county.lower().strip().replace(" ", "_").replace("-", "_")
+    population = float(config_service.get_config(db, f"county_population_{slug}", 0) or 0)
 
     mdr_per_100k = None
     if population > 0:
@@ -349,7 +350,7 @@ def priority_isolates(
         db.query(AMRIsolateRecord)
         .filter(
             AMRIsolateRecord.county == county,
-            AMRIsolateRecord.created_at >= since,
+            AMRIsolateRecord.sample_collection_date >= since,
         )
         .order_by(
             AMRIsolateRecord.mdr_flag.desc(),

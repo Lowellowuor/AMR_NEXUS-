@@ -98,3 +98,15 @@ async def overview(
         "interventions": county_service.intervention_tracker(db, county=county, limit=10),
         "priority_isolates": county_service.priority_isolates(db, county=county, limit=5, days=days),
     }
+
+
+@county_router.get("/{county}/trend-comparison", response_model=dict[str, Any])
+async def trend_comparison(
+    county: str,
+    months: int = 12,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    from src.services import county_trend_service
+
+    return county_trend_service.trend_comparison(db, county=county, months=months)
