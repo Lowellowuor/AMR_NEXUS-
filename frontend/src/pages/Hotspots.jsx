@@ -26,6 +26,23 @@ const TYPE_LABEL = {
   other: 'Other',
 };
 
+const CLASS_TONE = {
+  Persistent: 'bg-[var(--status-critical-bg)] text-[var(--status-critical)]',
+  Emerging: 'bg-[var(--status-warning-bg)] text-[var(--status-warning)]',
+  Episodic: 'bg-[var(--status-info-bg)] text-[var(--status-info)]',
+  Baseline: 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]',
+};
+
+function ClassificationBadge({ value }) {
+  if (!value) return <span className="text-xs text-[var(--text-muted)]">—</span>;
+  const cls = CLASS_TONE[value] || 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]';
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cls}`}>
+      {value}
+    </span>
+  );
+}
+
 export default function Hotspots() {
   usePageTitle('Hotspots');
   const { user } = useAuth();
@@ -47,6 +64,13 @@ export default function Hotspots() {
     queryKey: ['hotspots-list', county],
     queryFn: () => api.getHotspots(county ? `county=${encodeURIComponent(county)}` : ''),
     staleTime: 30_000,
+  });
+
+  const classificationQuery = useQuery({
+    queryKey: ['hotspot-classification', county],
+    queryFn: () =>
+      api.getHotspotClassification(county ? `county=${encodeURIComponent(county)}` : ''),
+    staleTime: 60_000,
   });
 
   const createMutation = useMutation({
@@ -77,7 +101,16 @@ export default function Hotspots() {
     },
   });
 
-  const list = useMemo(() => listQuery.data ?? [], [listQuery.data]);
+  const list = useMemo(() => {
+    const rows = listQuery.data ?? [];
+    const classMap = new Map(
+      (classificationQuery.data ?? []).map((c) => [c.id, c.classification]),
+    );
+    return rows.map((h) => ({
+      ...h,
+      classification: classMap.get(h.id) ?? null,
+    }));
+  }, [listQuery.data, classificationQuery.data]);
   const counties = optionsQuery.data?.counties ?? [];
 
   const openCreate = () => {
@@ -175,6 +208,7 @@ export default function Hotspots() {
                   <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Sub-county</th>
                   <th className="text-right px-4 py-3 font-medium text-[var(--text-muted)]">Samples</th>
                   <th className="text-right px-4 py-3 font-medium text-[var(--text-muted)]">MDR rate</th>
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-muted)]">Classification</th>
                   {isAdmin && (
                     <th className="text-right px-4 py-3 font-medium text-[var(--text-muted)]">Actions</th>
                   )}
@@ -213,6 +247,9 @@ export default function Hotspots() {
                       >
                         {formatPercent(h.resistance_rate ?? 0)}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <ClassificationBadge value={h.classification} />
                     </td>
                     {isAdmin && (
                       <td className="px-4 py-3">
