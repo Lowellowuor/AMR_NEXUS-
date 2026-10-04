@@ -1,7 +1,19 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -359,4 +371,23 @@ class Case(Base):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
         nullable=False,
+    )
+
+
+class GlassReferenceMapping(Base):
+    __tablename__ = "glass_reference_mappings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    mapping_type = Column(String(30), nullable=False, index=True)
+    raw_value = Column(String(100), nullable=False, index=True)
+    glass_code = Column(String(50), nullable=False)
+    glass_label = Column(String(200), nullable=True)
+    display_order = Column(Integer, nullable=False, default=100)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "mapping_type",
+            "raw_value",
+            name="uq_glass_mapping_type_value",
+        ),
     )

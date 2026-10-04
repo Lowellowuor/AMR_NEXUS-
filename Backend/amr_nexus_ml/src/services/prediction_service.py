@@ -260,7 +260,10 @@ class PredictionService:
         try:
             case_service.associate_isolate(self.db, db_record)
         except Exception:
-            pass
+            logger.exception(
+                "case association failed for isolate %s; isolate saved with case_id=NULL",
+                db_record.record_id,
+            )
         self.db.commit()
         self.db.refresh(db_record)
 
