@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { confirmOutcome } from '../../api/endpoints';
-import { CheckCircle2, XCircle, Microscope } from 'lucide-react';
+import { Download, CheckCircle2, XCircle, Microscope } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
   X, MapPin, Beaker, Calendar, Activity, AlertTriangle,
@@ -188,6 +188,24 @@ export default function HistoryDetailDrawer({ recordId, isAdmin, onClose, onDele
               </p>
             )}
           </div>
+          <button
+            onClick={() => {
+              api.downloadPredictionPdf(recordId)
+                .then((blob) => {
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(blob);
+                  a.download = `amr_summary_${String(recordId).slice(0, 8)}.pdf`;
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                })
+                .catch(() => toast.error('PDF download failed'));
+            }}
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition flex-shrink-0"
+            aria-label="Download clinical summary"
+            title="Download clinical summary (PDF)"
+          >
+            <Download className="w-5 h-5" />
+          </button>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition flex-shrink-0"

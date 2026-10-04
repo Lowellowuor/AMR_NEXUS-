@@ -84,6 +84,23 @@ export const api = {
   getPredictions: (limit = 50, skip = 0, params = '') => authFetch(`${API_BASE}/predictions?limit=${limit}&skip=${skip}&${params}`).then(handleResponse),
   getPredictionDetail: (recordId) => authFetch(`${API_BASE}/predictions/${recordId}`).then(handleResponse),
   getPredictionStats: () => authFetch(`${API_BASE}/predictions/stats`).then(handleResponse),
+  downloadPredictionPdf: async (recordId) => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const res = await fetch(`${API_BASE}/predictions/${recordId}/pdf`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (res.status === 401) {
+      localStorage.removeItem(TOKEN_KEY);
+      if (typeof window !== 'undefined') {
+        window.location.assign('/login');
+      }
+      throw new Error('Session expired.');
+    }
+    if (!res.ok) {
+      throw new Error(`PDF download failed: HTTP ${res.status}`);
+    }
+    return res.blob();
+  },
   getModelCard: () => authFetch(`${API_BASE}/ml/model-card`).then(handleResponse),
   getPathogenList: (params = '') => authFetch(`${API_BASE}/analytics/pathogens?${params}`).then(handleResponse),
   getPathogenDetail: (code, params = '') => authFetch(`${API_BASE}/analytics/pathogens/${encodeURIComponent(code)}?${params}`).then(handleResponse),

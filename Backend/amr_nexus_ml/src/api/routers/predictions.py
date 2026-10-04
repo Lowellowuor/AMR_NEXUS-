@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime, timedelta
 
 import sqlalchemy as sa
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import asc, desc, func, or_
 from sqlalchemy.orm import Session
 
@@ -631,3 +631,51 @@ async def get_model_card(
             },
         ],
     }
+
+
+@router.get("/predictions/{record_id}/pdf")
+async def download_clinical_summary(
+    record_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from src.db.models import Case
+    from src.services import guidance_service, pdf_service
+
+    record = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.record_id == record_id).first()
+    if record is None:
+        raise HTTPException(status_code=404, detail="record not found")
+
+    case = None
+    case_isolates = []
+    if record.case_id is not None:
+        case = db.get(Case, record.case_id)
+        case_isolates = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.case_id == record.case_id).all()
+
+    guidance = None
+    if record.pathogen_code:
+        try:
+            guidance = guidance_service.observed_resistance_for_pathogen(
+                db,
+                pathogen_code=record.pathogen_code,
+                county=record.county or None,
+            )
+        except Exception:
+            guidance = None
+
+    pdf_bytes = pdf_service.render_clinical_summary(
+        record,
+        case=case,
+        case_isolates=case_isolates,
+        generated_by=current_user.email,
+        guidance=guidance,
+    )
+
+    filename = f"amr_summary_{str(record.record_id)[:8]}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
