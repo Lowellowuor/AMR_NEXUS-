@@ -26,6 +26,10 @@ class UpdateStatusPayload(BaseModel):
     confirmed_mdr: bool | None = None
 
 
+class AssignPayload(BaseModel):
+    assignee_id: int | None = None
+
+
 @labs_router.get("/requests", response_model=list[dict[str, Any]])
 async def list_requests(
     status: str | None = None,
@@ -103,3 +107,41 @@ async def update_status(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@labs_router.post("/requests/{request_id}/acknowledge", response_model=dict[str, Any])
+async def acknowledge_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    try:
+        return lab_service.acknowledge_request(db, request_id=request_id, user=current_user)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@labs_router.post("/requests/{request_id}/assign", response_model=dict[str, Any])
+async def assign_request(
+    request_id: int,
+    payload: AssignPayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    try:
+        return lab_service.assign_request(
+            db,
+            request_id=request_id,
+            assignee_id=payload.assignee_id,
+            user=current_user,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@labs_router.post("/escalate-breached", response_model=dict[str, Any])
+async def escalate_breached(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    return lab_service.escalate_breached_requests(db)

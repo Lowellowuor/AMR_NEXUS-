@@ -416,8 +416,12 @@ class LabRequest(Base):
     assigned_to = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     notes = Column(Text, nullable=True)
     result_notes = Column(Text, nullable=True)
+    acknowledged_at = Column(DateTime, nullable=True, index=True)
+    acknowledged_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     completed_at = Column(DateTime, nullable=True)
     completed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    escalated_at = Column(DateTime, nullable=True)
+    escalation_level = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
         DateTime,
