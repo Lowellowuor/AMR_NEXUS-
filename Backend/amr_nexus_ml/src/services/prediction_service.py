@@ -309,8 +309,20 @@ class PredictionService:
             except Exception as e:
                 logger.warning(f"Notification dispatch failed: {e}")
 
+        case_code = None
+        if db_record.case_id is not None:
+            try:
+                from src.db.models import Case
+
+                case_row = self.db.get(Case, db_record.case_id)
+                case_code = case_row.case_code if case_row else None
+            except Exception:
+                case_code = None
+
         return {
             "record_id": str(db_record.record_id),
+            "case_id": db_record.case_id,
+            "case_code": case_code,
             "mdr_probability": mdr_prob,
             "mdr_flag": bool(mdr_prob >= 0.5),
             "anomaly_detected": anomaly_flag,

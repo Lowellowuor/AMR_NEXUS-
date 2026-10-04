@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AMRRecordIn(BaseModel):
@@ -27,6 +27,8 @@ class AMRRecordIn(BaseModel):
 
 
 class PredictionResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     mdr_flag: bool
     mdr_probability: float
     anomaly_detected: bool
@@ -38,6 +40,9 @@ class PredictionResponse(BaseModel):
     fallback_used: bool = False
     calibration_applied: bool = False
     model_version: str = "1.0.0"
+    record_id: str | None = None
+    case_id: int | None = None
+    case_code: str | None = None
 
 
 class EmailReportRequest(BaseModel):

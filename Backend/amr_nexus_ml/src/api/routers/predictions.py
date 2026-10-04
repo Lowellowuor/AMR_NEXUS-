@@ -87,13 +87,13 @@ def _apply_filters(q, search, mdr, anomaly, pathogen, county, sector, species, s
     if anomaly in ("true", "false"):
         q = q.filter(AMRIsolateRecord.anomaly_flag == (anomaly == "true"))
     if pathogen:
-        q = q.filter(AMRIsolateRecord.pathogen_code == pathogen)
+        q = q.filter(func.lower(func.trim(AMRIsolateRecord.pathogen_code)) == pathogen.strip().lower())
     if county:
-        q = q.filter(AMRIsolateRecord.county == county)
+        q = q.filter(func.lower(func.trim(AMRIsolateRecord.county)) == county.strip().lower())
     if sector:
-        q = q.filter(AMRIsolateRecord.sector == sector)
+        q = q.filter(func.lower(func.trim(AMRIsolateRecord.sector)) == sector.strip().lower())
     if species:
-        q = q.filter(AMRIsolateRecord.animal_species == species)
+        q = q.filter(func.lower(func.trim(AMRIsolateRecord.animal_species)) == species.strip().lower())
     if start_date:
         try:
             sd = datetime.fromisoformat(start_date).date()

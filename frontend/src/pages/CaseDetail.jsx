@@ -1,4 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeftIcon,
@@ -6,8 +8,8 @@ import {
   DocumentDuplicateIcon,
   MapPinIcon,
   BeakerIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline';
-import { toast } from 'react-hot-toast';
 import api from '../api/client';
 import { Skeleton } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
@@ -18,6 +20,81 @@ const STATUS_TONE = {
   open: 'bg-[var(--status-info-bg)] text-[var(--status-info)]',
   closed: 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]',
 };
+
+function CaseNotes({ caseId, initialNotes }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(initialNotes || '');
+
+  useEffect(() => {
+    setValue(initialNotes || '');
+  }, [initialNotes]);
+
+  const mutation = useMutation({
+    mutationFn: (notes) => api.updateCase(caseId, { notes }),
+    onSuccess: () => {
+      toast.success('Notes saved');
+      qc.invalidateQueries({ queryKey: ['case', String(caseId)] });
+      setEditing(false);
+    },
+    onError: () => toast.error('Failed to save notes'),
+  });
+
+  return (
+    <div className="rounded-2xl border border-[var(--border-primary)]/40 bg-[var(--bg-secondary)]/80 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+          <PencilSquareIcon className="w-4 h-4 text-[var(--text-muted)]" />
+          Case notes
+        </h2>
+        {!editing ? (
+          <button
+            onClick={() => setEditing(true)}
+            className="text-xs px-3 py-1 rounded-lg text-[var(--accent-teal)] hover:bg-[var(--accent-teal)]/10 transition"
+          >
+            Edit
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setValue(initialNotes || '');
+                setEditing(false);
+              }}
+              className="text-xs px-3 py-1 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => mutation.mutate(value)}
+              disabled={mutation.isPending}
+              className="text-xs px-3 py-1 rounded-lg bg-[var(--accent-teal)] text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {mutation.isPending ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        )}
+      </div>
+      {editing ? (
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          rows={5}
+          placeholder="Add clinical notes about this case…"
+          className="w-full px-3 py-2 text-sm rounded-lg bg-[var(--bg-primary)] border border-[var(--border-primary)]/40 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-teal)]"
+        />
+      ) : initialNotes ? (
+        <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">
+          {initialNotes}
+        </p>
+      ) : (
+        <p className="text-sm text-[var(--text-muted)] italic">
+          No notes yet. Click Edit to add.
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function CaseDetail() {
   const { id } = useParams();
@@ -177,6 +254,8 @@ export default function CaseDetail() {
           </div>
         )}
       </div>
+
+      <CaseNotes caseId={Number(id)} initialNotes={c.notes} />
     </div>
   );
 }

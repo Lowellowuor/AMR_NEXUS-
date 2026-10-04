@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { confirmOutcome } from '../../api/endpoints';
-import { Download, CheckCircle2, XCircle, Microscope } from 'lucide-react';
+import { FolderOpen, Copy, Download, CheckCircle2, XCircle, Microscope } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
   X, MapPin, Beaker, Calendar, Activity, AlertTriangle,
@@ -228,6 +229,56 @@ export default function HistoryDetailDrawer({ recordId, isAdmin, onClose, onDele
             </div>
           ) : (
             <>
+              <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-3">
+                {data.case_id != null && (
+                  <Link
+                    to={`/cases/${data.case_id}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent-teal)]/10 text-[var(--accent-teal)] hover:bg-[var(--accent-teal)]/20 transition"
+                    title={data.case_code ? `Open case ${data.case_code}` : 'Open linked case'}
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" />
+                    {data.case_code || 'Open case'}
+                  </Link>
+                )}
+                <button
+                  onClick={() => {
+                    api.downloadPredictionPdf(data.record_id)
+                      .then((blob) => {
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = `amr_summary_${String(data.record_id).slice(0, 8)}.pdf`;
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                      })
+                      .catch(() => toast.error('PDF download failed'));
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  PDF summary
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(data.record_id);
+                    toast.success('Record ID copied');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy ID
+                </button>
+                <button
+                  onClick={() => {
+                    const el = document.getElementById('drawer-comments');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Comments
+                </button>
+              </div>
+
               <div className="rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-5 flex flex-col sm:flex-row items-center gap-5">
                 <RiskDial value={(data.mdr_probability ?? 0) * 100} />
                 <div className="flex-1 grid grid-cols-2 gap-3 w-full">
@@ -305,7 +356,7 @@ export default function HistoryDetailDrawer({ recordId, isAdmin, onClose, onDele
                 </div>
               </Section>
 
-              <Section icon={MessageSquare} title={`Comments (${comments.length})`}>
+              <Section icon={MessageSquare} title={`Comments (${comments.length})`} id="drawer-comments">
                 <div className="space-y-3">
                   {comments.length === 0 && (
                     <p className="text-xs text-[var(--text-muted)] text-center py-2">

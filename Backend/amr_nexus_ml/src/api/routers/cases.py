@@ -17,6 +17,11 @@ class LinkPayload(BaseModel):
     record_id: int
 
 
+class CaseUpdate(BaseModel):
+    notes: str | None = None
+    status: str | None = None
+
+
 @cases_router.get("", response_model=list[dict[str, Any]])
 async def list_cases(
     county: str | None = None,
@@ -79,6 +84,39 @@ async def detach_isolate_from_case(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     db.commit()
+    detail = case_service.get_case_detail(db, case_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="case not found")
+    return detail
+
+
+@cases_router.patch("/{case_id}", response_model=dict[str, Any])
+async def update_case(
+    case_id: int,
+    payload: CaseUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    from src.db.models import Case
+
+    case = db.get(Case, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="case not found")
+
+    if payload.status is not None:
+        if payload.status not in ("open", "closed"):
+            raise HTTPException(status_code=400, detail="status must be open or closed")
+        case.status = payload.status
+
+    if payload.notes is not None:
+        case.notes = payload.notes
+
+    from datetime import UTC, datetime
+
+    case.updated_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(case)
+
     detail = case_service.get_case_detail(db, case_id)
     if detail is None:
         raise HTTPException(status_code=404, detail="case not found")

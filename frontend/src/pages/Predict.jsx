@@ -13,6 +13,7 @@ import BatchPredictUploader from '../components/predictions/BatchPredictUploader
 import ModelInfoStrip from '../components/predictions/ModelInfoStrip';
 import PredictModeToggle from '../components/predictions/PredictModeToggle';
 import SimilarCasesPanel from '../components/predictions/SimilarCasesPanel';
+import PatientEpisodePanel from '../components/predictions/PatientEpisodePanel';
 
 import api from '../api/client';
 import { isDuplicate } from '../utils/duplicateDetection';
@@ -203,6 +204,12 @@ export default function Predict() {
           <div ref={resultRef}>
             {currentResult && <ResultCard result={currentResult} />}
             {currentResult && <StewardshipTip result={currentResult} antibioticClass={currentFormData?.antibiotic_class} />}
+            {currentResult && (
+              <PatientEpisodePanel
+                caseId={currentResult.case_id}
+                caseCode={currentResult.case_code}
+              />
+            )}
             {currentResult && (
               <SimilarCasesPanel
                 pathogen={currentFormData?.pathogen_code}

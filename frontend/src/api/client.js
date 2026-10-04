@@ -327,6 +327,12 @@ export const api = {
     authFetch(`${API_BASE}/cases?${params}`).then(handleResponse),
   getCase: (id) =>
     authFetch(`${API_BASE}/cases/${id}`).then(handleResponse),
+  updateCase: (id, data) =>
+    authFetch(`${API_BASE}/cases/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
   linkIsolateToCase: (caseId, recordId) =>
     authFetch(`${API_BASE}/cases/${caseId}/link`, {
       method: 'POST',
