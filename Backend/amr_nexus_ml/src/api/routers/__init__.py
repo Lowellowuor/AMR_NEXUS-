@@ -5,6 +5,7 @@ from src.api.routers.analyst import router as analyst_router
 from src.api.routers.analytics import analytics_router
 from src.api.routers.audit import audit_router
 from src.api.routers.auth import router as auth_router
+from src.api.routers.cases import cases_router
 from src.api.routers.comments_router import comments_router
 from src.api.routers.ews import ews_router
 from src.api.routers.guidance_router import guidance_router

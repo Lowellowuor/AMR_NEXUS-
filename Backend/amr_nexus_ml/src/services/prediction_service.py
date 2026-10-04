@@ -16,6 +16,7 @@ from src.db.models import (
     PredictionLog,
     SubCountyLocation,
 )
+from src.services import case_service
 from src.services.model_health import confidence_tier, deterministic_fallback
 from src.services.notification_service import dispatch_prediction_alert
 from src.utils.logger import logger
@@ -255,6 +256,11 @@ class PredictionService:
             site_id=data.get("site_id"),
         )
         self.db.add(db_record)
+        self.db.flush()
+        try:
+            case_service.associate_isolate(self.db, db_record)
+        except Exception:
+            pass
         self.db.commit()
         self.db.refresh(db_record)
 

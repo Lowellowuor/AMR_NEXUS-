@@ -61,6 +61,7 @@ class AMRIsolateRecord(Base):
     # NEW: Optional link to a Hotspot (facility)
     hotspot_id = Column(Integer, ForeignKey("hotspots.id"), nullable=True)
     site_id = Column(Integer, ForeignKey("sampling_sites.id", ondelete="SET NULL"), nullable=True, index=True)
+    case_id = Column(Integer, ForeignKey("cases.id", ondelete="SET NULL"), nullable=True, index=True)
 
 
 class SubCountyLocation(Base):
@@ -322,3 +323,40 @@ class SectorTaxonomy(Base):
     is_canonical = Column(Boolean, nullable=False, default=False)
     display_label = Column(String(50), nullable=True)
     display_order = Column(Integer, nullable=False, default=100)
+
+
+class Case(Base):
+    __tablename__ = "cases"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    case_code = Column(String(50), unique=True, nullable=False, index=True)
+    case_type = Column(String(20), nullable=False, default="individual", index=True)
+    status = Column(String(20), nullable=False, default="open", index=True)
+
+    county = Column(String(100), nullable=False, index=True)
+    sub_county = Column(String(100), nullable=True)
+    sector = Column(String(20), nullable=True, index=True)
+    species = Column(String(100), nullable=True)
+    site_id = Column(Integer, nullable=True, index=True)
+
+    first_isolate_at = Column(DateTime, nullable=True)
+    latest_isolate_at = Column(DateTime, nullable=True, index=True)
+
+    notes = Column(Text, nullable=True)
+    created_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+        index=True,
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
