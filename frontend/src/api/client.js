@@ -294,6 +294,16 @@ export const api = {
     authFetch(`${API_BASE}/modules/role-routing/reset-defaults`, {
       method: 'POST',
     }).then(handleResponse),
+
+  // ---- AMU-resistance and One Health analytics ----
+  getAmuResistanceCorrelation: (params = '') =>
+    authFetch(`${API_BASE}/analytics/amu-resistance-correlation?${params}`).then(handleResponse),
+  getEcoliSentinel: (params = '') =>
+    authFetch(`${API_BASE}/analytics/ecoli-sentinel?${params}`).then(handleResponse),
+  getCrossPillarSignals: (params = '') =>
+    authFetch(`${API_BASE}/analytics/cross-pillar-signals?${params}`).then(handleResponse),
+  getHotspotClassification: (params = '') =>
+    authFetch(`${API_BASE}/analytics/hotspot-classification?${params}`).then(handleResponse),
 };
 
 export default api;
