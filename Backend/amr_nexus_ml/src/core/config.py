@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str
+    DIRECT_URL: str | None = None
 
     # Model & data paths
     MODEL_DIR: str = "./saved_models"

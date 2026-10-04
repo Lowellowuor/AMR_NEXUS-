@@ -25,7 +25,10 @@ from src.modules.sampling_sites import models as _sampling_sites_models  # noqa:
 config = context.config
 
 # Override the placeholder in alembic.ini with the app's real URL
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option(
+    "sqlalchemy.url",
+    settings.DIRECT_URL or settings.DATABASE_URL,
+)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
