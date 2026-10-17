@@ -195,6 +195,8 @@ class AlertAcknowledgement(Base):
     resolved_by = Column(String(100), nullable=True)
     resolution_note = Column(Text, nullable=True)
     assigned_to = Column(String(100), nullable=True)
+    escalated_at = Column(DateTime, nullable=True)
+    escalation_level = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { History as HistoryIcon } from 'lucide-react';
@@ -47,7 +48,8 @@ export default function History() {
   const [columnPrefs, setColumnPrefs] = useState(loadColumnPrefs);
   const [density, setDensity] = useState(loadDensity);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [detailId, setDetailId] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [detailId, setDetailId] = useState(() => searchParams.get('record'));
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showCompare, setShowCompare] = useState(false);
   const searchRef = useRef(null);
@@ -173,6 +175,19 @@ export default function History() {
     URL.revokeObjectURL(a.href);
     toast.success(`Exported ${selected.length} rows`);
   };
+
+  useEffect(() => {
+    if (detailId) {
+      const next = new URLSearchParams(searchParams);
+      next.set('record', detailId);
+      setSearchParams(next, { replace: true });
+    } else if (searchParams.get('record')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('record');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailId]);
 
   useEffect(() => {
     const handler = (e) => {

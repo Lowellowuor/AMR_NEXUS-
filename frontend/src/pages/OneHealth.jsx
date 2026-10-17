@@ -24,6 +24,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { formatNumber, formatPercent } from '../lib/format';
 import EcoliSentinelPanel from '../components/onehealth/EcoliSentinelPanel';
 import CrossPillarSignals from '../components/onehealth/CrossPillarSignals';
+import CrossSectorHotspotsPanel from '../components/onehealth/CrossSectorHotspotsPanel';
 
 const PILLARS = [
   {
@@ -212,6 +213,8 @@ export default function OneHealth() {
       <EcoliSentinelPanel />
 
       <CrossPillarSignals />
+
+      <CrossSectorHotspotsPanel />
 
       <div className="bg-[var(--bg-secondary)]/80 p-5 rounded-2xl border border-[var(--border-primary)]/40">
         <div className="flex items-center justify-between mb-4">

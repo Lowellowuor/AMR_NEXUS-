@@ -347,11 +347,21 @@ def main(csv_path, target_col, threshold, limit, encoding, dry_run, model_dir_ov
     holdout_metrics = binary_metrics(y_ho, ho_raw)
     logger.info(f"Holdout uncalibrated: {holdout_metrics}")
 
+    cal_raw, eval_raw, cal_y, eval_y = train_test_split(
+        ho_raw,
+        y_ho.values,
+        test_size=0.5,
+        random_state=RANDOM_STATE,
+        stratify=y_ho.values,
+    )
+
     calibrator = IsotonicRegression(out_of_bounds="clip")
-    calibrator.fit(ho_raw, y_ho.values)
-    ho_cal = calibrator.predict(ho_raw)
-    calibrated_metrics = binary_metrics(y_ho, ho_cal)
-    logger.info(f"Holdout calibrated:   {calibrated_metrics}")
+    calibrator.fit(cal_raw, cal_y)
+
+    eval_cal = calibrator.predict(eval_raw)
+    calibrated_metrics = binary_metrics(eval_y, eval_cal)
+    logger.info(f"Holdout calibrated (on disjoint eval half): {calibrated_metrics}")
+    logger.info(f"Calibration fit on {len(cal_raw)} rows, evaluated on {len(eval_raw)} rows")
 
     n_components = min(10, X_tr_all_p.shape[1] - 1)
     svd = TruncatedSVD(n_components=n_components, random_state=RANDOM_STATE)
@@ -387,6 +397,8 @@ def main(csv_path, target_col, threshold, limit, encoding, dry_run, model_dir_ov
         "trained_at": datetime.datetime.now(datetime.UTC).isoformat(),
         "training_rows": int(len(X_tr_all)),
         "holdout_rows": int(len(X_ho)),
+        "calibration_rows": int(len(cal_raw)),
+        "calibration_eval_rows": int(len(eval_raw)),
         "cv_folds": CV_FOLDS,
         "cv_auc_mean": cv_auc_mean,
         "cv_auc_std": cv_auc_std,

@@ -1967,6 +1967,7 @@ async def cross_pillar_signals(
 async def hotspot_classification(
     county: str | None = None,
     lookback_days: int | None = None,
+    cross_sector_only: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
@@ -1984,14 +1985,67 @@ async def hotspot_classification(
         hs_q = hs_q.filter(Hotspot.county == county)
     hotspots = hs_q.all()
 
-    result = []
-    for h in hotspots:
-        iso_q = db.query(AMRIsolateRecord).filter(
-            AMRIsolateRecord.hotspot_id == h.id,
+    if not hotspots:
+        return []
+
+    hotspot_ids = [h.id for h in hotspots]
+
+    totals_by_hotspot: dict[int, int] = dict(
+        db.query(
+            AMRIsolateRecord.hotspot_id,
+            func.count(AMRIsolateRecord.record_id),
+        )
+        .filter(
+            AMRIsolateRecord.hotspot_id.in_(hotspot_ids),
             AMRIsolateRecord.created_at >= since,
         )
-        total = iso_q.count()
-        mdr = iso_q.filter(AMRIsolateRecord.mdr_flag.is_(True)).count()
+        .group_by(AMRIsolateRecord.hotspot_id)
+        .all()
+    )
+
+    mdr_by_hotspot: dict[int, int] = dict(
+        db.query(
+            AMRIsolateRecord.hotspot_id,
+            func.count(AMRIsolateRecord.record_id),
+        )
+        .filter(
+            AMRIsolateRecord.hotspot_id.in_(hotspot_ids),
+            AMRIsolateRecord.created_at >= since,
+            AMRIsolateRecord.mdr_flag.is_(True),
+        )
+        .group_by(AMRIsolateRecord.hotspot_id)
+        .all()
+    )
+
+    sector_rows = (
+        db.query(
+            AMRIsolateRecord.hotspot_id,
+            AMRIsolateRecord.sector,
+            func.count(AMRIsolateRecord.record_id),
+            func.sum(case((AMRIsolateRecord.mdr_flag.is_(True), 1), else_=0)),
+        )
+        .filter(
+            AMRIsolateRecord.hotspot_id.in_(hotspot_ids),
+            AMRIsolateRecord.created_at >= since,
+            AMRIsolateRecord.sector.isnot(None),
+        )
+        .group_by(AMRIsolateRecord.hotspot_id, AMRIsolateRecord.sector)
+        .all()
+    )
+
+    sector_map: dict[int, dict[str, dict[str, int]]] = {}
+    for hotspot_id, sector, count, mdr_count in sector_rows:
+        if not sector:
+            continue
+        sector_map.setdefault(hotspot_id, {})[sector] = {
+            "samples": int(count or 0),
+            "mdr_count": int(mdr_count or 0),
+        }
+
+    result = []
+    for h in hotspots:
+        total = int(totals_by_hotspot.get(h.id, 0))
+        mdr = int(mdr_by_hotspot.get(h.id, 0))
         rate = round((mdr / total) * 100, 1) if total else 0.0
 
         if rate > persistent_rate and total >= min_samples:
@@ -2002,6 +2056,21 @@ async def hotspot_classification(
             label = "Episodic"
         else:
             label = "Baseline"
+
+        sectors = sector_map.get(h.id, {})
+        sector_breakdown = [
+            {
+                "sector": sector,
+                "samples": data["samples"],
+                "mdr_count": data["mdr_count"],
+                "mdr_rate": round((data["mdr_count"] / data["samples"]) * 100, 1) if data["samples"] else 0.0,
+            }
+            for sector, data in sorted(sectors.items(), key=lambda kv: -kv[1]["samples"])
+        ]
+        sectors_present = len(sector_breakdown)
+
+        if cross_sector_only and sectors_present < 2:
+            continue
 
         result.append(
             {
@@ -2014,10 +2083,16 @@ async def hotspot_classification(
                 "mdr_count": mdr,
                 "mdr_rate": rate,
                 "classification": label,
+                "sector_breakdown": sector_breakdown,
+                "sectors_present": sectors_present,
+                "cross_sector": sectors_present >= 2,
             }
         )
 
-    result.sort(key=lambda x: (-x["mdr_rate"], -x["samples"]))
+    if cross_sector_only:
+        result.sort(key=lambda x: (-x["sectors_present"], -x["mdr_rate"], -x["samples"]))
+    else:
+        result.sort(key=lambda x: (-x["mdr_rate"], -x["samples"]))
     return result
 
 

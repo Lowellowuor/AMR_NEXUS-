@@ -250,10 +250,24 @@ export default function Alerts() {
         </div>
       )}
 
-      <AlertsTabs
-        active={filters.status}
-        onChange={updateFilter}
-      />
+      <div className="flex items-center justify-between gap-3">
+        <AlertsTabs
+          active={filters.status}
+          onChange={updateFilter}
+        />
+        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] flex-shrink-0">
+          <LiveIndicator connected={connected} />
+          <span className="hidden sm:inline">
+            {permission === 'granted'
+              ? 'Notifications on'
+              : permission === 'denied'
+                ? 'Notifications blocked'
+                : 'Notifications off'}
+          </span>
+        </div>
+      </div>
+
+      <AlertsStats stats={stats} hasNew={hasNewHighlights} />
 
       <AlertsFilterBar
         filters={filters}
@@ -276,20 +290,6 @@ export default function Alerts() {
           options={options}
         />
       )}
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <AlertsStats stats={stats} hasNew={hasNewHighlights} connected={connected} />
-        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-          <LiveIndicator connected={connected} />
-          <span>
-            {permission === 'granted'
-              ? 'Desktop notifications on'
-              : permission === 'denied'
-                ? 'Desktop notifications blocked'
-                : 'Desktop notifications off'}
-          </span>
-        </div>
-      </div>
 
       {showPrompt && (
         <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 rounded-[var(--radius-card)] bg-[var(--bg-secondary)] border border-[var(--border-primary)]">

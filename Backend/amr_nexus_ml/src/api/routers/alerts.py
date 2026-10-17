@@ -24,7 +24,66 @@ def _severity(r: AMRIsolateRecord) -> str:
     return "low"
 
 
-def _serialize(r: AMRIsolateRecord, ack: AlertAcknowledgement | None) -> dict[str, Any]:
+SLA_DEFAULTS = {
+    "critical": {"acknowledge": 1, "resolve": 4},
+    "high": {"acknowledge": 8, "resolve": 24},
+    "medium": {"acknowledge": 24, "resolve": 72},
+    "low": {"acknowledge": 72, "resolve": 168},
+}
+
+
+def _sla_window(db: Session, severity: str, kind: str) -> int:
+    key = f"alert_sla_{severity}_{kind}_hours"
+    default = SLA_DEFAULTS.get(severity, SLA_DEFAULTS["medium"])[kind]
+    try:
+        from src.services import config_service
+
+        return int(config_service.get_config(db, key, default))
+    except Exception:
+        return int(default)
+
+
+def _sla_status(
+    *,
+    created_at,
+    ended_at,
+    deadline_hours: int,
+) -> dict[str, Any]:
+    from datetime import UTC, datetime
+
+    if created_at is None:
+        return {"state": "unknown", "hours_elapsed": None, "hours_allowed": deadline_hours}
+
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=UTC)
+
+    now = datetime.now(UTC)
+    reference = ended_at or now
+    if reference.tzinfo is None:
+        reference = reference.replace(tzinfo=UTC)
+
+    elapsed = round((reference - created_at).total_seconds() / 3600.0, 1)
+
+    if ended_at is not None:
+        state = "met" if elapsed <= deadline_hours else "missed"
+    else:
+        if elapsed >= deadline_hours:
+            state = "breached"
+        elif elapsed >= deadline_hours * 0.75:
+            state = "at_risk"
+        else:
+            state = "on_track"
+
+    return {
+        "state": state,
+        "hours_elapsed": elapsed,
+        "hours_allowed": deadline_hours,
+    }
+
+
+def _serialize(
+    r: AMRIsolateRecord, ack: AlertAcknowledgement | None, db: Session | None = None
+) -> dict[str, Any]:
     return {
         "id": str(r.record_id),
         "record_id": str(r.record_id),
@@ -50,7 +109,35 @@ def _serialize(r: AMRIsolateRecord, ack: AlertAcknowledgement | None) -> dict[st
         "resolved_by": ack.resolved_by if ack else None,
         "resolution_note": ack.resolution_note if ack else None,
         "assigned_to": ack.assigned_to if ack else None,
+        "escalated_at": ack.escalated_at.isoformat() if ack and ack.escalated_at else None,
+        "escalation_level": int(ack.escalation_level or 0) if ack else 0,
+        "sla_acknowledge": _sla_state_for(r, ack, db, "acknowledge"),
+        "sla_resolve": _sla_state_for(r, ack, db, "resolve"),
     }
+
+
+def _sla_state_for(
+    r: AMRIsolateRecord,
+    ack: AlertAcknowledgement | None,
+    db: Session | None,
+    kind: str,
+) -> dict[str, Any]:
+    severity = _severity(r)
+    allowed = (
+        _sla_window(db, severity, kind)
+        if db is not None
+        else SLA_DEFAULTS.get(severity, SLA_DEFAULTS["medium"])[kind]
+    )
+    if kind == "acknowledge":
+        ended = ack.acknowledged_at if ack else None
+    else:
+        ended = ack.resolved_at if ack else None
+
+    return _sla_status(
+        created_at=r.created_at,
+        ended_at=ended,
+        deadline_hours=allowed,
+    )
 
 
 def _build_message(r: AMRIsolateRecord) -> str:
@@ -103,7 +190,7 @@ async def list_alerts(
         acks = db.query(AlertAcknowledgement).filter(AlertAcknowledgement.record_id.in_(record_ids)).all()
         ack_map = {a.record_id: a for a in acks}
 
-    items = [_serialize(r, ack_map.get(r.record_id)) for r in records]
+    items = [_serialize(r, ack_map.get(r.record_id), db=db) for r in records]
 
     if severity and severity != "all":
         items = [a for a in items if a["severity"] == severity]
