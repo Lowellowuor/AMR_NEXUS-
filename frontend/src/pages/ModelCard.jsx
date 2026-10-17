@@ -95,7 +95,7 @@ export default function ModelCard() {
     );
   }
 
-  const { model, intended_use, performance, training_data, fairness, limitations, governance, version_history } = data;
+  const { model, intended_use, performance, training_data, fairness, limitations, governance, version_history, registry, retrain } = data;
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
@@ -346,6 +346,82 @@ export default function ModelCard() {
         </dl>
       </Section>
 
+      {/* Registry status */}
+      <Section
+        icon={Database}
+        title="Registry status"
+        description="Live state of the deployed model and retraining readiness"
+        id="registry-status"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          <Metric
+            label="Active version"
+            value={registry?.active_version ? `v${registry.active_version}` : '—'}
+            hint={registry?.active_algorithm || 'no model registered'}
+          />
+          <Metric
+            label="Confirmed outcomes"
+            value={formatNumber(retrain?.confirmed_outcomes ?? 0)}
+            hint={
+              retrain?.ready
+                ? 'ready for retraining'
+                : `${formatNumber(retrain?.gap ?? 0)} more needed (min ${retrain?.min_required ?? 100})`
+            }
+            tone={retrain?.ready ? 'good' : 'warn'}
+          />
+          <Metric
+            label="Model versions"
+            value={formatNumber(registry?.total_versions ?? 0)}
+            hint={
+              registry?.active_trained_at
+                ? `active trained ${new Date(registry.active_trained_at).toLocaleDateString()}`
+                : null
+            }
+          />
+        </div>
+
+        {registry?.active_version && (
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs pt-3 border-t border-[var(--border-primary)]/40">
+            <div>
+              <dt className="text-[var(--text-muted)]">Active AUC-ROC</dt>
+              <dd className="font-semibold text-[var(--text-primary)] tabular-nums">
+                {registry.active_auc_roc != null
+                  ? registry.active_auc_roc.toFixed(3)
+                  : '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[var(--text-muted)]">Active sensitivity</dt>
+              <dd className="font-semibold text-[var(--text-primary)] tabular-nums">
+                {registry.active_sensitivity != null
+                  ? registry.active_sensitivity.toFixed(3)
+                  : '—'}
+              </dd>
+            </div>
+            {registry.active_training_data && (
+              <div className="sm:col-span-2">
+                <dt className="text-[var(--text-muted)]">Training data</dt>
+                <dd className="text-[var(--text-secondary)]">
+                  {registry.active_training_data}
+                </dd>
+              </div>
+            )}
+          </dl>
+        )}
+
+        {!retrain?.ready && (
+          <p className="text-xs text-[var(--text-muted)] mt-3 pt-3 border-t border-[var(--border-primary)]/40">
+            Retraining is available to administrators once{' '}
+            {retrain?.min_required ?? 100} confirmed lab outcomes accumulate.
+            Currently {formatNumber(retrain?.confirmed_outcomes ?? 0)} of{' '}
+            {retrain?.min_required ?? 100}. The endpoint{' '}
+            <code className="text-[var(--text-secondary)]">POST /ml-ops/retrain</code>{' '}
+            will refuse until then — this is deliberate, so that every promotion
+            is measured against real clinical outcomes.
+          </p>
+        )}
+      </Section>
+
       {/* Version history */}
       <Section
         icon={GitBranch}
@@ -358,10 +434,15 @@ export default function ModelCard() {
             <li key={v.version} className="flex gap-3">
               <div className="w-2 h-2 rounded-full bg-[var(--accent-teal)] mt-1.5 flex-shrink-0" />
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-semibold text-[var(--text-primary)]">
                     v{v.version}
                   </span>
+                  {v.active && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--status-success-bg)] text-[var(--status-success)]">
+                      active
+                    </span>
+                  )}
                   <span className="text-xs text-[var(--text-muted)]">{v.date}</span>
                 </div>
                 <p className="text-sm text-[var(--text-secondary)] mt-0.5">{v.changes}</p>

@@ -647,13 +647,70 @@ async def get_model_card(
             "data_protection": "Kenya Data Protection Act 2019 compliant",
             "audit_trail": "All predictions logged with actor, timestamp, and outcome",
         },
-        "version_history": [
+        "version_history": _build_version_history(db),
+        "registry": _build_registry_summary(db),
+        "retrain": _build_retrain_readiness(db),
+    }
+
+
+def _build_version_history(db: Session) -> list[dict]:
+    from src.db.models import ModelRegistry
+
+    rows = db.query(ModelRegistry).order_by(ModelRegistry.trained_at.desc()).all()
+    if not rows:
+        return []
+    out = []
+    for r in rows:
+        m = r.metrics or {}
+        out.append(
             {
-                "version": "1.0.0",
-                "date": "2026-09-01",
-                "changes": "Initial release. XGBoost model with SHAP explainability.",
-            },
-        ],
+                "version": r.version,
+                "date": r.trained_at.date().isoformat() if r.trained_at else None,
+                "changes": (
+                    f"{r.algorithm}. "
+                    f"AUC {m.get('auc_roc', 0):.3f}, "
+                    f"sensitivity {m.get('sensitivity', 0):.3f}. "
+                    f"Training samples: {m.get('training_samples', m.get('training_rows', 0))}."
+                    + ("  ACTIVE." if r.is_active else "")
+                ),
+                "active": bool(r.is_active),
+                "auc_roc": m.get("auc_roc"),
+                "sensitivity": m.get("sensitivity"),
+                "training_samples": m.get("training_samples", m.get("training_rows", 0)),
+            }
+        )
+    return out
+
+
+def _build_registry_summary(db: Session) -> dict:
+    from src.db.models import ModelRegistry
+
+    active = (
+        db.query(ModelRegistry)
+        .filter(ModelRegistry.is_active == True)  # noqa: E712
+        .first()
+    )
+    total = db.query(ModelRegistry).count()
+    m = (active.metrics or {}) if active else {}
+    return {
+        "active_version": active.version if active else None,
+        "active_algorithm": active.algorithm if active else None,
+        "active_trained_at": active.trained_at.isoformat() if active and active.trained_at else None,
+        "active_auc_roc": m.get("auc_roc"),
+        "active_sensitivity": m.get("sensitivity"),
+        "active_training_data": m.get("training_data"),
+        "total_versions": int(total),
+    }
+
+
+def _build_retrain_readiness(db: Session) -> dict:
+    confirmed = db.query(AMRIsolateRecord).filter(AMRIsolateRecord.lab_confirmed_mdr.isnot(None)).count()
+    min_required = 100
+    return {
+        "confirmed_outcomes": int(confirmed),
+        "min_required": min_required,
+        "ready": confirmed >= min_required,
+        "gap": max(0, min_required - confirmed),
     }
 
 

@@ -81,6 +81,8 @@ def _load_training_frame(db: Session) -> pd.DataFrame:
                 else np.nan,
                 "prior_antibiotic_exposure": 1 if r.prior_antibiotic_exposure else 0,
                 "sample_month": int(r.sample_month) if r.sample_month is not None else np.nan,
+                "_sample_collection_date": r.sample_collection_date,
+                "_created_at": r.created_at,
                 "y": 1 if r.lab_confirmed_mdr else 0,
             }
         )
@@ -184,14 +186,35 @@ def run_retraining(
 
     logger.info(f"Retraining on {len(df)} confirmed outcomes")
 
-    df = df.sort_values(by="sample_month")
-    split_idx = int(len(df) * 0.8)
-    train_df = df.iloc[:split_idx]
-    test_df = df.iloc[split_idx:]
+    # Sort by actual collection date, not by month-of-year (1-12).
+    # Month number does not encode chronological order: month 1 of this year
+    # would be treated as "before" month 12 of last year. Use
+    # sample_collection_date, fall back to created_at for rows that lack one.
+    df["_sort_date"] = pd.to_datetime(df["_sample_collection_date"], errors="coerce")
+    df["_sort_date"] = df["_sort_date"].fillna(pd.to_datetime(df["_created_at"], errors="coerce"))
 
-    X_train = train_df.drop(columns=["y"])
+    n_before = len(df)
+    df = df.dropna(subset=["_sort_date"]).sort_values("_sort_date").reset_index(drop=True)
+    n_after = len(df)
+    if n_after < n_before:
+        logger.warning(f"Dropped {n_before - n_after} rows with no sample_collection_date or created_at")
+
+    split_idx = int(len(df) * 0.8)
+    if split_idx < 1 or split_idx >= len(df):
+        return {
+            "status": "skipped",
+            "detail": f"Cannot split {len(df)} rows into 80/20",
+        }
+
+    train_df = df.iloc[:split_idx].copy()
+    test_df = df.iloc[split_idx:].copy()
+    split_date = df.iloc[split_idx]["_sort_date"]
+    logger.info(f"Temporal split at {split_date}: {len(train_df)} train / {len(test_df)} test")
+
+    drop_cols = ["y", "_sort_date", "_sample_collection_date", "_created_at"]
+    X_train = train_df.drop(columns=drop_cols)
     y_train = train_df["y"]
-    X_test = test_df.drop(columns=["y"])
+    X_test = test_df.drop(columns=drop_cols)
     y_test = test_df["y"]
 
     if len(train_df) < 50 or len(test_df) < 10:
