@@ -155,6 +155,12 @@ export const api = {
     authFetch(
       `${API_BASE}/county/${encodeURIComponent(county)}/priority-isolates?${params}`,
     ).then(handleResponse),
+  getOneHealthPillarActivity: (params = '') =>
+    authFetch(`${API_BASE}/onehealth/pillar-activity?${params}`).then(handleResponse),
+  getOneHealthAmuResistance: (params = '') =>
+    authFetch(`${API_BASE}/onehealth/amu-resistance?${params}`).then(handleResponse),
+  getOneHealthPillarDefinitions: () =>
+    authFetch(`${API_BASE}/onehealth/pillar-definitions`).then(handleResponse),
   getRootCauseDrivers: (params = '') =>
     authFetch(`${API_BASE}/analytics/root-cause-drivers?${params}`).then(handleResponse),
   listDriverAnnotations: (params = '') =>

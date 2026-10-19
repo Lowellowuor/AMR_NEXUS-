@@ -49,6 +49,7 @@ from src.api.routers import (
     labs_router,
     county_router,
     ml_ops_router,
+    onehealth_router,
 )
 from src.services.forecast_utils import generate_time_series_forecast
 from src.api.routers import (
@@ -739,6 +740,7 @@ def create_app() -> FastAPI:
     app.include_router(analyst_router, prefix="/api/v1/analyst", tags=["analyst"])
     app.include_router(model_health_router, prefix="/api/v1/ml", tags=["ml"])
     app.include_router(ml_ops_router, prefix="/api/v1/ml-ops", tags=["ml-ops"])
+    app.include_router(onehealth_router, prefix="/api/v1/onehealth", tags=["onehealth"])
     app.include_router(user_actions_router, prefix="/api/v1/user", tags=["user-actions"])
     app.include_router(audit_router, prefix="/api/v1/audit", tags=["audit"])
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
@@ -747,6 +749,7 @@ def create_app() -> FastAPI:
     app.include_router(analyst_router, prefix="/analyst", tags=["analyst"])
     app.include_router(model_health_router, prefix="/ml", tags=["ml"])
     app.include_router(ml_ops_router, prefix="/ml-ops", tags=["ml-ops"])
+    app.include_router(onehealth_router, prefix="/onehealth", tags=["onehealth"])
     app.include_router(user_actions_router, prefix="/user", tags=["user-actions"])
     app.include_router(audit_router, prefix="/audit", tags=["audit"])
 

@@ -17,6 +17,7 @@ from src.api.routers.labs import labs_router
 from src.api.routers.ml_ops import router as ml_ops_router
 from src.api.routers.model_health import router as model_health_router
 from src.api.routers.notifications import router as notifications_router
+from src.api.routers.onehealth import onehealth_router
 from src.api.routers.predictions import router as prediction_router
 from src.api.routers.reports import reports_router
 from src.api.routers.search_router import search_router
