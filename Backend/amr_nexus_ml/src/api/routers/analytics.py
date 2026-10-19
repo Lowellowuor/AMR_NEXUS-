@@ -1825,12 +1825,14 @@ async def amu_resistance_correlation(
 async def ecoli_sentinel(
     county: str | None = None,
     days: int | None = None,
+    sentinel_key: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     from src.services import config_service
 
-    sentinel = config_service.get_config(db, "sentinel_pathogen", "E. coli")
+    config_key = sentinel_key or "sentinel_pathogen"
+    sentinel = config_service.get_config(db, config_key, "E. coli")
     window = days or config_service.get_config(db, "sentinel_lookback_days", 180)
     canonical = config_service.get_canonical_sectors(db)
     alias = config_service.get_sector_alias_map(db)

@@ -43,6 +43,45 @@ export default function HistoryFilterBar({
           )}
         </div>
 
+        {filters.pathogen && (
+          <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[var(--accent-teal)]/10 border border-[var(--accent-teal)]/30 text-xs font-medium text-[var(--accent-teal)]">
+            Pathogen: {filters.pathogen}
+            <button
+              onClick={() => onChange({ pathogen: '' })}
+              className="hover:bg-[var(--accent-teal)]/20 rounded-full p-0.5 transition"
+              aria-label="Clear pathogen filter"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        )}
+
+        {filters.county && (
+          <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[var(--accent-teal)]/10 border border-[var(--accent-teal)]/30 text-xs font-medium text-[var(--accent-teal)]">
+            County: {filters.county}
+            <button
+              onClick={() => onChange({ county: '' })}
+              className="hover:bg-[var(--accent-teal)]/20 rounded-full p-0.5 transition"
+              aria-label="Clear county filter"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        )}
+
+        {filters.species && (
+          <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[var(--accent-teal)]/10 border border-[var(--accent-teal)]/30 text-xs font-medium text-[var(--accent-teal)]">
+            Species: {filters.species}
+            <button
+              onClick={() => onChange({ species: '' })}
+              className="hover:bg-[var(--accent-teal)]/20 rounded-full p-0.5 transition"
+              aria-label="Clear species filter"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        )}
+
         <select
           value={filters.mdr}
           onChange={(e) => onChange({ mdr: e.target.value })}

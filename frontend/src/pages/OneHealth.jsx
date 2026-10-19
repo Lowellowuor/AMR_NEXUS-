@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   LineChart,
@@ -27,6 +28,8 @@ import CrossPillarSignals from '../components/onehealth/CrossPillarSignals';
 import CrossSectorHotspotsPanel from '../components/onehealth/CrossSectorHotspotsPanel';
 import PillarActivityBreakdown from '../components/onehealth/PillarActivityBreakdown';
 import PillarDefinitions from '../components/onehealth/PillarDefinitions';
+import OneHealthTabs from '../components/onehealth/OneHealthTabs';
+import PillarComparisonChart from '../components/onehealth/PillarComparisonChart';
 import AmuResistancePanel from '../components/onehealth/AmuResistancePanel';
 
 const PILLARS = [
@@ -135,6 +138,7 @@ function PillarCard({ pillar, summary, loading }) {
 
 export default function OneHealth() {
   usePageTitle('One Health Overview');
+  const [tab, setTab] = useState('overview');
 
   const humanQ = useQuery({
     queryKey: ['onehealth', 'human'],
@@ -184,15 +188,17 @@ export default function OneHealth() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-          One Health Overview
-        </h1>
-        <p className="text-sm text-[var(--text-muted)] mt-1 max-w-2xl">
-          Antimicrobial resistance does not respect sector boundaries. This
-          view brings human, animal, and environmental data together so cross-
-          pillar patterns become visible.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+            One Health Overview
+          </h1>
+          <p className="text-sm text-[var(--text-muted)] mt-1 max-w-2xl">
+            Antimicrobial resistance does not respect sector boundaries.
+            This view brings human, animal, and environmental data together
+            so cross-pillar patterns become visible.
+          </p>
+        </div>
       </div>
 
       {totalSamples === 0 && !loading && (
@@ -202,132 +208,159 @@ export default function OneHealth() {
         />
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {PILLARS.map((p) => (
-          <PillarCard
-            key={p.key}
-            pillar={p}
-            summary={summaries[p.key]}
-            loading={loading}
-          />
-        ))}
-      </div>
+      <OneHealthTabs active={tab} onChange={setTab} />
 
-      <EcoliSentinelPanel />
-
-      <CrossPillarSignals />
-
-      <CrossSectorHotspotsPanel />
-
-      <PillarActivityBreakdown />
-
-      <AmuResistancePanel />
-
-      <PillarDefinitions />
-
-      <div className="bg-[var(--bg-secondary)]/80 p-5 rounded-2xl border border-[var(--border-primary)]/40">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-            MDR trend by sector
-          </h2>
-          <span className="text-xs text-[var(--text-muted)]">
-            last 12 months
-          </span>
-        </div>
-        {monthlyQ.isLoading ? (
-          <Skeleton className="h-64" />
-        ) : combinedTrend.length === 0 ? (
-          <EmptyState
-            title="No monthly trend yet"
-            description="Collect isolates with sample dates to see the trend."
-          />
-        ) : (
-          <div style={{ height: 320 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={combinedTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" />
-                <XAxis
-                  dataKey="month"
-                  stroke="var(--text-muted)"
-                  style={{ fontSize: 11 }}
-                />
-                <YAxis
-                  stroke="var(--text-muted)"
-                  style={{ fontSize: 11 }}
-                  tickFormatter={(v) => `${v}%`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-primary)',
-                    borderRadius: '8px',
-                    fontSize: 12,
-                  }}
-                  formatter={(v) => `${v}%`}
-                />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line
-                  type="monotone"
-                  dataKey="human"
-                  name="Human"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="animal"
-                  name="Animal"
-                  stroke="#f59e0b"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="environment"
-                  name="Environment"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+      {tab === 'overview' && (
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {PILLARS.map((p) => (
+              <PillarCard
+                key={p.key}
+                pillar={p}
+                summary={summaries[p.key]}
+                loading={loading}
+              />
+            ))}
           </div>
-        )}
-      </div>
 
-      <div className="rounded-2xl border border-[var(--border-primary)]/40 bg-[var(--bg-secondary)]/60 p-5">
-        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2">
-          Where to act
-        </h3>
-        <p className="text-sm text-[var(--text-secondary)] mb-4">
-          Sectors with the highest MDR rates or the most anomalies warrant
-          investigation first. Use the links above to drill into each pillar.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            to="/amu"
-            className="inline-flex items-center gap-1 text-sm px-4 py-2 rounded-full border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]/60"
-          >
-            Antimicrobial Use
-            <ArrowRightIcon className="w-3.5 h-3.5" />
-          </Link>
-          <Link
-            to="/sampling-sites"
-            className="inline-flex items-center gap-1 text-sm px-4 py-2 rounded-full border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]/60"
-          >
-            Sampling Sites
-            <ArrowRightIcon className="w-3.5 h-3.5" />
-          </Link>
-          <Link
-            to="/alerts"
-            className="inline-flex items-center gap-1 text-sm px-4 py-2 rounded-full border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]/60"
-          >
-            Alerts
-            <ArrowRightIcon className="w-3.5 h-3.5" />
-          </Link>
+          <PillarComparisonChart />
+
+          <div className="bg-[var(--bg-secondary)]/80 p-5 rounded-2xl border border-[var(--border-primary)]/40">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+                MDR trend by sector
+              </h2>
+              <span className="text-xs text-[var(--text-muted)]">
+                last 12 months
+              </span>
+            </div>
+            {monthlyQ.isLoading ? (
+              <Skeleton className="h-64" />
+            ) : combinedTrend.length === 0 ? (
+              <EmptyState
+                title="No monthly trend yet"
+                description="Collect isolates with sample dates to see the trend."
+              />
+            ) : (
+              <div style={{ height: 320 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={combinedTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-primary)" />
+                    <XAxis
+                      dataKey="month"
+                      stroke="var(--text-muted)"
+                      style={{ fontSize: 11 }}
+                    />
+                    <YAxis
+                      stroke="var(--text-muted)"
+                      style={{ fontSize: 11 }}
+                      tickFormatter={(v) => `${v}%`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-primary)',
+                        borderRadius: '8px',
+                        fontSize: 12,
+                      }}
+                      formatter={(v) => `${v}%`}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Line
+                      type="monotone"
+                      dataKey="human"
+                      name="Human"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="animal"
+                      name="Animal"
+                      stroke="#f59e0b"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="environment"
+                      name="Environment"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border-primary)]/40 bg-[var(--bg-secondary)]/60 p-5">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2">
+              Where to act
+            </h3>
+            <p className="text-sm text-[var(--text-secondary)] mb-4">
+              Sectors with the highest MDR rates or the most anomalies warrant
+              investigation first. Use the links below to drill into each pillar.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to="/amu"
+                className="inline-flex items-center gap-1 text-sm px-4 py-2 rounded-full border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]/60"
+              >
+                Antimicrobial Use
+                <ArrowRightIcon className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                to="/sampling-sites"
+                className="inline-flex items-center gap-1 text-sm px-4 py-2 rounded-full border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]/60"
+              >
+                Sampling Sites
+                <ArrowRightIcon className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                to="/alerts"
+                className="inline-flex items-center gap-1 text-sm px-4 py-2 rounded-full border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]/60"
+              >
+                Alerts
+                <ArrowRightIcon className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {tab === 'signals' && (
+        <div className="space-y-5">
+          <CrossPillarSignals />
+          <CrossSectorHotspotsPanel />
+        </div>
+      )}
+
+      {tab === 'sentinels' && (
+        <div className="space-y-5">
+          <EcoliSentinelPanel />
+        </div>
+      )}
+
+      {tab === 'activity' && (
+        <div className="space-y-5">
+          <PillarActivityBreakdown />
+        </div>
+      )}
+
+      {tab === 'amu' && (
+        <div className="space-y-5">
+          <AmuResistancePanel />
+        </div>
+      )}
+
+      {tab === 'definitions' && (
+        <div className="space-y-5">
+          <PillarDefinitions />
+        </div>
+      )}
     </div>
   );
 }
